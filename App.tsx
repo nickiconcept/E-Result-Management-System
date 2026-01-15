@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import ParentPortal from './components/ParentPortal';
 import Layout from './components/Layout';
 import Results from './components/Results';
+import PINManager from './components/PINManager';
 import { auditService } from './services/auditService';
 
 const App: React.FC = () => {
@@ -44,8 +45,9 @@ const App: React.FC = () => {
         <Route element={user ? <Layout user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}>
           <Route path="/dashboard" element={<Dashboard user={user as User} />} />
           <Route path="/results" element={<Results user={user as User} />} />
-          <Route path="/students" element={<div className="p-8 font-bold text-gray-400">Student Management Module - Coming Soon</div>} />
-          <Route path="/audit-logs" element={<div className="p-8 font-bold text-gray-400">Security Audit Logs - Restricted Access</div>} />
+          <Route path="/pin-manager" element={<PINManager />} />
+          <Route path="/students" element={<div className="p-8 text-center text-gray-400 font-bold">Student Management - Syncing with Database...</div>} />
+          <Route path="/audit-logs" element={<div className="p-8 text-center text-gray-400 font-bold">Audit Logs - Restricted Access</div>} />
         </Route>
 
         <Route path="/" element={<Navigate to={user ? "/dashboard" : "/portal"} />} />
