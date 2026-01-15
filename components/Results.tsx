@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ClassLevel, 
@@ -87,26 +86,26 @@ const Results: React.FC<ResultsProps> = ({ user }) => {
     if (!selectedSubject) return;
     
     const key = `${studentId}-${selectedSubject}`;
-    const currentScore = scores[key] || {};
+    const currentScore = scores[key];
     
     const limits: Record<string, number> = { ca1: 10, ca2: 10, assignment: 10, notes: 10, exam: 60 };
     if (value > limits[field as string] || value < 0) return;
 
     // Create a safe update object with defaults
     const updatedScore: Score = {
-       id: currentScore.id || Math.random().toString(),
-       studentId: currentScore.studentId || studentId,
-       subjectId: currentScore.subjectId || selectedSubject,
-       termId: currentScore.termId || 't2',
-       sessionId: currentScore.sessionId || 's1',
-       ca1: field === 'ca1' ? value : (currentScore.ca1 || 0),
-       ca2: field === 'ca2' ? value : (currentScore.ca2 || 0),
-       assignment: field === 'assignment' ? value : (currentScore.assignment || 0),
-       notes: field === 'notes' ? value : (currentScore.notes || 0),
-       exam: field === 'exam' ? value : (currentScore.exam || 0),
+       id: currentScore?.id || Math.random().toString(),
+       studentId: currentScore?.studentId || studentId,
+       subjectId: currentScore?.subjectId || selectedSubject,
+       termId: currentScore?.termId || 't2',
+       sessionId: currentScore?.sessionId || 's1',
+       ca1: field === 'ca1' ? value : (currentScore?.ca1 || 0),
+       ca2: field === 'ca2' ? value : (currentScore?.ca2 || 0),
+       assignment: field === 'assignment' ? value : (currentScore?.assignment || 0),
+       notes: field === 'notes' ? value : (currentScore?.notes || 0),
+       exam: field === 'exam' ? value : (currentScore?.exam || 0),
        total: 0,
        grade: 'F',
-       isLocked: currentScore.isLocked || false
+       isLocked: currentScore?.isLocked || false
     };
     
     // Calculate Total
@@ -182,20 +181,20 @@ const Results: React.FC<ResultsProps> = ({ user }) => {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filteredStudents.map((student) => {
-              const score = scores[`${student.id}-${selectedSubject}`] || {};
+              const score = scores[`${student.id}-${selectedSubject}`];
               return (
                 <tr key={student.id} className="hover:bg-green-50/30 transition-colors group">
                   <td className="p-4">
                     <p className="font-bold text-gray-800 text-sm">{student.lastName}, {student.firstName}</p>
                     <p className="text-xs text-gray-500 font-mono">{student.admissionNo}</p>
                   </td>
-                  {['ca1', 'ca2', 'assignment', 'notes'].map((field) => (
+                  {(['ca1', 'ca2', 'assignment', 'notes'] as const).map((field) => (
                     <td key={field} className="p-2 text-center">
                       <input
                         type="number"
-                        disabled={!canEditScores || score.isLocked}
-                        value={score[field as keyof Score] || 0}
-                        onChange={(e) => handleScoreChange(student.id, field as keyof Score, parseInt(e.target.value) || 0)}
+                        disabled={!canEditScores || score?.isLocked}
+                        value={score?.[field] || 0}
+                        onChange={(e) => handleScoreChange(student.id, field, parseInt(e.target.value) || 0)}
                         className="w-16 p-2 text-center border border-gray-200 rounded focus:ring-2 focus:ring-green-500 outline-none text-sm font-medium"
                       />
                     </td>
@@ -203,24 +202,24 @@ const Results: React.FC<ResultsProps> = ({ user }) => {
                   <td className="p-2 text-center">
                     <input
                       type="number"
-                      disabled={!canEditScores || score.isLocked}
-                      value={score.exam || 0}
+                      disabled={!canEditScores || score?.isLocked}
+                      value={score?.exam || 0}
                       onChange={(e) => handleScoreChange(student.id, 'exam', parseInt(e.target.value) || 0)}
                       className="w-20 p-2 text-center border border-green-200 bg-green-50/30 rounded focus:ring-2 focus:ring-green-500 outline-none text-sm font-bold text-gray-800"
                     />
                   </td>
-                  <td className="p-4 text-center font-bold text-gray-800 bg-gray-50/30">{score.total || 0}</td>
+                  <td className="p-4 text-center font-bold text-gray-800 bg-gray-50/30">{score?.total || 0}</td>
                   <td className="p-4 text-center bg-gray-50/30">
                      <span className={`px-2 py-1 rounded text-xs font-bold ${
-                        score.grade === 'A' ? 'bg-green-100 text-green-700' :
-                        score.grade === 'F' ? 'bg-red-100 text-red-700' :
+                        score?.grade === 'A' ? 'bg-green-100 text-green-700' :
+                        score?.grade === 'F' ? 'bg-red-100 text-red-700' :
                         'bg-gray-100 text-gray-700'
                      }`}>
-                       {score.grade || 'F'}
+                       {score?.grade || 'F'}
                      </span>
                   </td>
                   <td className="p-4 text-center">
-                     {score.isLocked ? (
+                     {score?.isLocked ? (
                        <Lock size={16} className="mx-auto text-gray-400" />
                      ) : (
                        <Unlock size={16} className="mx-auto text-green-400 opacity-0 group-hover:opacity-100 transition-opacity" />
