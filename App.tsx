@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { User } from './types';
@@ -45,8 +44,8 @@ const App: React.FC = () => {
         <Route element={user ? <Layout user={user} onLogout={handleLogout} /> : <Navigate to="/login" />}>
           <Route path="/dashboard" element={<Dashboard user={user as User} />} />
           <Route path="/results" element={<Results user={user as User} />} />
-          <Route path="/students" element={<div className="p-8">Student Management (Coming Soon)</div>} />
-          <Route path="/audit-logs" element={<div className="p-8">Audit Logs (Admin Only)</div>} />
+          <Route path="/students" element={<div className="p-8 font-bold text-gray-400">Student Management Module - Coming Soon</div>} />
+          <Route path="/audit-logs" element={<div className="p-8 font-bold text-gray-400">Security Audit Logs - Restricted Access</div>} />
         </Route>
 
         <Route path="/" element={<Navigate to={user ? "/dashboard" : "/portal"} />} />

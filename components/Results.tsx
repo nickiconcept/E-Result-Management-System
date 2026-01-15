@@ -1,414 +1,225 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  ClassLevel, 
-  Arm, 
-  Subject, 
-  Score, 
-  Student, 
-  User, 
-  UserRole 
-} from '../types';
-import { 
-  MOCK_CLASSES, 
-  MOCK_ARMS, 
-  MOCK_SUBJECTS, 
-  MOCK_STUDENTS,
-  calculateGrade 
-} from '../constants';
+import React, { useState, useEffect } from 'react';
+import { User, UserRole } from '../types';
+import { MOCK_CLASSES, MOCK_SUBJECTS, calculateGrade } from '../constants';
 import { 
   Save, 
+  Calculator, 
+  Filter, 
+  AlertCircle, 
+  Sparkles, 
+  FileSpreadsheet, 
   Lock, 
   Unlock, 
-  Calculator, 
-  Sparkles, 
-  Filter,
-  AlertCircle,
-  FileSpreadsheet
+  CheckCircle2 
 } from 'lucide-react';
+import { apiService } from '../services/apiService';
 import { geminiService } from '../services/geminiService';
 import { auditService } from '../services/auditService';
 
-interface ResultsProps {
-  user: User;
-}
+interface ResultsProps { user: User; }
+
+const SCORE_FIELDS = ['ca1', 'ca2', 'assignment', 'notes'] as const;
+type ScoreField = typeof SCORE_FIELDS[number] | 'exam';
 
 const Results: React.FC<ResultsProps> = ({ user }) => {
-  // Filters
   const [selectedClass, setSelectedClass] = useState<string>('');
-  const [selectedArm, setSelectedArm] = useState<string>('');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
-  const [viewMode, setViewMode] = useState<'scores' | 'remarks'>('scores');
-
-  // Data State
-  const [scores, setScores] = useState<Record<string, Score>>({});
+  const [students, setStudents] = useState<any[]>([]);
   const [remarks, setRemarks] = useState<Record<string, string>>({});
-  const [loadingAI, setLoadingAI] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadingAI, setLoadingAI] = useState<string | null>(null);
 
-  // Derived Data
-  const filteredStudents = useMemo(() => {
-    return MOCK_STUDENTS.filter(s => 
-      (!selectedClass || s.classId === selectedClass) &&
-      (!selectedArm || s.armId === selectedArm)
-    );
-  }, [selectedClass, selectedArm]);
-
-  // Initial Data Load (Simulation)
   useEffect(() => {
-    if (filteredStudents.length > 0 && selectedSubject) {
-      const newScores = { ...scores };
-      filteredStudents.forEach(student => {
-        const key = `${student.id}-${selectedSubject}`;
-        if (!newScores[key]) {
-          newScores[key] = {
-            id: Math.random().toString(),
-            studentId: student.id,
-            subjectId: selectedSubject,
-            termId: 't2',
-            sessionId: 's1',
-            ca1: 0,
-            ca2: 0,
-            assignment: 0,
-            notes: 0,
-            exam: 0,
-            total: 0,
-            grade: 'F',
-            isLocked: false
-          };
-        }
-      });
-      setScores(newScores);
+    if (selectedClass && selectedSubject) {
+      setLoading(true);
+      apiService.getScores(selectedClass, selectedSubject, 't2')
+        .then(data => {
+          if (Array.isArray(data)) setStudents(data);
+        })
+        .finally(() => setLoading(false));
     }
-  }, [filteredStudents, selectedSubject]);
+  }, [selectedClass, selectedSubject]);
 
-  // Handlers
-  const handleScoreChange = (studentId: string, field: keyof Score, value: number) => {
-    if (!selectedSubject) return;
-    
-    const key = `${studentId}-${selectedSubject}`;
-    const currentScore = scores[key];
-    
-    const limits: Record<string, number> = { ca1: 10, ca2: 10, assignment: 10, notes: 10, exam: 60 };
-    if (value > limits[field as string] || value < 0) return;
-
-    // Create a safe update object with defaults
-    const updatedScore: Score = {
-       id: currentScore?.id || Math.random().toString(),
-       studentId: currentScore?.studentId || studentId,
-       subjectId: currentScore?.subjectId || selectedSubject,
-       termId: currentScore?.termId || 't2',
-       sessionId: currentScore?.sessionId || 's1',
-       ca1: field === 'ca1' ? value : (currentScore?.ca1 || 0),
-       ca2: field === 'ca2' ? value : (currentScore?.ca2 || 0),
-       assignment: field === 'assignment' ? value : (currentScore?.assignment || 0),
-       notes: field === 'notes' ? value : (currentScore?.notes || 0),
-       exam: field === 'exam' ? value : (currentScore?.exam || 0),
-       total: 0,
-       grade: 'F',
-       isLocked: currentScore?.isLocked || false
-    };
-    
-    // Calculate Total
-    updatedScore.total = 
-      updatedScore.ca1 + 
-      updatedScore.ca2 + 
-      updatedScore.assignment + 
-      updatedScore.notes + 
-      updatedScore.exam;
-      
-    updatedScore.grade = calculateGrade(updatedScore.total);
-
-    setScores(prev => ({ ...prev, [key]: updatedScore }));
+  const handleScoreChange = (index: number, field: ScoreField, value: number) => {
+    const updated = [...students];
+    updated[index][field] = value;
+    const s = updated[index];
+    const total = (Number(s.ca1)||0) + (Number(s.ca2)||0) + (Number(s.assignment)||0) + (Number(s.notes)||0) + (Number(s.exam)||0);
+    s.total = total;
+    s.grade = calculateGrade(total);
+    setStudents(updated);
   };
 
-  const handleSave = () => {
-    setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      auditService.log(
-        user.id, 
-        user.role, 
-        'Save Scores', 
-        `Class: ${MOCK_CLASSES.find(c => c.id === selectedClass)?.name}, Subject: ${MOCK_SUBJECTS.find(s => s.id === selectedSubject)?.name}`
-      );
-      alert('Scores saved successfully!');
-    }, 800);
-  };
-
-  const generateAIRemark = async (student: Student) => {
+  const generateRemark = async (student: any) => {
     setLoadingAI(student.id);
-    const performance = `The student scored an average of 75% across subjects.`;
-    const remark = await geminiService.generateRemark(
-      `${student.firstName} ${student.lastName}`, 
-      performance, 
-      user.role === UserRole.PRINCIPAL ? 'Principal' : 'Form Master'
-    );
-    
-    setRemarks(prev => ({ ...prev, [student.id]: remark }));
-    setLoadingAI(null);
-    auditService.log(user.id, user.role, 'Generate AI Remark', `Student: ${student.admissionNo}`);
-  };
-
-  const canEditScores = [UserRole.ADMIN, UserRole.TEACHER, UserRole.FORM_MASTER].includes(user.role);
-  const canViewRemarks = [UserRole.ADMIN, UserRole.FORM_MASTER, UserRole.PRINCIPAL].includes(user.role);
-
-  // Render Helpers
-  const renderScoresTable = () => {
-    if (!selectedSubject) {
-      return (
-        <div className="h-[400px] flex flex-col items-center justify-center text-gray-400">
-           <FileSpreadsheet size={48} className="mb-4 text-gray-300" />
-           <p>Select a Subject to enter scores.</p>
-        </div>
+    try {
+      const perf = `${student.first_name} scored ${student.total} in ${MOCK_SUBJECTS.find(s => s.id === selectedSubject)?.name}. Grade: ${student.grade}.`;
+      const remark = await geminiService.generateRemark(
+        `${student.first_name} ${student.last_name}`,
+        perf,
+        user.role === UserRole.PRINCIPAL ? 'Principal' : 'Form Master'
       );
+      setRemarks(prev => ({ ...prev, [student.id]: remark }));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingAI(null);
     }
-
-    return (
-      <div className="overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-gray-50 text-xs font-bold text-gray-500 uppercase">
-            <tr>
-              <th className="p-4 border-b">Student</th>
-              <th className="p-4 border-b text-center w-20">1st CA <span className="text-[10px] text-gray-400 block">(10)</span></th>
-              <th className="p-4 border-b text-center w-20">2nd CA <span className="text-[10px] text-gray-400 block">(10)</span></th>
-              <th className="p-4 border-b text-center w-20">Assg <span className="text-[10px] text-gray-400 block">(10)</span></th>
-              <th className="p-4 border-b text-center w-20">Notes <span className="text-[10px] text-gray-400 block">(10)</span></th>
-              <th className="p-4 border-b text-center w-24">Exam <span className="text-[10px] text-gray-400 block">(60)</span></th>
-              <th className="p-4 border-b text-center w-20 bg-gray-50/50">Total</th>
-              <th className="p-4 border-b text-center w-20 bg-gray-50/50">Grade</th>
-              <th className="p-4 border-b text-center">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filteredStudents.map((student) => {
-              const score = scores[`${student.id}-${selectedSubject}`];
-              return (
-                <tr key={student.id} className="hover:bg-green-50/30 transition-colors group">
-                  <td className="p-4">
-                    <p className="font-bold text-gray-800 text-sm">{student.lastName}, {student.firstName}</p>
-                    <p className="text-xs text-gray-500 font-mono">{student.admissionNo}</p>
-                  </td>
-                  {(['ca1', 'ca2', 'assignment', 'notes'] as const).map((field) => (
-                    <td key={field} className="p-2 text-center">
-                      <input
-                        type="number"
-                        disabled={!canEditScores || score?.isLocked}
-                        value={score?.[field] || 0}
-                        onChange={(e) => handleScoreChange(student.id, field, parseInt(e.target.value) || 0)}
-                        className="w-16 p-2 text-center border border-gray-200 rounded focus:ring-2 focus:ring-green-500 outline-none text-sm font-medium"
-                      />
-                    </td>
-                  ))}
-                  <td className="p-2 text-center">
-                    <input
-                      type="number"
-                      disabled={!canEditScores || score?.isLocked}
-                      value={score?.exam || 0}
-                      onChange={(e) => handleScoreChange(student.id, 'exam', parseInt(e.target.value) || 0)}
-                      className="w-20 p-2 text-center border border-green-200 bg-green-50/30 rounded focus:ring-2 focus:ring-green-500 outline-none text-sm font-bold text-gray-800"
-                    />
-                  </td>
-                  <td className="p-4 text-center font-bold text-gray-800 bg-gray-50/30">{score?.total || 0}</td>
-                  <td className="p-4 text-center bg-gray-50/30">
-                     <span className={`px-2 py-1 rounded text-xs font-bold ${
-                        score?.grade === 'A' ? 'bg-green-100 text-green-700' :
-                        score?.grade === 'F' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-700'
-                     }`}>
-                       {score?.grade || 'F'}
-                     </span>
-                  </td>
-                  <td className="p-4 text-center">
-                     {score?.isLocked ? (
-                       <Lock size={16} className="mx-auto text-gray-400" />
-                     ) : (
-                       <Unlock size={16} className="mx-auto text-green-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                     )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    );
   };
 
-  const renderRemarksTable = () => {
-    return (
-      <div className="overflow-x-auto">
-         <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50 text-xs font-bold text-gray-500 uppercase">
-               <tr>
-                  <th className="p-4 border-b w-1/4">Student Details</th>
-                  <th className="p-4 border-b w-1/6">Performance Summary</th>
-                  <th className="p-4 border-b">Form Master's Remark</th>
-                  <th className="p-4 border-b w-24">Action</th>
-               </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-               {filteredStudents.map(student => (
-                  <tr key={student.id} className="hover:bg-gray-50 transition-colors">
-                     <td className="p-4">
-                        <p className="font-bold text-gray-800">{student.lastName}, {student.firstName}</p>
-                        <p className="text-xs text-gray-500">{student.admissionNo}</p>
-                        <div className="mt-2 flex gap-1">
-                           <span className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100">95% Att.</span>
-                        </div>
-                     </td>
-                     <td className="p-4">
-                        <div className="space-y-1 text-sm">
-                           <div className="flex justify-between">
-                              <span className="text-gray-500">Total:</span>
-                              <span className="font-bold">754</span>
-                           </div>
-                           <div className="flex justify-between">
-                              <span className="text-gray-500">Avg:</span>
-                              <span className="font-bold text-green-600">75.4%</span>
-                           </div>
-                           <div className="flex justify-between">
-                              <span className="text-gray-500">Pos:</span>
-                              <span className="font-bold">3rd</span>
-                           </div>
-                        </div>
-                     </td>
-                     <td className="p-4">
-                        <textarea
-                          value={remarks[student.id] || ''}
-                          onChange={(e) => setRemarks(prev => ({ ...prev, [student.id]: e.target.value }))}
-                          placeholder="Enter remark here..."
-                          className="w-full h-24 p-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500 outline-none resize-none"
-                        />
-                     </td>
-                     <td className="p-4 text-center align-top">
-                        <button
-                          onClick={() => generateAIRemark(student)}
-                          disabled={loadingAI === student.id}
-                          className="flex flex-col items-center justify-center gap-1 text-purple-600 hover:bg-purple-50 p-2 rounded-lg transition-colors w-full"
-                          title="Generate AI Remark"
-                        >
-                           {loadingAI === student.id ? (
-                              <div className="w-5 h-5 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
-                           ) : (
-                              <>
-                                <Sparkles size={20} />
-                                <span className="text-[10px] font-bold">Auto-Gen</span>
-                              </>
-                           )}
-                        </button>
-                     </td>
-                  </tr>
-               ))}
-            </tbody>
-         </table>
-      </div>
-    );
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const promises = students.map(s => apiService.saveScore({ ...s, subjectId: selectedSubject }));
+      await Promise.all(promises);
+      auditService.log(user.id, user.role, 'Batch Score Update', `Updated scores in ${selectedClass}`);
+      alert('Scores updated successfully!');
+    } catch (err) {
+      alert('Error saving scores.');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  const isEditable = [UserRole.ADMIN, UserRole.TEACHER, UserRole.FORM_MASTER].includes(user.role);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <Calculator className="text-green-600" />
-            Result Processing
-          </h1>
-          <p className="text-gray-500">Enter scores, compute grades, and manage student assessments.</p>
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-green-800 text-white rounded-xl shadow-lg shadow-green-900/20">
+            <Calculator size={24} />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Result Management</h1>
+            <p className="text-sm text-gray-500">Record and compute student academic performance.</p>
+          </div>
         </div>
         
-        {canViewRemarks && (
-          <div className="bg-gray-100 p-1 rounded-lg flex">
-            <button
-              onClick={() => setViewMode('scores')}
-              className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${
-                viewMode === 'scores' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Subject Scores
-            </button>
-            <button
-              onClick={() => setViewMode('remarks')}
-              className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${
-                viewMode === 'remarks' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Remarks & Broadsheet
-            </button>
-          </div>
-        )}
+        <button 
+          onClick={handleSave} 
+          disabled={saving || !selectedClass || !selectedSubject} 
+          className="w-full md:w-auto px-8 py-3 bg-green-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-green-900 transition-all disabled:opacity-50 shadow-lg shadow-green-900/10"
+        >
+          {saving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save size={18} /> Save Assessment</>}
+        </button>
       </div>
 
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-6">
         <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Class</label>
+          <label className="block text-xs font-black text-gray-400 uppercase mb-2">Class Level</label>
           <select 
             value={selectedClass} 
-            onChange={(e) => setSelectedClass(e.target.value)}
-            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-green-500 outline-none"
+            onChange={(e) => setSelectedClass(e.target.value)} 
+            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-green-500 outline-none"
           >
             <option value="">Select Class</option>
             {MOCK_CLASSES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Arm</label>
+          <label className="block text-xs font-black text-gray-400 uppercase mb-2">Subject</label>
           <select 
-            value={selectedArm} 
-            onChange={(e) => setSelectedArm(e.target.value)}
-            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-green-500 outline-none"
+            value={selectedSubject} 
+            onChange={(e) => setSelectedSubject(e.target.value)} 
+            className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-green-500 outline-none"
           >
-            <option value="">All Arms</option>
-            {MOCK_ARMS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+            <option value="">Select Subject</option>
+            {MOCK_SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
-        
-        {viewMode === 'scores' && (
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Subject</label>
-            <select 
-              value={selectedSubject} 
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium focus:ring-2 focus:ring-green-500 outline-none"
-            >
-              <option value="">Select Subject</option>
-              {MOCK_SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
-        )}
-
-        <div className="flex gap-2">
-           <button 
-             onClick={handleSave}
-             disabled={saving || !selectedClass}
-             className="flex-1 bg-green-700 hover:bg-green-800 text-white p-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-           >
-             {saving ? (
-               <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-             ) : (
-               <>
-                 <Save size={18} />
-                 Save Changes
-               </>
-             )}
-           </button>
+        <div className="flex items-center gap-4 bg-green-50/50 p-3 rounded-xl border border-green-100">
+           <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+              <FileSpreadsheet className="text-green-600" size={20} />
+           </div>
+           <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase">Records Found</p>
+              <p className="text-xs font-bold text-gray-700">{loading ? 'Searching...' : `${students.length} Students`}</p>
+           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden min-h-[400px]">
-        {!selectedClass ? (
-          <div className="h-[400px] flex flex-col items-center justify-center text-gray-400">
-            <Filter size={48} className="mb-4 text-gray-300" />
-            <p>Please select a Class {viewMode === 'scores' && 'and Subject'} to view data.</p>
-          </div>
-        ) : filteredStudents.length === 0 ? (
-          <div className="h-[400px] flex flex-col items-center justify-center text-gray-400">
-            <AlertCircle size={48} className="mb-4 text-gray-300" />
-            <p>No students found for this selection.</p>
-          </div>
-        ) : viewMode === 'scores' ? (
-          renderScoresTable()
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[400px]">
+        {!selectedClass || !selectedSubject ? (
+            <div className="h-[400px] flex flex-col items-center justify-center text-gray-400">
+                <Filter size={64} className="mb-4 text-gray-100" />
+                <p className="font-bold">Select class and subject to begin entry</p>
+            </div>
+        ) : loading ? (
+            <div className="p-24 text-center">
+                <div className="inline-block w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="font-bold text-gray-400">Loading Student Portal...</p>
+            </div>
         ) : (
-          renderRemarksTable()
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                <tr>
+                  <th className="px-6 py-5 border-b">Student</th>
+                  {SCORE_FIELDS.map(f => <th key={f} className="p-2 border-b text-center w-20">{f}</th>)}
+                  <th className="p-2 border-b text-center w-24 text-green-700">EXAM</th>
+                  <th className="px-6 py-5 border-b text-center">TOTAL</th>
+                  <th className="px-6 py-5 border-b text-center">GRADE</th>
+                  <th className="px-6 py-5 border-b text-center">REMARK</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {students.map((st, idx) => (
+                  <tr key={st.id} className="hover:bg-green-50/20 transition-colors group">
+                    <td className="px-6 py-4">
+                        <p className="font-bold text-gray-800 text-sm">{st.last_name}, {st.first_name}</p>
+                        <p className="text-[10px] text-gray-400 font-mono">{st.admission_no}</p>
+                    </td>
+                    {SCORE_FIELDS.map((f) => (
+                        <td key={f} className="p-2 text-center">
+                            <input 
+                              type="number" 
+                              disabled={!isEditable || st.is_locked}
+                              value={st[f]} 
+                              onChange={(e) => handleScoreChange(idx, f, Math.min(10, Math.max(0, parseInt(e.target.value)||0)))} 
+                              className="w-14 p-2 text-center border border-gray-100 bg-gray-50/50 rounded-lg text-sm font-bold focus:ring-2 focus:ring-green-500 outline-none" 
+                            />
+                        </td>
+                    ))}
+                    <td className="p-2 text-center">
+                      <input 
+                        type="number" 
+                        disabled={!isEditable || st.is_locked}
+                        value={st.exam} 
+                        onChange={(e) => handleScoreChange(idx, 'exam', Math.min(60, Math.max(0, parseInt(e.target.value)||0)))} 
+                        className="w-20 p-2 text-center border-2 border-green-100 bg-green-50/50 rounded-lg font-black text-gray-800 focus:ring-2 focus:ring-green-500 outline-none" 
+                      />
+                    </td>
+                    <td className="px-6 py-4 text-center font-black text-gray-900">{st.total}</td>
+                    <td className="px-6 py-4 text-center">
+                        <span className={`px-2 py-1 rounded text-[10px] font-black ${st.grade === 'A' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{st.grade}</span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                       <div className="flex items-center justify-center gap-2">
+                          {remarks[st.id] ? (
+                             <div className="relative group/remark">
+                                <CheckCircle2 className="text-green-500" size={18} />
+                                <div className="absolute bottom-full mb-2 right-0 w-48 p-3 bg-gray-900 text-white text-[10px] rounded-xl shadow-2xl opacity-0 group-hover/remark:opacity-100 transition-opacity z-10 pointer-events-none">
+                                   {remarks[st.id]}
+                                </div>
+                             </div>
+                          ) : (
+                             <button 
+                               onClick={() => generateRemark(st)}
+                               disabled={loadingAI === st.id}
+                               className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                             >
+                               {loadingAI === st.id ? <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" /> : <Sparkles size={18} />}
+                             </button>
+                          )}
+                       </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
