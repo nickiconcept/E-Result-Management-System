@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import ReportCard from './ReportCard';
 
-export default function BulkResultPrinter({ classes, sessions, currentTerm, currentSession, settings, onClose, isStandalonePage = false }) {
+export default function BulkResultPrinter({ classes, sessions, currentTerm, currentSession, settings, onClose, onBack, isStandalonePage = false }) {
   const [selectedClassId, setSelectedClassId] = useState(classes && classes.length > 0 ? classes[0].id : '');
   const [term, setTerm] = useState(currentTerm || '3rd Term');
   const [session, setSession] = useState(currentSession || '');
@@ -43,11 +43,18 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
       {/* Controls & Action Bar */}
       <div style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '16px', marginBottom: '20px' }} className="no-print">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#1e40af' }}>🖨️ Print Results</h2>
-            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-              Select a class arm to view and print all student report cards in one continuous batch.
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {onBack && (
+              <button className="btn btn-secondary no-print" onClick={onBack} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+                ← Back to Overview
+              </button>
+            )}
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#1e40af' }}>🖨️ Print Results</h2>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
+                Select a class arm to view and print all student report cards in one continuous batch.
+              </p>
+            </div>
           </div>
           {onClose && (
             <button className="btn btn-secondary" onClick={onClose} style={{ border: '1px solid #ccc', padding: '6px 14px' }}>

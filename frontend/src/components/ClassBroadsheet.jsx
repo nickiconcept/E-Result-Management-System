@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function ClassBroadsheet({ data, className, term, session, settings }) {
+export default function ClassBroadsheet({ data, className, term, session, settings, onBack }) {
   if (!data) return <p>Loading broadsheet data...</p>;
 
   const { subjects, rows } = data;
@@ -69,11 +69,18 @@ export default function ClassBroadsheet({ data, className, term, session, settin
   return (
     <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-        <div>
-          <h2 style={{ fontSize: '1.4rem' }}>Class Broadsheet - {className}</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Academic Period: {session} | {term}
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {onBack && (
+            <button className="btn btn-secondary no-print" onClick={onBack} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+              ← Back to Overview
+            </button>
+          )}
+          <div>
+            <h2 style={{ fontSize: '1.4rem', margin: 0 }}>Class Broadsheet - {className}</h2>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '2px 0 0 0' }}>
+              Academic Period: {session} | {term}
+            </p>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '10px' }} className="no-print">
           <button className="btn btn-secondary" onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

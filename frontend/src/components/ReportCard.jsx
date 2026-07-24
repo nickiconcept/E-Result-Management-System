@@ -48,17 +48,15 @@ export default function ReportCard({ data, settings, onClose }) {
         
         {/* Navigation / Action bar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', alignItems: 'center' }} className="no-print">
-          {onClose && (
-            <button className="btn btn-secondary" onClick={onClose} style={{ border: '1px solid #ccc', padding: '8px 16px', fontSize: '0.85rem' }}>
-              ← Back to Dashboard
-            </button>
-          )}
+          <button className="btn btn-secondary" onClick={onClose || (() => window.history.back())} style={{ border: '1px solid #ccc', padding: '8px 16px', fontSize: '0.85rem' }}>
+            ← Back to Dashboard
+          </button>
           <div style={{ display: 'flex', gap: '10px' }}>
             <span className="badge badge-success" style={{ padding: '6px 12px', textTransform: 'uppercase' }}>
               {isNursery ? 'Nursery Template' : isPrimary ? 'Primary Template' : 'Secondary Template'}
             </span>
             <button className="btn btn-primary" onClick={handlePrint} style={{ padding: '8px 20px', fontWeight: 'bold' }}>
-              🖨️ Print Report Sheet (A4)
+              🖨️ Print Report Sheet
             </button>
           </div>
         </div>

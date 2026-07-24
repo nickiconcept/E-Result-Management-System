@@ -1870,6 +1870,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               currentSession={settings?.active_session}
               settings={settings}
               isStandalonePage={true}
+              onBack={() => setActiveSubTab('overview')}
             />
           )}
 
@@ -1911,6 +1912,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                   term={settings?.active_term}
                   session={settings?.active_session}
                   settings={settings}
+                  onBack={() => setActiveSubTab('overview')}
                 />
               ) : (
                 <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -2000,10 +2002,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
           ======================================================= */}
       {activeSubTab === 'promotions' && (
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-          <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>🎓 Move Students to Next Class</h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-            Promote a whole class stream of students up to their new class for the new school year. Student past grade records stay safely saved in their timeline.
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.2rem' }}>🎓 Move Students to Next Class</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                Promote a whole class stream of students up to their new class for the new school year. Student past grade records stay safely saved in their timeline.
+              </p>
+            </div>
+            <button className="btn btn-secondary" onClick={() => setActiveSubTab('overview')} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+              ← Back to Overview
+            </button>
+          </div>
 
           <form onSubmit={handlePromotionBulk} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', alignItems: 'flex-end' }}>
             <div className="form-group" style={{ margin: 0 }}>
