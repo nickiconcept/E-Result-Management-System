@@ -293,19 +293,34 @@ app.post('/api/users/register-student', authenticateToken, requireRole('admin'),
 
 // Register Teacher
 app.post('/api/users/register-teacher', authenticateToken, requireRole('admin'), async (req, res) => {
-  const { username, password, full_name, email, passport_photo } = req.body;
+  const { 
+    username, password, full_name, email, passport_photo,
+    surname, first_name, other_names, address, state_of_residence, lga_of_residence, signature
+  } = req.body;
+  
   if (!username || !password || !full_name) {
     return res.status(400).json({ error: 'Username, password, and full name are required' });
   }
 
   try {
     const password_hash = await bcrypt.hash(password, 10);
-    await runQuery(`
+    const userRes = await runQuery(`
       INSERT INTO USERS (username, password_hash, email, full_name, role, passport_photo)
       VALUES (?, ?, ?, ?, 'teacher', ?)
     `, [username.toLowerCase(), password_hash, email || null, full_name, passport_photo || null]);
+    
+    const teacherId = userRes.lastID;
 
-    res.status(201).json({ message: 'Teacher registered successfully' });
+    await runQuery(`
+      INSERT INTO TEACHERS (
+        id, surname, first_name, other_names, address, state_of_residence, lga_of_residence, signature
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      teacherId, surname || null, first_name || null, other_names || null, address || null,
+      state_of_residence || null, lga_of_residence || null, signature || null
+    ]);
+
+    res.status(201).json({ message: 'Teacher registered successfully', teacherId });
   } catch (err) {
     if (err.message.includes('UNIQUE constraint')) {
       return res.status(400).json({ error: 'Username already exists' });
@@ -334,10 +349,12 @@ app.get('/api/students', authenticateToken, async (req, res) => {
 app.get('/api/teachers', authenticateToken, async (req, res) => {
   try {
     const teachers = await allQuery(`
-      SELECT id, username, full_name, email, passport_photo, created_at, status 
-      FROM USERS 
-      WHERE role = 'teacher'
-      ORDER BY full_name
+      SELECT u.id, u.username, u.full_name, u.email, u.passport_photo, u.created_at, u.status,
+             t.surname, t.first_name, t.other_names, t.address, t.state_of_residence, t.lga_of_residence, t.signature 
+      FROM USERS u
+      LEFT JOIN TEACHERS t ON u.id = t.id
+      WHERE u.role = 'teacher'
+      ORDER BY u.full_name
     `);
     res.json(teachers);
   } catch (err) {

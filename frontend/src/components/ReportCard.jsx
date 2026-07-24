@@ -40,6 +40,7 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
       default:  return { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' };
     }
   };
+  const getGradeBadgeStyle = getGradeStyle;
 
   return (
     <div className={isBulk ? "bulk-card-wrapper" : "modal-overlay"}>

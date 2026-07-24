@@ -241,7 +241,10 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
     parent_name: '', parent_address: '', parent_phone: '', passport_photo: '', custom_admission_number: ''
   });
   
-  const [teacherForm, setTeacherForm] = useState({ username: '', password: 'password123', full_name: '', email: '', passport_photo: '' });
+  const [teacherForm, setTeacherForm] = useState({ 
+    username: '', password: 'password123', full_name: '', email: '', passport_photo: '',
+    surname: '', first_name: '', other_names: '', address: '', state_of_residence: '', lga_of_residence: '', signature: ''
+  });
   const [classForm, setClassForm] = useState({ name: '', tier: 'jss' });
   const [subjectForm, setSubjectForm] = useState({ name: '', tier: 'jss' });
   const [assignForm, setAssignForm] = useState({ class_id: '', subject_id: '', teacher_id: '' });
@@ -573,7 +576,10 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       setNotify('Teacher registered successfully!');
       setShowTeacherModal(false);
       loadAllData();
-      setTeacherForm({ username: '', password: 'password123', full_name: '', email: '', passport_photo: '' });
+      setTeacherForm({ 
+        username: '', password: 'password123', full_name: '', email: '', passport_photo: '',
+        surname: '', first_name: '', other_names: '', address: '', state_of_residence: '', lga_of_residence: '', signature: ''
+      });
     } catch (err) {
       setErrorMsg(err.message);
     }
@@ -3168,14 +3174,29 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                 </button>
               </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+                <div className="form-group">
+                  <label>Surname</label>
+                  <input type="text" className="form-control" required value={teacherForm.surname} onChange={(e) => setTeacherForm({ ...teacherForm, surname: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>First Name</label>
+                  <input type="text" className="form-control" required value={teacherForm.first_name} onChange={(e) => setTeacherForm({ ...teacherForm, first_name: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Other Names</label>
+                  <input type="text" className="form-control" value={teacherForm.other_names} onChange={(e) => setTeacherForm({ ...teacherForm, other_names: e.target.value })} />
+                </div>
+              </div>
+
               <div className="form-group">
-                <label>Full Name</label>
-                <input type="text" className="form-control" required value={teacherForm.full_name} onChange={(e) => setTeacherForm({ ...teacherForm, full_name: e.target.value })} />
+                <label>Display Full Name</label>
+                <input type="text" className="form-control" required placeholder="e.g. Mr. John Doe" value={teacherForm.full_name} onChange={(e) => setTeacherForm({ ...teacherForm, full_name: e.target.value })} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div className="form-group">
-                  <label>Username</label>
+                  <label>Username (For Login)</label>
                   <input type="text" className="form-control" required value={teacherForm.username} onChange={(e) => setTeacherForm({ ...teacherForm, username: e.target.value })} />
                 </div>
                 <div className="form-group">
@@ -3184,7 +3205,28 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                 </div>
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Save Teacher</button>
+              <div className="form-group">
+                <label>Home Address</label>
+                <input type="text" className="form-control" value={teacherForm.address} onChange={(e) => setTeacherForm({ ...teacherForm, address: e.target.value })} />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div className="form-group">
+                  <label>State of Residence</label>
+                  <input type="text" className="form-control" value={teacherForm.state_of_residence} onChange={(e) => setTeacherForm({ ...teacherForm, state_of_residence: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>LGA of Residence</label>
+                  <input type="text" className="form-control" value={teacherForm.lga_of_residence} onChange={(e) => setTeacherForm({ ...teacherForm, lga_of_residence: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Digital Signature (Base64 or URL)</label>
+                <input type="text" className="form-control" placeholder="Optional signature data..." value={teacherForm.signature} onChange={(e) => setTeacherForm({ ...teacherForm, signature: e.target.value })} />
+              </div>
+
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>Save Teacher</button>
             </form>
           </div>
         </div>

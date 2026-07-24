@@ -26,6 +26,30 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
   };
 
   useEffect(() => {
+    if (!selectedClassId && classes && classes.length > 0) {
+      setSelectedClassId(classes[0].id);
+    }
+  }, [classes]);
+
+  useEffect(() => {
+    if (!session) {
+      if (currentSession) {
+        setSession(currentSession);
+      } else if (sessions && sessions.length > 0) {
+        setSession(sessions[0].session_name);
+      } else {
+        setSession('2025/2026');
+      }
+    }
+  }, [currentSession, sessions]);
+
+  useEffect(() => {
+    if (!term && currentTerm) {
+      setTerm(currentTerm);
+    }
+  }, [currentTerm]);
+
+  useEffect(() => {
     if (selectedClassId && term && session) {
       fetchBulkResults();
     }
@@ -43,22 +67,26 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
       {/* Controls & Action Bar */}
       <div style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '16px', marginBottom: '20px' }} className="no-print">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {(onBack || onClose) && (
-              <button className="btn btn-secondary no-print" onClick={onBack || onClose} style={{ padding: '6px 14px', fontSize: '0.85rem' }}>
-                ✕ Close Result
-              </button>
-            )}
-            <div>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#1e40af' }}>🖨️ Print Results</h2>
-              <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-                Select a class arm to view and print all student report cards in one continuous batch.
-              </p>
-            </div>
+          <div>
+            <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🖨️</span> Print Results
+            </h3>
+            <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.85rem' }}>
+              Select a class arm to view and print all student report cards in one continuous batch.
+            </p>
           </div>
+          {onBack && (
+            <button
+              className="btn btn-secondary"
+              onClick={onBack}
+              style={{ border: '1px solid #cbd5e1', padding: '6px 14px', fontSize: '0.85rem' }}
+            >
+              ✕ Close Result
+            </button>
+          )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr auto', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
             <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '4px', color: '#334155' }}>Select Class Arm</label>
             <select
@@ -92,9 +120,17 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
               value={session}
               onChange={e => setSession(e.target.value)}
             >
-              {sessions?.map((s, idx) => (
-                <option key={idx} value={s.session_name}>{s.session_name}</option>
-              ))}
+              {sessions && sessions.length > 0 ? (
+                sessions.map((s, idx) => (
+                  <option key={idx} value={s.session_name}>{s.session_name}</option>
+                ))
+              ) : (
+                <>
+                  <option value="2025/2026">2025/2026</option>
+                  <option value="2024/2025">2024/2025</option>
+                  <option value="2026/2027">2026/2027</option>
+                </>
+              )}
             </select>
           </div>
 

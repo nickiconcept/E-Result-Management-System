@@ -179,6 +179,22 @@ async function initDB() {
     );
   `);
 
+  // Create TEACHERS Table
+  await runQuery(`
+    CREATE TABLE IF NOT EXISTS TEACHERS (
+      id INTEGER PRIMARY KEY,
+      surname TEXT,
+      first_name TEXT,
+      other_names TEXT,
+      address TEXT,
+      state_of_residence TEXT,
+      lga_of_residence TEXT,
+      signature TEXT,
+      status TEXT DEFAULT 'active',
+      FOREIGN KEY(id) REFERENCES USERS(id) ON DELETE CASCADE
+    );
+  `);
+
   // Create SUBJECTS Table
   await runQuery(`
     CREATE TABLE IF NOT EXISTS SUBJECTS (
