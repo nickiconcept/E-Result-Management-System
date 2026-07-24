@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function ReportCard({ data, settings, onClose }) {
+export default function ReportCard({ data, settings, onClose, closeLabel, isBulk = false }) {
   if (!data) return null;
 
   const { student, grades, attendance, term, academic_year, position, total_students, class_average, behavioral } = data;
@@ -27,6 +27,9 @@ export default function ReportCard({ data, settings, onClose }) {
   const schoolName = settings?.landing_school_name || 'Jere Model Academy';
   const schoolTagline = settings?.landing_tagline || 'KADUNA STATE, NIGERIA';
   const schoolAddress = settings?.landing_address || 'Jere Kagarko LGA, Kaduna State.';
+
+  const showPosition = settings ? (parseInt(settings.result_show_position) !== 0) : true;
+  const showAverage = settings ? (parseInt(settings.result_show_average) !== 0) : true;
 
   const getGradeStyle = (grade) => {
     switch (grade) {
