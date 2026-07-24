@@ -1,0 +1,14 @@
+{
+  "name": "jere-model-academy-sms",
+  "version": "1.0.0",
+  "description": "School Management System for Jere Model Academy",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "backend": "node backend/server.js",
+    "frontend": "npm run dev --prefix frontend"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
