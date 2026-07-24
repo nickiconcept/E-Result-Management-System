@@ -840,29 +840,207 @@ app.post('/api/pins/verify', authenticateToken, requireRole('student'), async (r
 // ==========================================
 // 9. STUDENT REPORT CARDS (CUMULATIVE ENGINE)
 // ==========================================
+
+// Top-level Helper to generate full report card data structure
+async function buildReportCardData(targetStudentId, reqTerm, reqYear) {
+  // Fetch Active Term Grades
+  const activeGrades = await allQuery(`
+    SELECT g.*, s.name as subject_name 
+    FROM GRADES g
+    JOIN SUBJECTS s ON g.subject_id = s.id
+    WHERE g.student_id = ? AND g.term = ? AND g.academic_year = ?
+  `, [targetStudentId, reqTerm, reqYear]);
+
+  // Complete Student Information Header
+  const studentInfo = await getQuery(`
+    SELECT s.*, u.full_name, u.passport_photo, c.name as class_name, c.tier, fm.full_name as form_master_name
+    FROM STUDENTS s
+    JOIN USERS u ON s.id = u.id
+    LEFT JOIN CLASSES c ON s.class_id = c.id
+    LEFT JOIN USERS fm ON c.form_master_id = fm.id
+    WHERE s.id = ?
+  `, [targetStudentId]);
+
+  // Fetch Attendance statistics for this term
+  const attendanceStats = await getQuery(`
+    SELECT 
+      COUNT(CASE WHEN status = 'present' THEN 1 END) as present,
+      COUNT(CASE WHEN status = 'absent' THEN 1 END) as absent,
+      COUNT(CASE WHEN status = 'late' THEN 1 END) as late,
+      COUNT(*) as total
+    FROM ATTENDANCE
+    WHERE student_id = ? AND date BETWEEN ? AND ?
+  `, [targetStudentId, `${reqYear.split('/')[0]}-09-01`, `${reqYear.split('/')[1]}-08-31`]); 
+
+  // Calculate cumulative averages if it is the 3rd Term ( Nigerian standard )
+  let reports = activeGrades;
+  if (reqTerm === '3rd Term') {
+    const allYearGrades = await allQuery(`
+      SELECT subject_id, term, total_score 
+      FROM GRADES 
+      WHERE student_id = ? AND academic_year = ?
+    `, [targetStudentId, reqYear]);
+
+    const subTotals = {};
+    allYearGrades.forEach(g => {
+      if (!subTotals[g.subject_id]) subTotals[g.subject_id] = {};
+      subTotals[g.subject_id][g.term] = g.total_score;
+    });
+
+    reports = activeGrades.map(g => {
+      const t1 = subTotals[g.subject_id]?.['1st Term'] || 0;
+      const t2 = subTotals[g.subject_id]?.['2nd Term'] || 0;
+      const t3 = g.total_score;
+      
+      let termsTaken = 0;
+      if (t1 > 0) termsTaken++;
+      if (t2 > 0) termsTaken++;
+      if (t3 > 0) termsTaken++;
+
+      const cumAverage = termsTaken > 0 ? ((t1 + t2 + t3) / termsTaken) : 0;
+      const { grade, remark } = calculateGrade(cumAverage);
+
+      return {
+        ...g,
+        term1_total: t1 || '-',
+        term2_total: t2 || '-',
+        cum_average: cumAverage.toFixed(1),
+        cum_grade: grade,
+        cum_remark: remark
+      };
+    });
+  }
+
+  const behavioral = await getQuery(`
+    SELECT * FROM BEHAVIORAL_GRADES 
+    WHERE student_id = ? AND term = ? AND academic_year = ?
+  `, [targetStudentId, reqTerm, reqYear]) || {
+    punctuality: 3, neatness: 3, honesty: 3, self_control: 3, 
+    peer_relationship: 3, sports: 3, manual_skills: 3, musical_skills: 3, verbal_fluency: 3
+  };
+
+  let position = null;
+  let total_students = 0;
+  let class_average = '0.0';
+  let highest_average = '0.0';
+  let lowest_average = '0.0';
+
+  if (studentInfo && studentInfo.class_id) {
+    const classId = studentInfo.class_id;
+    // Get all students in this class
+    const classStudents = await allQuery('SELECT id FROM STUDENTS WHERE class_id = ?', [classId]);
+    total_students = classStudents.length;
+
+    // Get all grades for all students in this class for this term and session
+    const classGrades = await allQuery(`
+      SELECT student_id, subject_id, total_score 
+      FROM GRADES 
+      WHERE term = ? AND academic_year = ? AND student_id IN (
+        SELECT id FROM STUDENTS WHERE class_id = ?
+      )
+    `, [reqTerm, reqYear, classId]);
+
+    // Calculate the average score for each student in the class
+    const studentTotals = {};
+    const studentCounts = {};
+
+    classStudents.forEach(s => {
+      studentTotals[s.id] = 0;
+      studentCounts[s.id] = 0;
+    });
+
+    classGrades.forEach(g => {
+      studentTotals[g.student_id] = (studentTotals[g.student_id] || 0) + g.total_score;
+      studentCounts[g.student_id] = (studentCounts[g.student_id] || 0) + 1;
+    });
+
+    const rankedList = classStudents.map(s => {
+      const total = studentTotals[s.id] || 0;
+      const count = studentCounts[s.id] || 0;
+      const avg = count > 0 ? (total / count) : 0;
+      return {
+        student_id: s.id,
+        grandTotal: total,
+        avg: avg
+      };
+    });
+
+    // Sort by average descending
+    rankedList.sort((a, b) => b.avg - a.avg);
+
+    // Find position
+    const rankIdx = rankedList.findIndex(r => r.student_id === parseInt(targetStudentId));
+    if (rankIdx !== -1) {
+      position = rankIdx + 1;
+    }
+
+    // Compute overall, highest, lowest class average
+    const activeAvgs = rankedList.map(r => r.avg).filter(a => a > 0);
+    if (activeAvgs.length > 0) {
+      const sumAvgs = activeAvgs.reduce((sum, val) => sum + val, 0);
+      class_average = (sumAvgs / activeAvgs.length).toFixed(1);
+      highest_average = Math.max(...activeAvgs).toFixed(1);
+      lowest_average = Math.min(...activeAvgs).toFixed(1);
+    }
+
+    // Compute position per subject for the active grades
+    const subjectRanks = {};
+    classGrades.forEach(cg => {
+      if (!subjectRanks[cg.subject_id]) subjectRanks[cg.subject_id] = [];
+      subjectRanks[cg.subject_id].push({ student_id: cg.student_id, score: cg.total_score });
+    });
+
+    // Sort each subject ranked lists descending
+    Object.keys(subjectRanks).forEach(subId => {
+      subjectRanks[subId].sort((a, b) => b.score - a.score);
+    });
+
+    // Map subject position to report card grades
+    reports = reports.map(g => {
+      const subRankList = subjectRanks[g.subject_id] || [];
+      const subRankIdx = subRankList.findIndex(r => r.student_id === parseInt(targetStudentId));
+      return {
+        ...g,
+        subject_position: subRankIdx !== -1 ? subRankIdx + 1 : '-'
+      };
+    });
+  }
+
+  return {
+    student: studentInfo,
+    grades: reports,
+    attendance: attendanceStats,
+    academic_year: reqYear,
+    term: reqTerm,
+    behavioral,
+    position,
+    total_students,
+    class_average,
+    highest_average,
+    lowest_average
+  };
+}
+
+// Single Report Card Route
 app.get('/api/report-card/:studentId', authenticateToken, async (req, res) => {
   const { studentId } = req.params;
-  const { term, year, bypass_pin } = req.query; // Admin or Teacher bypass
+  const { term, year } = req.query;
+
+  if (req.user.role === 'student' && req.user.id !== parseInt(studentId)) {
+    return res.status(403).json({ error: 'Unauthorized view.' });
+  }
 
   try {
-    // 1. Authorization: If Student, must verify they have unlocked this result with a valid PIN
     if (req.user.role === 'student') {
-      if (req.user.id !== parseInt(studentId)) {
-        return res.status(403).json({ error: 'Unauthorized: You can only view your own report card.' });
-      }
-
-      // Check if the student has a valid bound PIN for THIS specific term and academic session
       const boundPin = await getQuery(`
-        SELECT id, usage_count, status FROM RESULT_PINS 
-        WHERE student_id = ? AND term = ? AND academic_year = ? AND status = 'active' AND usage_count < 5
-        LIMIT 1
+        SELECT * FROM RESULT_PINS 
+        WHERE student_id = ? AND term = ? AND academic_year = ?
       `, [studentId, term, year]);
 
       if (!boundPin) {
         return res.status(403).json({ error: 'Result Locked: Please input a result checker PIN to unlock this term\'s grades.' });
       }
 
-      // Increment usage count of this specific PIN on view
       const newUsage = boundPin.usage_count + 1;
       const newStatus = newUsage >= 5 ? 'exhausted' : 'active';
       await runQuery(`
@@ -872,196 +1050,15 @@ app.get('/api/report-card/:studentId', authenticateToken, async (req, res) => {
       `, [newUsage, newStatus, boundPin.id]);
     }
 
-    // Helper to generate full report card data structure
-    const buildReportCardData = async (targetStudentId, reqTerm, reqYear) => {
-      // 2. Fetch Active Term Grades
-      const activeGrades = await allQuery(`
-        SELECT g.*, s.name as subject_name 
-        FROM GRADES g
-        JOIN SUBJECTS s ON g.subject_id = s.id
-        WHERE g.student_id = ? AND g.term = ? AND g.academic_year = ?
-      `, [targetStudentId, reqTerm, reqYear]);
-
-      // 3. Complete Student Information Header
-      const studentInfo = await getQuery(`
-        SELECT s.*, u.full_name, u.passport_photo, c.name as class_name, c.tier, fm.full_name as form_master_name
-        FROM STUDENTS s
-        JOIN USERS u ON s.id = u.id
-        LEFT JOIN CLASSES c ON s.class_id = c.id
-        LEFT JOIN USERS fm ON c.form_master_id = fm.id
-        WHERE s.id = ?
-      `, [targetStudentId]);
-
-      // 4. Fetch Attendance statistics for this term
-      const attendanceStats = await getQuery(`
-        SELECT 
-          COUNT(CASE WHEN status = 'present' THEN 1 END) as present,
-          COUNT(CASE WHEN status = 'absent' THEN 1 END) as absent,
-          COUNT(CASE WHEN status = 'late' THEN 1 END) as late,
-          COUNT(*) as total
-        FROM ATTENDANCE
-        WHERE student_id = ? AND date BETWEEN ? AND ?
-      `, [targetStudentId, `${reqYear.split('/')[0]}-09-01`, `${reqYear.split('/')[1]}-08-31`]); 
-
-      // 5. Calculate cumulative averages if it is the 3rd Term ( Nigerian standard )
-      let reports = activeGrades;
-      if (reqTerm === '3rd Term') {
-        const allYearGrades = await allQuery(`
-          SELECT subject_id, term, total_score 
-          FROM GRADES 
-          WHERE student_id = ? AND academic_year = ?
-        `, [targetStudentId, reqYear]);
-
-        const subTotals = {};
-        allYearGrades.forEach(g => {
-          if (!subTotals[g.subject_id]) subTotals[g.subject_id] = {};
-          subTotals[g.subject_id][g.term] = g.total_score;
-        });
-
-        reports = activeGrades.map(g => {
-          const t1 = subTotals[g.subject_id]?.['1st Term'] || 0;
-          const t2 = subTotals[g.subject_id]?.['2nd Term'] || 0;
-          const t3 = g.total_score;
-          
-          let termsTaken = 0;
-          if (t1 > 0) termsTaken++;
-          if (t2 > 0) termsTaken++;
-          if (t3 > 0) termsTaken++;
-
-          const cumAverage = termsTaken > 0 ? ((t1 + t2 + t3) / termsTaken) : 0;
-          const { grade, remark } = calculateGrade(cumAverage);
-
-          return {
-            ...g,
-            term1_total: t1 || '-',
-            term2_total: t2 || '-',
-            cum_average: cumAverage.toFixed(1),
-            cum_grade: grade,
-            cum_remark: remark
-          };
-        });
-      }
-
-      const behavioral = await getQuery(`
-        SELECT * FROM BEHAVIORAL_GRADES 
-        WHERE student_id = ? AND term = ? AND academic_year = ?
-      `, [targetStudentId, reqTerm, reqYear]) || {
-        punctuality: 3, neatness: 3, honesty: 3, self_control: 3, 
-        peer_relationship: 3, sports: 3, manual_skills: 3, musical_skills: 3, verbal_fluency: 3
-      };
-
-      let position = null;
-      let total_students = 0;
-      let class_average = '0.0';
-      let highest_average = '0.0';
-      let lowest_average = '0.0';
-
-      if (studentInfo && studentInfo.class_id) {
-        const classId = studentInfo.class_id;
-        // Get all students in this class
-        const classStudents = await allQuery('SELECT id FROM STUDENTS WHERE class_id = ?', [classId]);
-        total_students = classStudents.length;
-
-        // Get all grades for all students in this class for this term and session
-        const classGrades = await allQuery(`
-          SELECT student_id, subject_id, total_score 
-          FROM GRADES 
-          WHERE term = ? AND academic_year = ? AND student_id IN (
-            SELECT id FROM STUDENTS WHERE class_id = ?
-          )
-        `, [reqTerm, reqYear, classId]);
-
-        // Calculate the average score for each student in the class
-        const studentTotals = {};
-        const studentCounts = {};
-
-        classStudents.forEach(s => {
-          studentTotals[s.id] = 0;
-          studentCounts[s.id] = 0;
-        });
-
-        classGrades.forEach(g => {
-          studentTotals[g.student_id] = (studentTotals[g.student_id] || 0) + g.total_score;
-          studentCounts[g.student_id] = (studentCounts[g.student_id] || 0) + 1;
-        });
-
-        const rankedList = classStudents.map(s => {
-          const total = studentTotals[s.id] || 0;
-          const count = studentCounts[s.id] || 0;
-          const avg = count > 0 ? (total / count) : 0;
-          return {
-            student_id: s.id,
-            grandTotal: total,
-            avg: avg
-          };
-        });
-
-        // Sort by average descending
-        rankedList.sort((a, b) => b.avg - a.avg);
-
-        // Find position
-        const rankIdx = rankedList.findIndex(r => r.student_id === parseInt(targetStudentId));
-        if (rankIdx !== -1) {
-          position = rankIdx + 1;
-        }
-
-        // Compute overall, highest, lowest class average
-        const activeAvgs = rankedList.map(r => r.avg).filter(a => a > 0);
-        if (activeAvgs.length > 0) {
-          const sumAvgs = activeAvgs.reduce((sum, val) => sum + val, 0);
-          class_average = (sumAvgs / activeAvgs.length).toFixed(1);
-          highest_average = Math.max(...activeAvgs).toFixed(1);
-          lowest_average = Math.min(...activeAvgs).toFixed(1);
-        }
-
-        // Compute position per subject for the active grades
-        const subjectRanks = {};
-        classGrades.forEach(cg => {
-          if (!subjectRanks[cg.subject_id]) subjectRanks[cg.subject_id] = [];
-          subjectRanks[cg.subject_id].push({ student_id: cg.student_id, score: cg.total_score });
-        });
-
-        // Sort each subject ranked lists descending
-        Object.keys(subjectRanks).forEach(subId => {
-          subjectRanks[subId].sort((a, b) => b.score - a.score);
-        });
-
-        // Map subject position to report card grades
-        reports = reports.map(g => {
-          const subRankList = subjectRanks[g.subject_id] || [];
-          const subRankIdx = subRankList.findIndex(r => r.student_id === parseInt(targetStudentId));
-          return {
-            ...g,
-            subject_position: subRankIdx !== -1 ? subRankIdx + 1 : '-'
-          };
-        });
-      }
-
-      return {
-        student: studentInfo,
-        grades: reports,
-        attendance: attendanceStats,
-        academic_year: reqYear,
-        term: reqTerm,
-        behavioral,
-        position,
-        total_students,
-        class_average,
-        highest_average,
-        lowest_average
-      };
-    };
-
     const reportCardData = await buildReportCardData(studentId, term, year);
     res.json(reportCardData);
-
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Admin Bulk Report Cards Endpoint (A4 Bulk Printing by Class)
-app.get('/api/report-cards/bulk', authenticateToken, requireRole('admin'), async (req, res) => {
+// Admin Bulk Report Cards Endpoint (Bulk Printing by Class)
+app.get(['/api/report-cards/bulk', '/api/report-card/bulk'], authenticateToken, requireRole('admin'), async (req, res) => {
   const { class_id, term, year } = req.query;
 
   if (!class_id || !term || !year) {
@@ -1078,53 +1075,10 @@ app.get('/api/report-cards/bulk', authenticateToken, requireRole('admin'), async
 
     const results = [];
     for (const student of classStudents) {
-      const activeGrades = await allQuery(`
-        SELECT g.*, sub.name as subject_name 
-        FROM GRADES g
-        JOIN SUBJECTS sub ON g.subject_id = sub.id
-        WHERE g.student_id = ? AND g.term = ? AND g.academic_year = ?
-      `, [student.id, term, year]);
-
-      const studentInfo = await getQuery(`
-        SELECT s.*, u.full_name, u.passport_photo, c.name as class_name, c.tier, fm.full_name as form_master_name
-        FROM STUDENTS s
-        JOIN USERS u ON s.id = u.id
-        LEFT JOIN CLASSES c ON s.class_id = c.id
-        LEFT JOIN USERS fm ON c.form_master_id = fm.id
-        WHERE s.id = ?
-      `, [student.id]);
-
-      const attendanceStats = await getQuery(`
-        SELECT 
-          COUNT(CASE WHEN status = 'present' THEN 1 END) as present,
-          COUNT(CASE WHEN status = 'absent' THEN 1 END) as absent,
-          COUNT(CASE WHEN status = 'late' THEN 1 END) as late,
-          COUNT(*) as total
-        FROM ATTENDANCE
-        WHERE student_id = ? AND date BETWEEN ? AND ?
-      `, [student.id, `${year.split('/')[0]}-09-01`, `${year.split('/')[1]}-08-31`]);
-
-      const behavioral = await getQuery(`
-        SELECT * FROM BEHAVIORAL_GRADES 
-        WHERE student_id = ? AND term = ? AND academic_year = ?
-      `, [student.id, term, year]) || {
-        punctuality: 3, neatness: 3, honesty: 3, self_control: 3, 
-        peer_relationship: 3, sports: 3, manual_skills: 3, musical_skills: 3, verbal_fluency: 3
-      };
-
-      results.push({
-        student: studentInfo,
-        grades: activeGrades,
-        attendance: attendanceStats,
-        academic_year: year,
-        term,
-        behavioral,
-        position: null,
-        total_students: classStudents.length,
-        class_average: '0.0',
-        highest_average: '0.0',
-        lowest_average: '0.0'
-      });
+      const report = await buildReportCardData(student.id, term, year);
+      if (report && report.student) {
+        results.push(report);
+      }
     }
 
     res.json(results);

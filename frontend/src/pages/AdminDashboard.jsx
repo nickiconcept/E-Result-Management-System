@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
 import BulkResultPrinter from '../components/BulkResultPrinter';
+import ClassBroadsheet from '../components/ClassBroadsheet';
 
 // 3D Column Chart Component
 function ThreeDColumnChart({ title, subtitle, data, height = 220 }) {
@@ -17,7 +18,7 @@ function ThreeDColumnChart({ title, subtitle, data, height = 220 }) {
         {subtitle && <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '4px 0 0 0' }}>{subtitle}</p>}
       </div>
 
-      <div style={{ height: `${height}px`, display: 'flex', alignItems: 'flex-end', gap: '14px', padding: '25px 10px 10px 10px', borderBottom: '2px solid var(--border-color)', position: 'relative' }}>
+      <div style={{ height: `${height}px`, display: 'flex', alignItems: 'flex-end', gap: '14px', padding: '25px 10px 10px 10px', borderBottom: '2px solid var(--border-color)', position: 'relative', overflowX: 'auto', minWidth: '100%' }}>
         {/* Horizontal Gridlines */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', opacity: 0.12 }}>
           <div style={{ borderTop: '1px dashed currentColor', width: '100%' }}></div>
@@ -32,7 +33,7 @@ function ThreeDColumnChart({ title, subtitle, data, height = 220 }) {
           const topColor = item.colorTop || `hsl(${(idx * 65) % 360}, 90%, 75%)`;
 
           return (
-            <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', position: 'relative' }}>
+            <div key={idx} style={{ flex: '1 0 44px', minWidth: '44px', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', position: 'relative' }}>
               {/* Floating Value Badge */}
               <div style={{
                 fontSize: '0.75rem',
@@ -330,6 +331,26 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const [studentHistoryData, setStudentHistoryData] = useState({ invoices: [], receipts: [] });
   const [loadingStudentHistory, setLoadingStudentHistory] = useState(false);
 
+  // Admin Broadsheet states
+  const [adminBroadsheetClassId, setAdminBroadsheetClassId] = useState('');
+  const [adminBroadsheetData, setAdminBroadsheetData] = useState(null);
+  const [adminBroadsheetLoading, setAdminBroadsheetLoading] = useState(false);
+
+  const fetchAdminBroadsheet = async (classId) => {
+    if (!classId) return;
+    setAdminBroadsheetLoading(true);
+    try {
+      const term = settings?.active_term || '3rd Term';
+      const year = settings?.active_session || '2025/2026';
+      const res = await api.getBroadsheet(classId, term, year);
+      setAdminBroadsheetData(res);
+    } catch (err) {
+      console.error('Failed to load broadsheet data:', err);
+    } finally {
+      setAdminBroadsheetLoading(false);
+    }
+  };
+
   // Seed standard passport photos
   const seedMockPassport = (type) => {
     const avatars = {
@@ -384,6 +405,16 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       setActiveSubTab('overview');
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeSubTab === 'broadsheet') {
+      const targetClassId = adminBroadsheetClassId || (classes && classes.length > 0 ? classes[0].id : '');
+      if (targetClassId) {
+        if (!adminBroadsheetClassId) setAdminBroadsheetClassId(targetClassId);
+        fetchAdminBroadsheet(targetClassId);
+      }
+    }
+  }, [activeSubTab, classes]);
 
   const loadSessions = async () => {
     try {
@@ -1025,7 +1056,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button className="btn btn-secondary" onClick={() => setShowBulkPrintModal(true)} style={{ border: '1px solid var(--primary)', color: 'var(--primary)' }}>
-                🖨️ Bulk Print Results (A4)
+                🖨️ Print Results
               </button>
               <button className="btn btn-primary" onClick={() => setShowStudentModal(true)}>+ Register New Student</button>
             </div>
@@ -1863,6 +1894,71 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
             </table>
           </div>
         </div>
+      )}
+
+      {/* =======================================================
+          TAB: CLASS BROADSHEET (ADMIN ACCESS)
+          ======================================================= */}
+      {activeSubTab === 'broadsheet' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+              <div>
+                <h3>Class Results Broadsheet</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Select a class arm to view master score broadsheet, export to Excel CSV, or print.</p>
+              </div>
+              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Select Class:</label>
+                <select
+                  className="form-control"
+                  style={{ width: '220px', padding: '10px' }}
+                  value={adminBroadsheetClassId || (classes[0]?.id || '')}
+                  onChange={(e) => {
+                    const cid = e.target.value;
+                    setAdminBroadsheetClassId(cid);
+                    fetchAdminBroadsheet(cid);
+                  }}
+                >
+                  {classes.map((cls, idx) => (
+                    <option key={idx} value={cls.id}>{cls.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {adminBroadsheetLoading ? (
+              <div style={{ padding: '30px', textAlign: 'center', color: 'var(--primary)' }}>
+                <h4>Loading Class Broadsheet...</h4>
+              </div>
+            ) : adminBroadsheetData ? (
+              <ClassBroadsheet
+                data={adminBroadsheetData}
+                className={classes.find(c => c.id === parseInt(adminBroadsheetClassId || classes[0]?.id))?.name || 'Class'}
+                term={settings?.active_term}
+                session={settings?.active_session}
+                settings={settings}
+              />
+            ) : (
+              <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                <p>Select a class arm above to view its broadsheet.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* =======================================================
+          TAB: BULK RESULT PRINTING (ADMIN ACCESS)
+          ======================================================= */}
+      {activeSubTab === 'bulk-results' && (
+        <BulkResultPrinter
+          classes={classes}
+          sessions={sessions}
+          currentTerm={settings?.active_term}
+          currentSession={settings?.active_session}
+          settings={settings}
+          isStandalonePage={true}
+        />
       )}
 
       {/* =======================================================
