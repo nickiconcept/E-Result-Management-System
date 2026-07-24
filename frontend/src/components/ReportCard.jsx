@@ -28,38 +28,36 @@ export default function ReportCard({ data, settings, onClose }) {
   const schoolTagline = settings?.landing_tagline || 'KADUNA STATE, NIGERIA';
   const schoolAddress = settings?.landing_address || 'Jere Kagarko LGA, Kaduna State.';
 
-  const showPosition = settings ? (parseInt(settings.result_show_position) !== 0) : true;
-  const showAverage = settings ? (parseInt(settings.result_show_average) !== 0) : true;
-
-  // Grade color helper
-  const getGradeBadgeStyle = (letter) => {
-    switch (letter) {
-      case 'A': return { bg: '#d1fae5', color: '#065f46', border: '#a7f3d0' };
-      case 'B': return { bg: '#dbeafe', color: '#1e40af', border: '#bfdbfe' };
-      case 'C': return { bg: '#fef3c7', color: '#92400e', border: '#fde68a' };
+  const getGradeStyle = (grade) => {
+    switch (grade) {
+      case 'A': return { bg: '#dcfce7', color: '#166534', border: '#86efac' };
+      case 'B': return { bg: '#e0f2fe', color: '#075985', border: '#7dd3fc' };
+      case 'C': return { bg: '#fef9c3', color: '#854d0e', border: '#fef08a' };
       case 'D': return { bg: '#ffedd5', color: '#9a3412', border: '#fed7aa' };
       default:  return { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' };
     }
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content glass-panel" style={{ maxWidth: '940px', backgroundColor: '#fff', color: '#000', padding: '24px' }}>
+    <div className={isBulk ? "bulk-card-wrapper" : "modal-overlay"}>
+      <div className={isBulk ? "bulk-card-inner" : "modal-content glass-panel"} style={isBulk ? { backgroundColor: '#fff', color: '#000', padding: '0px' } : { maxWidth: '940px', backgroundColor: '#fff', color: '#000', padding: '24px' }}>
         
-        {/* Navigation / Action bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', alignItems: 'center' }} className="no-print">
-          <button className="btn btn-secondary" onClick={onClose || (() => window.history.back())} style={{ border: '1px solid #ccc', padding: '8px 16px', fontSize: '0.85rem' }}>
-            ← Back to Dashboard
-          </button>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <span className="badge badge-success" style={{ padding: '6px 12px', textTransform: 'uppercase' }}>
-              {isNursery ? 'Nursery Template' : isPrimary ? 'Primary Template' : 'Secondary Template'}
-            </span>
-            <button className="btn btn-primary" onClick={handlePrint} style={{ padding: '8px 20px', fontWeight: 'bold' }}>
-              🖨️ Print Report Sheet
+        {/* Navigation / Action bar (Hidden in bulk printing loop to avoid duplicate header bars) */}
+        {!isBulk && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', alignItems: 'center' }} className="no-print">
+            <button className="btn btn-secondary" onClick={onClose || (() => window.history.back())} style={{ border: '1px solid #ccc', padding: '8px 16px', fontSize: '0.85rem' }}>
+              {closeLabel ? closeLabel : onClose ? '✕ Close Result' : '← Back to Dashboard'}
             </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <span className="badge badge-success" style={{ padding: '6px 12px', textTransform: 'uppercase' }}>
+                {isNursery ? 'Nursery Template' : isPrimary ? 'Primary Template' : 'Secondary Template'}
+              </span>
+              <button className="btn btn-primary" onClick={handlePrint} style={{ padding: '8px 20px', fontWeight: 'bold' }}>
+                🖨️ Print Report Sheet
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* PRINTABLE REPORT CARD CONTAINER */}
         <div className="modern-report-card print-area">

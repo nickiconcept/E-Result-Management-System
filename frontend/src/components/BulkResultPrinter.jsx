@@ -44,9 +44,9 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
       <div style={{ borderBottom: '2px solid #e2e8f0', paddingBottom: '16px', marginBottom: '20px' }} className="no-print">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {onBack && (
-              <button className="btn btn-secondary no-print" onClick={onBack} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
-                ← Back to Overview
+            {(onBack || onClose) && (
+              <button className="btn btn-secondary no-print" onClick={onBack || onClose} style={{ padding: '6px 14px', fontSize: '0.85rem' }}>
+                ✕ Close Result
               </button>
             )}
             <div>
@@ -56,11 +56,6 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
               </p>
             </div>
           </div>
-          {onClose && (
-            <button className="btn btn-secondary" onClick={onClose} style={{ border: '1px solid #ccc', padding: '6px 14px' }}>
-              ✕ Close
-            </button>
-          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr auto', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -141,6 +136,7 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
               <ReportCard
                 data={studentReportData}
                 settings={settings}
+                isBulk={true}
               />
             </div>
           ))}
