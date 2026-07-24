@@ -209,6 +209,7 @@ function ThreeDPieChart({ title, subtitle, data, size = 180 }) {
 export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const [activeSubTab, setActiveSubTab] = useState('overview');
   const [settingsSubTab, setSettingsSubTab] = useState('academic');
+  const [resultsSubTab, setResultsSubTab] = useState('bulk');
   
   // Data lists
   const [students, setStudents] = useState([]);
@@ -490,9 +491,9 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       const csList = await api.getClassSubjects();
       const pinList = await api.getPins();
       
-      setStudents(studList);
-      setTeachers(teachList);
-      setClasses(clsList);
+      setStudents([...studList].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '')));
+      setTeachers([...teachList].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '')));
+      setClasses([...clsList].sort((a, b) => (a.name || '').localeCompare(b.name || '')));
       setSubjects(subList);
       setClassSubjects(csList);
       setPins(pinList);
@@ -1823,146 +1824,227 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       )}
 
       {/* =======================================================
-          TAB 6: RESULT PIN TOKENS
+          TAB: STUDENT RESULTS WORKSPACE (BULK PRINT, BROADSHEET & PINS)
           ======================================================= */}
-      {activeSubTab === 'pins' && (
-        <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-            <div>
-              <h3>Result Verification Tokens (PINs)</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Alphanumeric tokens required by students to verify results. Max usage limit of 5 checks applies.</p>
+      {activeSubTab === 'student-results' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Sub-Tab Navigation Bar */}
+          <div className="settings-tab-bar">
+            <button
+              type="button"
+              className={`settings-tab-btn ${resultsSubTab === 'bulk' ? 'active' : ''}`}
+              onClick={() => setResultsSubTab('bulk')}
+            >
+              <span>🖨️</span> Bulk Print Cards
+            </button>
+            <button
+              type="button"
+              className={`settings-tab-btn ${resultsSubTab === 'broadsheet' ? 'active' : ''}`}
+              onClick={() => {
+                setResultsSubTab('broadsheet');
+                const targetClassId = adminBroadsheetClassId || (classes && classes.length > 0 ? classes[0].id : '');
+                if (targetClassId) {
+                  if (!adminBroadsheetClassId) setAdminBroadsheetClassId(targetClassId);
+                  fetchAdminBroadsheet(targetClassId);
+                }
+              }}
+            >
+              <span>📊</span> Class Broadsheet
+            </button>
+            <button
+              type="button"
+              className={`settings-tab-btn ${resultsSubTab === 'pins' ? 'active' : ''}`}
+              onClick={() => setResultsSubTab('pins')}
+            >
+              <span>🔑</span> Result PINs
+            </button>
+          </div>
+
+          {/* Sub-Tab 1: Bulk Print Cards */}
+          {resultsSubTab === 'bulk' && (
+            <BulkResultPrinter
+              classes={classes}
+              sessions={sessions}
+              currentTerm={settings?.active_term}
+              currentSession={settings?.active_session}
+              settings={settings}
+              isStandalonePage={true}
+            />
+          )}
+
+          {/* Sub-Tab 2: Class Broadsheet */}
+          {resultsSubTab === 'broadsheet' && (
+            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                <div>
+                  <h3>Class Results Broadsheet</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Select a class arm to view master score broadsheet, export to Excel CSV, or print.</p>
+                </div>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Select Class:</label>
+                  <select
+                    className="form-control"
+                    style={{ width: '220px', padding: '10px' }}
+                    value={adminBroadsheetClassId || (classes[0]?.id || '')}
+                    onChange={(e) => {
+                      const cid = e.target.value;
+                      setAdminBroadsheetClassId(cid);
+                      fetchAdminBroadsheet(cid);
+                    }}
+                  >
+                    {classes.map((cls, idx) => (
+                      <option key={idx} value={cls.id}>{cls.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {adminBroadsheetLoading ? (
+                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--primary)' }}>
+                  <h4>Loading Class Broadsheet...</h4>
+                </div>
+              ) : adminBroadsheetData ? (
+                <ClassBroadsheet
+                  data={adminBroadsheetData}
+                  className={classes.find(c => c.id === parseInt(adminBroadsheetClassId || classes[0]?.id))?.name || 'Class'}
+                  term={settings?.active_term}
+                  session={settings?.active_session}
+                  settings={settings}
+                />
+              ) : (
+                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <p>Select a class arm above to view its broadsheet.</p>
+                </div>
+              )}
             </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Count</span>
+          )}
+
+          {/* Sub-Tab 3: Result PINs */}
+          {resultsSubTab === 'pins' && (
+            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                <div>
+                  <h3>Result Verification Tokens (PINs)</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Alphanumeric tokens required by students to verify results. Max usage limit of 5 checks applies.</p>
+                </div>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Count</span>
+                    <input
+                      type="number"
+                      className="form-control"
+                      style={{ width: '90px', padding: '8px' }}
+                      value={pinCount}
+                      onChange={(e) => setPinCount(e.target.value)}
+                    />
+                  </div>
+
+                  <button className="btn btn-primary" style={{ alignSelf: 'flex-end', padding: '9px 18px' }} onClick={handleGeneratePins}>Bulk Generate</button>
+                </div>
+              </div>
+
+              {/* Search Controls */}
+              <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
                 <input
-                  type="number"
+                  type="text"
                   className="form-control"
-                  style={{ width: '90px', padding: '8px' }}
-                  value={pinCount}
-                  onChange={(e) => setPinCount(e.target.value)}
+                  style={{ maxWidth: '300px', padding: '10px' }}
+                  placeholder="Search PIN code or student..."
+                  value={pinSearch}
+                  onChange={(e) => setPinSearch(e.target.value)}
                 />
               </div>
 
-              <button className="btn btn-primary" style={{ alignSelf: 'flex-end', padding: '9px 18px' }} onClick={handleGeneratePins}>Bulk Generate</button>
+              <div className="table-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <table className="school-table">
+                  <thead>
+                    <tr>
+                      <th>Result Checker PIN</th>
+                      <th>Term / Session</th>
+                      <th>Checked By Student</th>
+                      <th>Checks Remaining</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pins.filter(p => {
+                      const query = pinSearch.toLowerCase();
+                      return p.pin.toLowerCase().includes(query) ||
+                             (p.student_name && p.student_name.toLowerCase().includes(query)) ||
+                             (p.admission_number && p.admission_number.toLowerCase().includes(query));
+                    }).map((p, idx) => (
+                      <tr key={idx}>
+                        <td><strong style={{ fontSize: '1.1rem', letterSpacing: '0.05em' }}>{p.pin}</strong></td>
+                        <td>{p.term ? `${p.term} (${p.academic_year})` : 'Universal (Any Term/Session)'}</td>
+                        <td>{p.student_name ? `${p.student_name} (${p.admission_number})` : 'Unused Token'}</td>
+                        <td><strong>{5 - p.usage_count} / 5</strong></td>
+                        <td>
+                          <span className={`badge ${p.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
+                            {p.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Search Controls */}
-          <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-            <input
-              type="text"
-              className="form-control"
-              style={{ maxWidth: '300px', padding: '10px' }}
-              placeholder="Search PIN code or student..."
-              value={pinSearch}
-              onChange={(e) => setPinSearch(e.target.value)}
-            />
-          </div>
+        </div>
+      )}
 
-          <div className="table-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-            <table className="school-table">
-              <thead>
-                <tr>
-                  <th>Result Checker PIN</th>
-                  <th>Term / Session</th>
-                  <th>Checked By Student</th>
-                  <th>Checks Remaining</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pins.filter(p => {
-                  const query = pinSearch.toLowerCase();
-                  return p.pin.toLowerCase().includes(query) ||
-                         (p.student_name && p.student_name.toLowerCase().includes(query)) ||
-                         (p.admission_number && p.admission_number.toLowerCase().includes(query));
-                }).map((p, idx) => (
-                  <tr key={idx}>
-                    <td><strong style={{ fontSize: '1.1rem', letterSpacing: '0.05em' }}>{p.pin}</strong></td>
-                    <td>{p.term ? `${p.term} (${p.academic_year})` : 'Universal (Any Term/Session)'}</td>
-                    <td>{p.student_name ? `${p.student_name} (${p.admission_number})` : 'Unused Token'}</td>
-                    <td><strong>{5 - p.usage_count} / 5</strong></td>
-                    <td>
-                      <span className={`badge ${p.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
-                        {p.status}
-                      </span>
-                    </td>
-                  </tr>
+      {/* =======================================================
+          TAB: PROMOTIONS WORKSPACE (STANDALONE)
+          ======================================================= */}
+      {activeSubTab === 'promotions' && (
+        <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+          <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>🎓 Move Students to Next Class</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
+            Promote a whole class stream of students up to their new class for the new school year. Student past grade records stay safely saved in their timeline.
+          </p>
+
+          <form onSubmit={handlePromotionBulk} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', alignItems: 'flex-end' }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Current Class Stream</label>
+              <select
+                className="form-control"
+                value={promoSource}
+                onChange={(e) => setPromoSource(e.target.value)}
+                required
+              >
+                <option value="">Select current class...</option>
+                {classes.map((c, idx) => (
+                  <option key={idx} value={c.id}>{c.name}</option>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* =======================================================
-          TAB: CLASS BROADSHEET (ADMIN ACCESS)
-          ======================================================= */}
-      {activeSubTab === 'broadsheet' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-              <div>
-                <h3>Class Results Broadsheet</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Select a class arm to view master score broadsheet, export to Excel CSV, or print.</p>
-              </div>
-              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Select Class:</label>
-                <select
-                  className="form-control"
-                  style={{ width: '220px', padding: '10px' }}
-                  value={adminBroadsheetClassId || (classes[0]?.id || '')}
-                  onChange={(e) => {
-                    const cid = e.target.value;
-                    setAdminBroadsheetClassId(cid);
-                    fetchAdminBroadsheet(cid);
-                  }}
-                >
-                  {classes.map((cls, idx) => (
-                    <option key={idx} value={cls.id}>{cls.name}</option>
-                  ))}
-                </select>
-              </div>
+              </select>
             </div>
 
-            {adminBroadsheetLoading ? (
-              <div style={{ padding: '30px', textAlign: 'center', color: 'var(--primary)' }}>
-                <h4>Loading Class Broadsheet...</h4>
-              </div>
-            ) : adminBroadsheetData ? (
-              <ClassBroadsheet
-                data={adminBroadsheetData}
-                className={classes.find(c => c.id === parseInt(adminBroadsheetClassId || classes[0]?.id))?.name || 'Class'}
-                term={settings?.active_term}
-                session={settings?.active_session}
-                settings={settings}
-              />
-            ) : (
-              <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                <p>Select a class arm above to view its broadsheet.</p>
-              </div>
-            )}
-          </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Target Destination Class</label>
+              <select
+                className="form-control"
+                value={promoTarget}
+                onChange={(e) => setPromoTarget(e.target.value)}
+                required
+              >
+                <option value="">Select target class...</option>
+                {classes.map((c, idx) => (
+                  <option key={idx} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <button type="submit" className="btn btn-primary" style={{ padding: '10px 20px', fontWeight: 'bold' }}>
+              🎓 Promote Class Stream
+            </button>
+          </form>
         </div>
       )}
 
       {/* =======================================================
-          TAB: BULK RESULT PRINTING (ADMIN ACCESS)
-          ======================================================= */}
-      {activeSubTab === 'bulk-results' && (
-        <BulkResultPrinter
-          classes={classes}
-          sessions={sessions}
-          currentTerm={settings?.active_term}
-          currentSession={settings?.active_session}
-          settings={settings}
-          isStandalonePage={true}
-        />
-      )}
-
-      {/* =======================================================
-          TAB 7: SYSTEM PORTAL SETTINGS & STUDENT MOVEMENT
+          TAB 7: SYSTEM PORTAL SETTINGS
           ======================================================= */}
       {activeSubTab === 'settings' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -1989,13 +2071,6 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               onClick={() => setSettingsSubTab('website')}
             >
               <span>🌐</span> Website & Contact Info
-            </button>
-            <button
-              type="button"
-              className={`settings-tab-btn ${settingsSubTab === 'promotion' ? 'active' : ''}`}
-              onClick={() => setSettingsSubTab('promotion')}
-            >
-              <span>🎓</span> Move Students Up
             </button>
           </div>
 

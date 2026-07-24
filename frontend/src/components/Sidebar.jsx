@@ -9,11 +9,10 @@ export default function Sidebar({ role, activeTab, setActiveTab, onLogout, user,
       { id: 'classes', label: 'Classes', color: '#2948ff' },
       { id: 'subjects', label: 'Subjects', color: '#00dbde' },
       { id: 'attendance', label: 'Attendance', color: '#825a2c' },
-      { id: 'broadsheet', label: 'Class Broadsheet', color: '#E100FF' },
-      { id: 'bulk-results', label: 'Print Results', color: '#ff3366' },
+      { id: 'student-results', label: 'Student Results', color: '#ff3366' },
+      { id: 'promotions', label: 'Promotions', color: '#9b59b6' },
       { id: 'schemes', label: 'Scheme of Work', color: '#ff9900' },
       { id: 'fees', label: 'School Fees', color: '#f2c94c' },
-      { id: 'pins', label: 'Result PINs', color: '#F9D423' },
       { id: 'settings', label: 'Settings', color: '#ff4b2b' }
     ],
     teacher: [

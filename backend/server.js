@@ -396,6 +396,7 @@ app.get('/api/classes', authenticateToken, async (req, res) => {
       SELECT c.*, u.full_name as form_master_name 
       FROM CLASSES c
       LEFT JOIN USERS u ON c.form_master_id = u.id
+      ORDER BY c.name ASC
     `);
     res.json(classes);
   } catch (err) {
@@ -1069,8 +1070,9 @@ app.get(['/api/report-cards/bulk', '/api/report-card/bulk'], authenticateToken, 
     const classStudents = await allQuery(`
       SELECT s.id 
       FROM STUDENTS s
+      JOIN USERS u ON s.id = u.id
       WHERE s.class_id = ?
-      ORDER BY s.admission_number ASC
+      ORDER BY u.full_name ASC
     `, [class_id]);
 
     const results = [];

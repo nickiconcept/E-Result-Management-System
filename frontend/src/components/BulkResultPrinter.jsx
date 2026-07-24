@@ -64,7 +64,7 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
               value={selectedClassId}
               onChange={e => setSelectedClassId(e.target.value)}
             >
-              {classes?.map((cls, idx) => (
+              {[...(classes || [])].sort((a, b) => (a.name || '').localeCompare(b.name || '')).map((cls, idx) => (
                 <option key={idx} value={cls.id}>{cls.name}</option>
               ))}
             </select>
