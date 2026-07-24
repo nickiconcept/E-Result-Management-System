@@ -1369,24 +1369,71 @@ app.post('/api/behavioral/save', authenticateToken, async (req, res) => {
   }
 });
 
+// Get Promoted Class IDs for active session
+app.get('/api/promoted-classes', authenticateToken, async (req, res) => {
+  const { session_name } = req.query;
+  try {
+    const settings = await getQuery('SELECT active_session FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1');
+    const targetSession = session_name || (settings ? settings.active_session : '');
+    const rows = await allQuery('SELECT class_id FROM PROMOTED_CLASSES WHERE session_name = ?', [targetSession]);
+    res.json(rows.map(r => r.class_id));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Reset Promoted Class tracking for active session (Admin)
+app.post('/api/promoted-classes/reset', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { session_name } = req.body;
+  try {
+    const settings = await getQuery('SELECT active_session FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1');
+    const targetSession = session_name || (settings ? settings.active_session : '');
+    await runQuery('DELETE FROM PROMOTED_CLASSES WHERE session_name = ?', [targetSession]);
+    res.json({ message: 'Promotion tracking reset for session.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ==========================================
 // 11. STUDENT PROMOTION ENGINE
 // ==========================================
 app.post('/api/students/promote-bulk', authenticateToken, requireRole('admin'), async (req, res) => {
-  const { source_class_id, target_class_id } = req.body;
+  const { source_class_id, target_class_id, selected_student_ids } = req.body;
 
   try {
-    const students = await allQuery('SELECT id FROM STUDENTS WHERE class_id = ?', [source_class_id]);
-    
-    for (const stud of students) {
+    const settings = await getQuery('SELECT active_session FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1');
+    const activeSession = settings ? settings.active_session : '';
+
+    let studentIdsToPromote = [];
+    if (Array.isArray(selected_student_ids) && selected_student_ids.length > 0) {
+      studentIdsToPromote = selected_student_ids;
+    } else if (source_class_id) {
+      const students = await allQuery('SELECT id FROM STUDENTS WHERE class_id = ?', [source_class_id]);
+      studentIdsToPromote = students.map(s => s.id);
+    }
+
+    if (studentIdsToPromote.length === 0) {
+      return res.status(400).json({ error: 'No students selected for promotion.' });
+    }
+
+    for (const studId of studentIdsToPromote) {
       if (target_class_id === 'graduate') {
-        await runQuery("UPDATE STUDENTS SET status = 'graduated', class_id = NULL WHERE id = ?", [stud.id]);
+        await runQuery("UPDATE STUDENTS SET status = 'graduated', class_id = NULL WHERE id = ?", [studId]);
       } else {
-        await runQuery("UPDATE STUDENTS SET class_id = ? WHERE id = ?", [target_class_id, stud.id]);
+        await runQuery("UPDATE STUDENTS SET class_id = ? WHERE id = ?", [target_class_id, studId]);
       }
     }
 
-    res.json({ message: `Successfully updated ${students.length} students' classes.` });
+    // Record source class as promoted for this active session
+    if (source_class_id) {
+      await runQuery(`
+        INSERT OR REPLACE INTO PROMOTED_CLASSES (class_id, session_name)
+        VALUES (?, ?)
+      `, [source_class_id, activeSession]);
+    }
+
+    res.json({ message: `Successfully updated ${studentIdsToPromote.length} students' class status.` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

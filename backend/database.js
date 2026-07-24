@@ -240,6 +240,17 @@ async function initDB() {
     );
   `);
 
+  // Create PROMOTED_CLASSES Table
+  await runQuery(`
+    CREATE TABLE IF NOT EXISTS PROMOTED_CLASSES (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      class_id INTEGER NOT NULL,
+      session_name TEXT NOT NULL,
+      promoted_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(class_id, session_name)
+    );
+  `);
+
   // Create ATTENDANCE Table
   await runQuery(`
     CREATE TABLE IF NOT EXISTS ATTENDANCE (

@@ -253,11 +253,26 @@ const api = {
   },
 
   // Student Promotion (Admin)
-  promoteBulk: async (source_class_id, target_class_id) => {
+  promoteBulk: async (source_class_id, target_class_id, selected_student_ids = []) => {
     const res = await fetch(`${API_BASE}/students/promote-bulk`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ source_class_id, target_class_id })
+      body: JSON.stringify({ source_class_id, target_class_id, selected_student_ids })
+    });
+    return handleResponse(res);
+  },
+
+  getPromotedClasses: async (session_name = '') => {
+    const query = session_name ? `?session_name=${encodeURIComponent(session_name)}` : '';
+    const res = await fetch(`${API_BASE}/promoted-classes${query}`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+
+  resetPromotedClasses: async (session_name = '') => {
+    const res = await fetch(`${API_BASE}/promoted-classes/reset`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ session_name })
     });
     return handleResponse(res);
   },

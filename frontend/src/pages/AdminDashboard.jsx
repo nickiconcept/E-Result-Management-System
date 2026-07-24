@@ -260,6 +260,10 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   // Promotion manager states
   const [promoSource, setPromoSource] = useState('');
   const [promoTarget, setPromoTarget] = useState('');
+  const [promotedClassIds, setPromotedClassIds] = useState([]);
+  const [selectedStudentIdsForPromo, setSelectedStudentIdsForPromo] = useState([]);
+  const [promoStudentSearch, setPromoStudentSearch] = useState('');
+  const [showAllClassesInPromo, setShowAllClassesInPromo] = useState(false);
 
   // PIN Generator options
   const [genPinTerm, setGenPinTerm] = useState('');
@@ -352,6 +356,27 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
     }
   };
 
+  const fetchPromotedClasses = async () => {
+    try {
+      const activeSess = settings?.active_session || '';
+      const ids = await api.getPromotedClasses(activeSess);
+      setPromotedClassIds(ids || []);
+    } catch (err) {
+      console.error('Failed to load promoted classes:', err);
+    }
+  };
+
+  const handleResetPromotedClasses = async () => {
+    try {
+      const activeSess = settings?.active_session || '';
+      await api.resetPromotedClasses(activeSess);
+      setNotify(`Promotion status reset for session ${activeSess}.`);
+      fetchPromotedClasses();
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
   // Seed standard passport photos
   const seedMockPassport = (type) => {
     const avatars = {
@@ -365,6 +390,21 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   useEffect(() => {
     loadAllData();
   }, []);
+
+  useEffect(() => {
+    if (activeSubTab === 'promotions') {
+      fetchPromotedClasses();
+    }
+  }, [activeSubTab, settings]);
+
+  useEffect(() => {
+    if (promoSource) {
+      const sourceStuds = students.filter(s => s.class_id === parseInt(promoSource));
+      setSelectedStudentIdsForPromo(sourceStuds.map(s => s.id));
+    } else {
+      setSelectedStudentIdsForPromo([]);
+    }
+  }, [promoSource, students]);
 
   useEffect(() => {
     if (settings) {
@@ -638,15 +678,22 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const handlePromotionBulk = async (e) => {
     e.preventDefault();
     if (!promoSource || !promoTarget) {
-      setErrorMsg('Select both source and target class streams.');
+      setErrorMsg('Select both current and target class streams.');
+      return;
+    }
+    if (selectedStudentIdsForPromo.length === 0) {
+      setErrorMsg('Please check at least one student to promote.');
       return;
     }
     try {
-      await api.promoteBulk(promoSource, promoTarget);
-      setNotify('Students promoted successfully!');
+      await api.promoteBulk(promoSource, promoTarget, selectedStudentIdsForPromo);
+      const targetName = promoTarget === 'graduate' ? 'Graduated Alumni' : classes.find(c => c.id === parseInt(promoTarget))?.name || 'Target Class';
+      setNotify(`Successfully promoted ${selectedStudentIdsForPromo.length} student(s) to ${targetName}!`);
       loadAllData();
+      fetchPromotedClasses();
       setPromoSource('');
       setPromoTarget('');
+      setSelectedStudentIdsForPromo([]);
     } catch (err) {
       setErrorMsg(err.message);
     }
@@ -1998,15 +2045,15 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       )}
 
       {/* =======================================================
-          TAB: PROMOTIONS WORKSPACE (STANDALONE)
+          TAB: PROMOTIONS WORKSPACE (STANDALONE WITH CHECKLIST)
           ======================================================= */}
       {activeSubTab === 'promotions' && (
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.2rem' }}>🎓 Move Students to Next Class</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-                Promote a whole class stream of students up to their new class for the new school year. Student past grade records stay safely saved in their timeline.
+                Select a class stream to view student checklist, check students to advance, and promote to their new class for session {settings?.active_session || ''}.
               </p>
             </div>
             <button className="btn btn-secondary" onClick={() => setActiveSubTab('overview')} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
@@ -2014,40 +2061,210 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
             </button>
           </div>
 
-          <form onSubmit={handlePromotionBulk} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', alignItems: 'flex-end' }}>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label>Current Class Stream</label>
-              <select
-                className="form-control"
-                value={promoSource}
-                onChange={(e) => setPromoSource(e.target.value)}
-                required
-              >
-                <option value="">Select current class...</option>
-                {classes.map((c, idx) => (
-                  <option key={idx} value={c.id}>{c.name}</option>
-                ))}
-              </select>
+          {/* Promoted Classes Notice */}
+          {promotedClassIds.length > 0 && (
+            <div style={{ padding: '10px 16px', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', borderRadius: 'var(--radius-sm)', marginBottom: '20px', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+              <span>
+                ℹ️ <strong>{promotedClassIds.length} class(es)</strong> already promoted in <strong>{settings?.active_session}</strong> are hidden from selection.
+              </span>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+                  onClick={() => setShowAllClassesInPromo(!showAllClassesInPromo)}
+                >
+                  {showAllClassesInPromo ? 'Hide Promoted Classes' : 'Show All Classes'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ padding: '4px 10px', fontSize: '0.78rem', color: 'var(--danger)', borderColor: 'var(--danger)' }}
+                  onClick={handleResetPromotedClasses}
+                >
+                  Reset Session Promotion Status
+                </button>
+              </div>
+            </div>
+          )}
+
+          <form onSubmit={handlePromotionBulk}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', alignItems: 'flex-end', marginBottom: '20px' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontWeight: 'bold' }}>Current Class Stream</label>
+                <select
+                  className="form-control"
+                  value={promoSource}
+                  onChange={(e) => setPromoSource(e.target.value)}
+                  required
+                >
+                  <option value="">Select current class...</option>
+                  {classes
+                    .filter(c => showAllClassesInPromo || !promotedClassIds.includes(c.id))
+                    .map((c, idx) => (
+                      <option key={idx} value={c.id}>
+                        {c.name} {promotedClassIds.includes(c.id) ? ' (Promoted)' : ''}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontWeight: 'bold' }}>Target Destination Class</label>
+                <select
+                  className="form-control"
+                  value={promoTarget}
+                  onChange={(e) => setPromoTarget(e.target.value)}
+                  required
+                >
+                  <option value="">Select target class...</option>
+                  {classes.map((c, idx) => (
+                    <option key={idx} value={c.id}>{c.name}</option>
+                  ))}
+                  <option value="graduate">🎓 Graduated Alumni (Complete Schooling)</option>
+                </select>
+              </div>
             </div>
 
-            <div className="form-group" style={{ margin: 0 }}>
-              <label>Target Destination Class</label>
-              <select
-                className="form-control"
-                value={promoTarget}
-                onChange={(e) => setPromoTarget(e.target.value)}
-                required
-              >
-                <option value="">Select target class...</option>
-                {classes.map((c, idx) => (
-                  <option key={idx} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
+            {/* Student Roster Checklist */}
+            {promoSource ? (() => {
+              const sourceStudents = students.filter(s => s.class_id === parseInt(promoSource));
+              const filteredStudents = sourceStudents.filter(s => 
+                s.full_name.toLowerCase().includes(promoStudentSearch.toLowerCase()) || 
+                s.admission_number.toLowerCase().includes(promoStudentSearch.toLowerCase())
+              );
+              const targetClassName = promoTarget === 'graduate' 
+                ? 'Graduated Alumni' 
+                : (classes.find(c => c.id === parseInt(promoTarget))?.name || 'Target Class');
+              const sourceClassName = classes.find(c => c.id === parseInt(promoSource))?.name || 'Current Class';
 
-            <button type="submit" className="btn btn-primary" style={{ padding: '10px 20px', fontWeight: 'bold' }}>
-              🎓 Promote Class Stream
-            </button>
+              return (
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '10px' }}>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '1rem' }}>
+                        Registered Students in {sourceClassName} ({sourceStudents.length})
+                      </h4>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '2px 0 0 0' }}>
+                        Check students who pass to advance to {promoTarget ? targetClassName : 'target class'}. Unchecked students stay in {sourceClassName}.
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <input
+                        type="text"
+                        className="form-control"
+                        style={{ width: '220px', padding: '6px 12px', fontSize: '0.85rem' }}
+                        placeholder="Search student name..."
+                        value={promoStudentSearch}
+                        onChange={(e) => setPromoStudentSearch(e.target.value)}
+                      />
+
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                        onClick={() => {
+                          if (selectedStudentIdsForPromo.length === sourceStudents.length) {
+                            setSelectedStudentIdsForPromo([]);
+                          } else {
+                            setSelectedStudentIdsForPromo(sourceStudents.map(s => s.id));
+                          }
+                        }}
+                      >
+                        {selectedStudentIdsForPromo.length === sourceStudents.length ? '☐ Deselect All' : '☑ Select All'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="table-container" style={{ maxHeight: '380px', overflowY: 'auto' }}>
+                    <table className="school-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: '50px', textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={sourceStudents.length > 0 && selectedStudentIdsForPromo.length === sourceStudents.length}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedStudentIdsForPromo(sourceStudents.map(s => s.id));
+                                } else {
+                                  setSelectedStudentIdsForPromo([]);
+                                }
+                              }}
+                            />
+                          </th>
+                          <th>Admission No</th>
+                          <th>Student Full Name</th>
+                          <th>Promotion Action Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredStudents.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+                              No registered students found in {sourceClassName}.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredStudents.map((stud, idx) => {
+                            const isChecked = selectedStudentIdsForPromo.includes(stud.id);
+                            return (
+                              <tr key={idx} style={{ backgroundColor: isChecked ? 'rgba(34, 197, 94, 0.04)' : 'transparent' }}>
+                                <td style={{ textAlign: 'center' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={() => {
+                                      if (isChecked) {
+                                        setSelectedStudentIdsForPromo(prev => prev.filter(id => id !== stud.id));
+                                      } else {
+                                        setSelectedStudentIdsForPromo(prev => [...prev, stud.id]);
+                                      }
+                                    }}
+                                  />
+                                </td>
+                                <td><code>{stud.admission_number}</code></td>
+                                <td><strong>{stud.full_name}</strong></td>
+                                <td>
+                                  {isChecked ? (
+                                    <span className="badge badge-success">
+                                      Promote → {targetClassName}
+                                    </span>
+                                  ) : (
+                                    <span className="badge badge-warning" style={{ backgroundColor: '#fff3cd', color: '#856404' }}>
+                                      Keep in {sourceClassName}
+                                    </span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div style={{ marginTop: '16px', padding: '12px 16px', backgroundColor: 'var(--bg-card)', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                    <span>
+                      Selected for Promotion: <strong>{selectedStudentIdsForPromo.length}</strong> of <strong>{sourceStudents.length}</strong> students
+                    </span>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={selectedStudentIdsForPromo.length === 0 || !promoTarget}
+                      style={{ padding: '10px 24px', fontWeight: 'bold' }}
+                    >
+                      🎓 Promote Selected ({selectedStudentIdsForPromo.length})
+                    </button>
+                  </div>
+                </div>
+              );
+            })() : (
+              <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-color)' }}>
+                <p>Select a current class stream above to view its student roster checklist.</p>
+              </div>
+            )}
           </form>
         </div>
       )}
