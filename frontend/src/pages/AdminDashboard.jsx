@@ -1598,6 +1598,190 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
         </div>
       )}
 
+      {subjectsSubTab === 'schemes' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+          {/* Filter Bar */}
+          <div className="glass-panel" style={{ padding: '20px', backgroundColor: 'var(--bg-surface)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Scheme of Work Manager</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '4px 0 0 0' }}>Create and edit the weekly course outline for any class subject.</p>
+              </div>
+              {adminSchemeClass && adminSchemeSubject && (
+                <button
+                  className="btn btn-secondary"
+                  style={{ fontSize: '0.82rem', padding: '7px 14px' }}
+                  onClick={() => window.print()}
+                >
+                  🖨️ Print Scheme
+                </button>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <div className="form-group" style={{ margin: 0, flex: '1 1 180px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Class Arm</label>
+                <select
+                  className="form-control"
+                  value={adminSchemeClass}
+                  onChange={(e) => setAdminSchemeClass(e.target.value)}
+                >
+                  <option value="">Choose Class...</option>
+                  {classes.map((cls, idx) => (
+                    <option key={idx} value={cls.id}>{cls.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group" style={{ margin: 0, flex: '1 1 180px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Subject</label>
+                <select
+                  className="form-control"
+                  value={adminSchemeSubject}
+                  onChange={(e) => setAdminSchemeSubject(e.target.value)}
+                >
+                  <option value="">Choose Subject...</option>
+                  {classSubjects
+                    .filter(cs => cs.class_id === parseInt(adminSchemeClass))
+                    .map((cs, idx) => (
+                      <option key={idx} value={cs.subject_id}>{cs.subject_name}</option>
+                    ))
+                  }
+                </select>
+              </div>
+              <div className="form-group" style={{ margin: 0, flex: '1 1 150px' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Term</label>
+                <select
+                  className="form-control"
+                  value={adminSchemeTerm}
+                  onChange={(e) => setAdminSchemeTerm(e.target.value)}
+                >
+                  <option value="1st Term">1st Term</option>
+                  <option value="2nd Term">2nd Term</option>
+                  <option value="3rd Term">3rd Term</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Scheme Table */}
+          {!adminSchemeClass || !adminSchemeSubject ? (
+            <div className="glass-panel" style={{ padding: '40px', backgroundColor: 'var(--bg-surface)', textAlign: 'center' }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>📋</div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Select a class and subject above to manage the scheme of work.</p>
+            </div>
+          ) : (
+            <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
+              {/* Table Header Info */}
+              <div style={{
+                padding: '16px 24px',
+                borderBottom: '1px solid var(--border-color)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '8px',
+                backgroundColor: 'var(--primary-light)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    backgroundColor: 'var(--primary)', color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1rem', fontWeight: 'bold', flexShrink: 0
+                  }}>📚</div>
+                  <div>
+                    <div style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--primary)' }}>
+                      {classSubjects.find(cs => cs.class_id === parseInt(adminSchemeClass) && cs.subject_id === parseInt(adminSchemeSubject))?.subject_name || 'Subject'}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                      {classes.find(c => c.id === parseInt(adminSchemeClass))?.name || 'Class'} · {adminSchemeTerm}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '600', backgroundColor: 'var(--success-light)', color: 'var(--success)' }}>
+                    {adminSchemeWeeks.filter(w => w.topic).length} / 12 Weeks Filled
+                  </span>
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="table-container" style={{ margin: 0, borderRadius: 0 }}>
+                <table className="school-table" style={{ margin: 0 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '80px', textAlign: 'center' }}>Week</th>
+                      <th style={{ width: '35%' }}>Topic / Content</th>
+                      <th>Learning Objectives / Remarks</th>
+                      <th style={{ width: '130px', textAlign: 'center' }} className="no-print">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminSchemeWeeks.map((w, idx) => (
+                      <tr key={idx} style={{ backgroundColor: w.topic ? 'transparent' : 'rgba(var(--danger-rgb, 255,59,48), 0.03)' }}>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: '32px', height: '32px', borderRadius: '50%',
+                            backgroundColor: w.topic ? 'var(--primary)' : 'var(--border-color)',
+                            color: w.topic ? '#fff' : 'var(--text-muted)',
+                            fontWeight: '700', fontSize: '0.8rem'
+                          }}>{w.week}</span>
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <input
+                            type="text"
+                            className="form-control"
+                            style={{ fontSize: '0.88rem', padding: '8px 10px', margin: 0 }}
+                            placeholder="e.g. Introduction to Algebra"
+                            value={w.topic}
+                            onChange={(e) => handleAdminSchemeFieldChange(w.week, 'topic', e.target.value)}
+                          />
+                        </td>
+                        <td style={{ padding: '10px 12px' }}>
+                          <input
+                            type="text"
+                            className="form-control"
+                            style={{ fontSize: '0.88rem', padding: '8px 10px', margin: 0 }}
+                            placeholder="e.g. Students will be able to..."
+                            value={w.objectives}
+                            onChange={(e) => handleAdminSchemeFieldChange(w.week, 'objectives', e.target.value)}
+                          />
+                        </td>
+                        <td style={{ textAlign: 'center', padding: '10px 12px' }} className="no-print">
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                            <button
+                              className="btn btn-primary"
+                              style={{ padding: '6px 14px', fontSize: '0.8rem' }}
+                              onClick={() => handleSaveAdminSchemeWeek(w)}
+                            >
+                              Save
+                            </button>
+                            {(w.id || w.topic || w.objectives) && (
+                              <button
+                                className="btn btn-danger"
+                                style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                                onClick={() => handleDeleteAdminSchemeWeek(w)}
+                                title="Clear this week"
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+              </div>
+      )}
+
       {/* =======================================================
           TAB 5: FINANCE & INVOICES LEDGER
           ======================================================= */}
@@ -2339,7 +2523,6 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
             </div>
           )}
 
-        </div>
       {resultsSubTab === 'promotions' && (
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
@@ -2560,8 +2743,9 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
             )}
           </form>
         </div>
-        </div>
       )}
+      </div>
+    )}
 
       {/* =======================================================
           TAB 7: SYSTEM PORTAL SETTINGS
@@ -3238,188 +3422,6 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       {/* =======================================================
           TAB 9: SCHEME OF WORK MANAGEMENT (ADMIN)
           ======================================================= */}
-      {subjectsSubTab === 'schemes' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-          {/* Filter Bar */}
-          <div className="glass-panel" style={{ padding: '20px', backgroundColor: 'var(--bg-surface)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Scheme of Work Manager</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '4px 0 0 0' }}>Create and edit the weekly course outline for any class subject.</p>
-              </div>
-              {adminSchemeClass && adminSchemeSubject && (
-                <button
-                  className="btn btn-secondary"
-                  style={{ fontSize: '0.82rem', padding: '7px 14px' }}
-                  onClick={() => window.print()}
-                >
-                  🖨️ Print Scheme
-                </button>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <div className="form-group" style={{ margin: 0, flex: '1 1 180px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Class Arm</label>
-                <select
-                  className="form-control"
-                  value={adminSchemeClass}
-                  onChange={(e) => setAdminSchemeClass(e.target.value)}
-                >
-                  <option value="">Choose Class...</option>
-                  {classes.map((cls, idx) => (
-                    <option key={idx} value={cls.id}>{cls.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group" style={{ margin: 0, flex: '1 1 180px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Subject</label>
-                <select
-                  className="form-control"
-                  value={adminSchemeSubject}
-                  onChange={(e) => setAdminSchemeSubject(e.target.value)}
-                >
-                  <option value="">Choose Subject...</option>
-                  {classSubjects
-                    .filter(cs => cs.class_id === parseInt(adminSchemeClass))
-                    .map((cs, idx) => (
-                      <option key={idx} value={cs.subject_id}>{cs.subject_name}</option>
-                    ))
-                  }
-                </select>
-              </div>
-              <div className="form-group" style={{ margin: 0, flex: '1 1 150px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Term</label>
-                <select
-                  className="form-control"
-                  value={adminSchemeTerm}
-                  onChange={(e) => setAdminSchemeTerm(e.target.value)}
-                >
-                  <option value="1st Term">1st Term</option>
-                  <option value="2nd Term">2nd Term</option>
-                  <option value="3rd Term">3rd Term</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Scheme Table */}
-          {!adminSchemeClass || !adminSchemeSubject ? (
-            <div className="glass-panel" style={{ padding: '40px', backgroundColor: 'var(--bg-surface)', textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>📋</div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Select a class and subject above to manage the scheme of work.</p>
-            </div>
-          ) : (
-            <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
-              {/* Table Header Info */}
-              <div style={{
-                padding: '16px 24px',
-                borderBottom: '1px solid var(--border-color)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '8px',
-                backgroundColor: 'var(--primary-light)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '36px', height: '36px', borderRadius: '50%',
-                    backgroundColor: 'var(--primary)', color: '#fff',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '1rem', fontWeight: 'bold', flexShrink: 0
-                  }}>📚</div>
-                  <div>
-                    <div style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--primary)' }}>
-                      {classSubjects.find(cs => cs.class_id === parseInt(adminSchemeClass) && cs.subject_id === parseInt(adminSchemeSubject))?.subject_name || 'Subject'}
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                      {classes.find(c => c.id === parseInt(adminSchemeClass))?.name || 'Class'} · {adminSchemeTerm}
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '600', backgroundColor: 'var(--success-light)', color: 'var(--success)' }}>
-                    {adminSchemeWeeks.filter(w => w.topic).length} / 12 Weeks Filled
-                  </span>
-                </div>
-              </div>
-
-              {/* Table */}
-              <div className="table-container" style={{ margin: 0, borderRadius: 0 }}>
-                <table className="school-table" style={{ margin: 0 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: '80px', textAlign: 'center' }}>Week</th>
-                      <th style={{ width: '35%' }}>Topic / Content</th>
-                      <th>Learning Objectives / Remarks</th>
-                      <th style={{ width: '130px', textAlign: 'center' }} className="no-print">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {adminSchemeWeeks.map((w, idx) => (
-                      <tr key={idx} style={{ backgroundColor: w.topic ? 'transparent' : 'rgba(var(--danger-rgb, 255,59,48), 0.03)' }}>
-                        <td style={{ textAlign: 'center' }}>
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            width: '32px', height: '32px', borderRadius: '50%',
-                            backgroundColor: w.topic ? 'var(--primary)' : 'var(--border-color)',
-                            color: w.topic ? '#fff' : 'var(--text-muted)',
-                            fontWeight: '700', fontSize: '0.8rem'
-                          }}>{w.week}</span>
-                        </td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <input
-                            type="text"
-                            className="form-control"
-                            style={{ fontSize: '0.88rem', padding: '8px 10px', margin: 0 }}
-                            placeholder="e.g. Introduction to Algebra"
-                            value={w.topic}
-                            onChange={(e) => handleAdminSchemeFieldChange(w.week, 'topic', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <input
-                            type="text"
-                            className="form-control"
-                            style={{ fontSize: '0.88rem', padding: '8px 10px', margin: 0 }}
-                            placeholder="e.g. Students will be able to..."
-                            value={w.objectives}
-                            onChange={(e) => handleAdminSchemeFieldChange(w.week, 'objectives', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '10px 12px' }} className="no-print">
-                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                            <button
-                              className="btn btn-primary"
-                              style={{ padding: '6px 14px', fontSize: '0.8rem' }}
-                              onClick={() => handleSaveAdminSchemeWeek(w)}
-                            >
-                              Save
-                            </button>
-                            {(w.id || w.topic || w.objectives) && (
-                              <button
-                                className="btn btn-danger"
-                                style={{ padding: '6px 10px', fontSize: '0.8rem' }}
-                                onClick={() => handleDeleteAdminSchemeWeek(w)}
-                                title="Clear this week"
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-        </div>
-      )}
-
       {/* =======================================================
           MODAL: STUDENT REGISTRATION FORM
           ======================================================= */}
