@@ -1045,9 +1045,25 @@ body.dark .icon-3d {
     max-height: 70vh;
   }
 
-  .school-table th, .school-table td {
-    padding: 10px 12px;
-    font-size: 0.85rem;
+  .school-table th, .school-table td,
+  .grade-entry-table th, .grade-entry-table td,
+  .broadsheet-table th, .broadsheet-table td {
+    padding: 6px 8px !important;
+    font-size: 0.75rem !important;
+  }
+  
+  .grade-input {
+    padding: 4px !important;
+    font-size: 0.75rem !important;
+    min-width: 40px !important;
+    width: auto !important;
+  }
+  
+  /* Hide number arrows on mobile to save space */
+  input[type=number]::-webkit-inner-spin-button, 
+  input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
   }
 
   .settings-tab-bar {
