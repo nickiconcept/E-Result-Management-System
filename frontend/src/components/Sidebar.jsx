@@ -26,7 +26,7 @@ export default function Sidebar({ role, activeTab, setActiveTab, onLogout, user,
       { id: 'dashboard', label: 'Overview', color: '#0072ff' },
       { id: 'results', label: 'My Results', color: '#38ef7d' },
       { id: 'schemes', label: 'Scheme of Work', color: '#ff9900' },
-      { id: 'student-fees', label: 'Fees & Payments', color: '#f2c94c' },
+      { id: 'fees', label: 'Fees & Payments', color: '#f2c94c' },
       { id: 'rules', label: 'School Rules', color: '#F9D423' }
     ]
   };

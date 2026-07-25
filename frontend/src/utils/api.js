@@ -57,6 +57,53 @@ const api = {
     return handleResponse(res);
   },
 
+  // Behavioral Skills Management (Affective & Psychomotor)
+  getSkills: async () => {
+    const res = await fetch(`${API_BASE}/skills`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  addSkill: async (skillData) => {
+    const res = await fetch(`${API_BASE}/skills`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(skillData)
+    });
+    return handleResponse(res);
+  },
+  updateSkill: async (id, skillData) => {
+    const res = await fetch(`${API_BASE}/skills/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(skillData)
+    });
+    return handleResponse(res);
+  },
+  deleteSkill: async (id) => {
+    const res = await fetch(`${API_BASE}/skills/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    return handleResponse(res);
+  },
+  getSkillsStudents: async (classId, term, session) => {
+    const query = new URLSearchParams({ term, session }).toString();
+    const res = await fetch(`${API_BASE}/skills/students/${classId}?${query}`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  getStudentSkillsEvaluation: async (studentId, term, session) => {
+    const query = new URLSearchParams({ term, session }).toString();
+    const res = await fetch(`${API_BASE}/skills/evaluations/${studentId}?${query}`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+  saveStudentSkillsEvaluation: async (evaluationData) => {
+    const res = await fetch(`${API_BASE}/skills/evaluate`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(evaluationData)
+    });
+    return handleResponse(res);
+  },
+
   // Users Management (Admin)
   getStudents: async () => {
     const res = await fetch(`${API_BASE}/students`, { headers: getHeaders() });
@@ -78,6 +125,24 @@ const api = {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(studentData)
+    });
+    return handleResponse(res);
+  },
+
+  updateStudent: async (id, studentData) => {
+    const res = await fetch(`${API_BASE}/users/update-student/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(studentData)
+    });
+    return handleResponse(res);
+  },
+
+  updateTeacher: async (id, teacherData) => {
+    const res = await fetch(`${API_BASE}/users/update-teacher/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(teacherData)
     });
     return handleResponse(res);
   },
@@ -134,11 +199,11 @@ const api = {
     return handleResponse(res);
   },
 
-  assignSubjectTeacher: async (class_id, subject_id, teacher_id) => {
+  assignSubjectTeacher: async (class_ids, subject_id, teacher_id) => {
     const res = await fetch(`${API_BASE}/class-subjects/assign`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ class_id, subject_id, teacher_id })
+      body: JSON.stringify({ class_ids, subject_id, teacher_id })
     });
     return handleResponse(res);
   },

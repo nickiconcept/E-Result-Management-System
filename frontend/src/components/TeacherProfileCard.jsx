@@ -1,0 +1,195 @@
+import React, { useState, useRef } from 'react';
+import api from '../utils/api';
+import SignaturePad from './SignaturePad';
+
+export default function TeacherProfileCard({ teacher, onClose, onUpdate }) {
+  if (!teacher) return null;
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({ ...teacher });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const photoInputRef = useRef(null);
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, passport_photo: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      await api.updateTeacher(teacher.id, formData);
+      setIsEditing(false);
+      if (onUpdate) onUpdate(); // Refresh parent data
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content glass-panel" style={{ maxWidth: '850px', backgroundColor: 'var(--bg-surface)' }}>
+        <button className="modal-close no-print" onClick={onClose}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }} className="no-print">
+          <button className="btn btn-secondary" onClick={onClose} style={{ border: '1px solid var(--border-color)', padding: '8px 16px', fontSize: '0.85rem' }}>
+            ← Back to Staff List
+          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button className="btn btn-secondary" onClick={() => setIsEditing(!isEditing)}>
+              {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+            </button>
+          </div>
+        </div>
+
+        {error && <div className="alert alert-danger no-print">{error}</div>}
+
+        <div className="no-print">
+          {!isEditing ? (
+            <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
+              <div style={{ flex: '0 0 200px', textAlign: 'center' }}>
+                {teacher.passport_photo ? (
+                  <img src={teacher.passport_photo} alt="Teacher" style={{ width: '150px', height: '150px', objectFit: 'cover', borderRadius: '50%', border: '4px solid var(--primary-light)' }} />
+                ) : (
+                  <div style={{ width: '150px', height: '150px', borderRadius: '50%', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', fontSize: '2rem', color: '#94a3b8' }}>
+                    🧑‍🏫
+                  </div>
+                )}
+                <h3 style={{ marginTop: '15px', fontSize: '1.2rem', color: 'var(--text-primary)' }}>{teacher.full_name}</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '5px 0' }}>{teacher.username}</p>
+                <span className="badge" style={{ backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>{teacher.status || 'Active'}</span>
+              </div>
+              
+              <div style={{ flex: '1 1 400px' }}>
+                <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '15px' }}>Professional Information</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
+                  <div><strong>Email:</strong> {teacher.email || 'N/A'}</div>
+                  <div><strong>Employed:</strong> {teacher.created_at ? teacher.created_at.split(' ')[0] : 'N/A'}</div>
+                </div>
+
+                <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '15px' }}>Personal Information</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
+                  <div><strong>Surname:</strong> {teacher.surname || 'N/A'}</div>
+                  <div><strong>First Name:</strong> {teacher.first_name || 'N/A'}</div>
+                  <div><strong>Other Names:</strong> {teacher.other_names || 'N/A'}</div>
+                </div>
+
+                <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '15px' }}>Location</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
+                  <div style={{ gridColumn: '1 / -1' }}><strong>Address:</strong> {teacher.address || 'N/A'}</div>
+                  <div><strong>State of Residence:</strong> {teacher.state_of_residence || 'N/A'}</div>
+                  <div><strong>LGA of Residence:</strong> {teacher.lga_of_residence || 'N/A'}</div>
+                </div>
+
+                <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '15px' }}>Digital Signature</h4>
+                <div>
+                  {teacher.digital_signature ? (
+                    <img src={teacher.digital_signature} alt="Signature" style={{ height: '60px', border: '1px solid var(--border-color)', borderRadius: '4px', background: '#fff', padding: '4px' }} />
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)' }}>No signature on file</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSave} style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
+              <div style={{ flex: '0 0 200px', textAlign: 'center' }}>
+                {formData.passport_photo ? (
+                  <img src={formData.passport_photo} alt="Teacher" style={{ width: '150px', height: '150px', objectFit: 'cover', borderRadius: '50%', border: '4px solid var(--primary-light)' }} />
+                ) : (
+                  <div style={{ width: '150px', height: '150px', borderRadius: '50%', backgroundColor: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', fontSize: '2rem', color: '#94a3b8' }}>🧑‍🏫</div>
+                )}
+                <div style={{ marginTop: '10px' }}>
+                  <input type="file" accept="image/*" ref={photoInputRef} style={{ display: 'none' }} onChange={handlePhotoUpload} />
+                  <button type="button" className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '4px 8px' }} onClick={() => photoInputRef.current && photoInputRef.current.click()}>
+                    {formData.passport_photo ? 'Change Photo' : 'Add Photo'}
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ flex: '1 1 400px' }}>
+                <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '15px' }}>Edit Information</h4>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label>Display Full Name</label>
+                    <input type="text" className="form-control" name="full_name" value={formData.full_name || ''} onChange={handleChange} required />
+                  </div>
+                  <div className="form-group">
+                    <label>Surname</label>
+                    <input type="text" className="form-control" name="surname" value={formData.surname || ''} onChange={handleChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>First Name</label>
+                    <input type="text" className="form-control" name="first_name" value={formData.first_name || ''} onChange={handleChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>Other Names</label>
+                    <input type="text" className="form-control" name="other_names" value={formData.other_names || ''} onChange={handleChange} />
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '10px' }}>
+                  <label>Residential Address</label>
+                  <textarea className="form-control" name="address" value={formData.address || ''} onChange={handleChange}></textarea>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '10px' }}>
+                  <div className="form-group">
+                    <label>State of Residence</label>
+                    <input type="text" className="form-control" name="state_of_residence" value={formData.state_of_residence || ''} onChange={handleChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>LGA of Residence</label>
+                    <input type="text" className="form-control" name="lga_of_residence" value={formData.lga_of_residence || ''} onChange={handleChange} />
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '10px' }}>
+                  <label>Digital Signature</label>
+                  {formData.digital_signature ? (
+                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                      <img src={formData.digital_signature} alt="Signature" style={{ height: '60px', border: '1px solid var(--border-color)', borderRadius: '4px', background: '#fff' }} />
+                      <button 
+                        type="button" 
+                        style={{ position: 'absolute', top: '-8px', right: '-8px', background: 'red', color: 'white', borderRadius: '50%', border: 'none', cursor: 'pointer', width: '20px', height: '20px', fontSize: '12px', lineHeight: '20px' }}
+                        onClick={() => setFormData({ ...formData, digital_signature: '' })}
+                      >✕</button>
+                    </div>
+                  ) : (
+                    <SignaturePad onSave={(dataUrl) => setFormData({ ...formData, digital_signature: dataUrl })} />
+                  )}
+                </div>
+
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setIsEditing(false)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" disabled={loading}>
+                    {loading ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

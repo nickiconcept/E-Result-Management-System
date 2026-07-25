@@ -281,24 +281,28 @@ async function initDB() {
     );
   `);
 
-  // Create BEHAVIORAL_GRADES Table
+  // Create BEHAVIORAL_SKILLS Table
   await runQuery(`
-    CREATE TABLE IF NOT EXISTS BEHAVIORAL_GRADES (
+    CREATE TABLE IF NOT EXISTS BEHAVIORAL_SKILLS (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL CHECK(category IN ('affective', 'psychomotor')),
+      UNIQUE(name, category)
+    );
+  `);
+
+  // Create STUDENT_SKILLS_EVALUATION Table
+  await runQuery(`
+    CREATE TABLE IF NOT EXISTS STUDENT_SKILLS_EVALUATION (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       student_id INTEGER,
+      skill_id INTEGER,
       term TEXT NOT NULL,
       academic_year TEXT NOT NULL,
-      punctuality INTEGER DEFAULT 3,
-      neatness INTEGER DEFAULT 3,
-      honesty INTEGER DEFAULT 3,
-      self_control INTEGER DEFAULT 3,
-      peer_relationship INTEGER DEFAULT 3,
-      sports INTEGER DEFAULT 3,
-      manual_skills INTEGER DEFAULT 3,
-      musical_skills INTEGER DEFAULT 3,
-      verbal_fluency INTEGER DEFAULT 3,
+      rating INTEGER CHECK(rating BETWEEN 1 AND 5),
       FOREIGN KEY(student_id) REFERENCES STUDENTS(id) ON DELETE CASCADE,
-      UNIQUE(student_id, term, academic_year)
+      FOREIGN KEY(skill_id) REFERENCES BEHAVIORAL_SKILLS(id) ON DELETE CASCADE,
+      UNIQUE(student_id, skill_id, term, academic_year)
     );
   `);
 
@@ -423,6 +427,26 @@ async function initDB() {
     await runQuery(`INSERT INTO FEE_STRUCTURES (title, amount, tier) VALUES ('Primary Tuition Fee', 40000, 'primary')`);
     await runQuery(`INSERT INTO FEE_STRUCTURES (title, amount, tier) VALUES ('JSS Tuition Fee', 45000, 'jss')`);
     await runQuery(`INSERT INTO FEE_STRUCTURES (title, amount, tier) VALUES ('SSS Tuition Fee', 50000, 'sss')`);
+  }
+
+  // 3. Seed Default Behavioral Skills
+  const skillsCount = await getQuery('SELECT COUNT(*) as count FROM BEHAVIORAL_SKILLS');
+  if (skillsCount.count === 0) {
+    console.log('Seeding initial behavioral skills...');
+    const defaultSkills = [
+      { name: 'Punctuality', category: 'affective' },
+      { name: 'Neatness', category: 'affective' },
+      { name: 'Honesty', category: 'affective' },
+      { name: 'Self Control', category: 'affective' },
+      { name: 'Peer Relationship', category: 'affective' },
+      { name: 'Sports & Games', category: 'psychomotor' },
+      { name: 'Manual Skills', category: 'psychomotor' },
+      { name: 'Musical Skills', category: 'psychomotor' },
+      { name: 'Verbal Fluency', category: 'psychomotor' }
+    ];
+    for (const skill of defaultSkills) {
+      await runQuery(`INSERT INTO BEHAVIORAL_SKILLS (name, category) VALUES (?, ?)`, [skill.name, skill.category]);
+    }
   }
 
   // Check if admin is seeded

@@ -42,6 +42,25 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
   };
   const getGradeBadgeStyle = getGradeStyle;
 
+  const getOrdinalSuffix = (i) => {
+    if (!i) return '';
+    const j = i % 10, k = i % 100;
+    if (j === 1 && k !== 11) return "st";
+    if (j === 2 && k !== 12) return "nd";
+    if (j === 3 && k !== 13) return "rd";
+    return "th";
+  };
+
+  const getRemark = (gradeLetter) => {
+    switch (gradeLetter) {
+      case 'A': return 'Excellent';
+      case 'B': return 'Very Good';
+      case 'C': return 'Credit';
+      case 'D': return 'Pass';
+      default:  return 'Fail';
+    }
+  };
+
   return (
     <div className={isBulk ? "bulk-card-wrapper" : "modal-overlay"}>
       <div className={isBulk ? "bulk-card-inner" : "modal-content glass-panel"} style={isBulk ? { backgroundColor: '#fff', color: '#000', padding: '0px' } : { maxWidth: '940px', backgroundColor: '#fff', color: '#000', padding: '24px' }}>
@@ -158,13 +177,13 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
                             <td>{g.exam_score}</td>
                             <td style={{ fontWeight: 'bold' }}>{g.total_score}</td>
                             <td style={{ fontWeight: 'bold', backgroundColor: '#f8fafc' }}>{g.cum_average}%</td>
-                            {showPosition && <td style={{ fontWeight: 'bold' }}>{g.subject_position || '-'}</td>}
+                            {showPosition && <td style={{ fontWeight: 'bold' }}>{g.subject_position ? `${g.subject_position}${getOrdinalSuffix(g.subject_position)}` : '-'}</td>}
                             <td>
                               <span className="m-grade-chip" style={{ backgroundColor: badgeStyle.bg, color: badgeStyle.color, borderColor: badgeStyle.border }}>
                                 {g.cum_grade}
                               </span>
                             </td>
-                            <td className="remark-cell">{g.cum_remark}</td>
+                            <td className="remark-cell">{getRemark(g.cum_grade)}</td>
                           </tr>
                         );
                       } else {
@@ -177,13 +196,13 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
                             <td>{g.ca4 ?? 0}</td>
                             <td>{g.exam_score ?? 0}</td>
                             <td style={{ fontWeight: 'bold' }}>{g.total_score ?? 0}</td>
-                            {showPosition && <td style={{ fontWeight: 'bold' }}>{g.subject_position || '-'}</td>}
+                            {showPosition && <td style={{ fontWeight: 'bold' }}>{g.subject_position ? `${g.subject_position}${getOrdinalSuffix(g.subject_position)}` : '-'}</td>}
                             <td>
                               <span className="m-grade-chip" style={{ backgroundColor: badgeStyle.bg, color: badgeStyle.color, borderColor: badgeStyle.border }}>
                                 {g.grade_letter}
                               </span>
                             </td>
-                            <td className="remark-cell">{g.remark}</td>
+                            <td className="remark-cell">{getRemark(g.grade_letter)}</td>
                           </tr>
                         );
                       }
@@ -346,7 +365,7 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
 
           {/* FUTURE TERM INFORMATION BAR */}
           <div className="m-footer-bar">
-            <div>Unpaid Balance: <strong>{settings?.last_term_debit || '₦0.00'}</strong></div>
+            <div>Unpaid Balance: <strong>₦{parseFloat(student.unpaid_balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
             <div>Next Term Fee: <strong>{settings?.next_term_fee || '₦45,000.00'}</strong></div>
             <div>Next Term Begins: <strong>{settings?.next_term_begins || '13/04/2026'}</strong></div>
             <div>Next Term Ends: <strong>{settings?.next_term_ends || '--/--/----'}</strong></div>

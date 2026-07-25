@@ -329,6 +329,82 @@ app.post('/api/users/register-teacher', authenticateToken, requireRole('admin'),
   }
 });
 
+// Update Student Profile
+app.put('/api/users/update-student/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { id } = req.params;
+  const {
+    full_name, class_id, date_of_birth, class_of_entry,
+    term_year_of_entry, last_school_attended, address_residence, sex, religion,
+    local_government, state_of_origin, handicapped, handicap_details,
+    parent_name, parent_address, parent_phone, passport_photo, custom_admission_number
+  } = req.body;
+
+  try {
+    // 1. Update USERS table
+    await runQuery(
+      `UPDATE USERS SET full_name = ?, passport_photo = ? WHERE id = ?`,
+      [full_name, passport_photo || null, id]
+    );
+
+    // 2. Update STUDENTS table
+    await runQuery(
+      `UPDATE STUDENTS 
+       SET class_id = ?, date_of_birth = ?, class_of_entry = ?, term_year_of_entry = ?,
+           last_school_attended = ?, address_residence = ?, sex = ?, religion = ?,
+           local_government = ?, state_of_origin = ?, handicapped = ?, handicap_details = ?,
+           parent_name = ?, parent_address = ?, parent_phone = ?, admission_number = COALESCE(?, admission_number)
+       WHERE id = ?`,
+      [
+        class_id || null, date_of_birth || null, class_of_entry || null, term_year_of_entry || null,
+        last_school_attended || null, address_residence || null, sex || null, religion || null,
+        local_government || null, state_of_origin || null, handicapped ? 1 : 0, handicap_details || null,
+        parent_name || null, parent_address || null, parent_phone || null, custom_admission_number || null,
+        id
+      ]
+    );
+
+    res.json({ message: 'Student updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update Teacher Profile
+app.put('/api/users/update-teacher/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { id } = req.params;
+  const {
+    full_name, surname, first_name, other_names,
+    address, state_of_residence, lga_of_residence,
+    passport_photo, digital_signature
+  } = req.body;
+
+  try {
+    // 1. Update USERS table
+    await runQuery(
+      `UPDATE USERS SET full_name = ?, passport_photo = ? WHERE id = ?`,
+      [full_name || `${surname} ${first_name} ${other_names || ''}`.trim(), passport_photo || null, id]
+    );
+
+    // 2. Update TEACHERS table
+    await runQuery(
+      `UPDATE TEACHERS 
+       SET surname = ?, first_name = ?, other_names = ?, 
+           address = ?, state_of_residence = ?, lga_of_residence = ?, 
+           digital_signature = ?
+       WHERE id = ?`,
+      [
+        surname || null, first_name || null, other_names || null,
+        address || null, state_of_residence || null, lga_of_residence || null,
+        digital_signature || null, id
+      ]
+    );
+
+    res.json({ message: 'Teacher updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // List all Students
 app.get('/api/students', authenticateToken, async (req, res) => {
   try {
@@ -455,9 +531,17 @@ app.get('/api/subjects', authenticateToken, async (req, res) => {
 
 // Create Subject
 app.post('/api/subjects', authenticateToken, requireRole('admin'), async (req, res) => {
-  const { name, tier } = req.body;
+  const { name, tier, class_ids } = req.body;
   try {
-    await runQuery('INSERT INTO SUBJECTS (name, tier) VALUES (?, ?)', [name, tier]);
+    const result = await runQuery('INSERT INTO SUBJECTS (name, tier) VALUES (?, ?)', [name, tier]);
+    const subjectId = result.lastID;
+
+    if (class_ids && Array.isArray(class_ids)) {
+      for (const cid of class_ids) {
+        await runQuery('INSERT IGNORE INTO CLASS_SUBJECTS (class_id, subject_id) VALUES (?, ?)', [cid, subjectId]);
+      }
+    }
+
     res.status(201).json({ message: 'Subject created successfully' });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -482,14 +566,131 @@ app.get('/api/class-subjects', authenticateToken, async (req, res) => {
 
 // Assign Subject Teacher
 app.post('/api/class-subjects/assign', authenticateToken, requireRole('admin'), async (req, res) => {
-  const { class_id, subject_id, teacher_id } = req.body;
+  const { class_ids, class_id, subject_id, teacher_id } = req.body;
   try {
-    await runQuery(`
-      INSERT INTO CLASS_SUBJECTS (class_id, subject_id, teacher_id) 
-      VALUES (?, ?, ?)
-      ON CONFLICT(class_id, subject_id) DO UPDATE SET teacher_id = excluded.teacher_id
-    `, [class_id, subject_id, teacher_id]);
-    res.json({ message: 'Subject teacher assigned successfully' });
+    const targetClasses = class_ids || (class_id ? [class_id] : []);
+    for (const cid of targetClasses) {
+      await runQuery(`
+        INSERT INTO CLASS_SUBJECTS (class_id, subject_id, teacher_id) 
+        VALUES (?, ?, ?)
+        ON CONFLICT(class_id, subject_id) DO UPDATE SET teacher_id = excluded.teacher_id
+      `, [cid, subject_id, teacher_id]);
+    }
+    res.json({ message: 'Subject mapped to selected classes successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// AFFECTIVE & PSYCHOMOTOR SKILLS
+// ==========================================
+
+// Get all Skills (Admin & Teachers)
+app.get('/api/skills', authenticateToken, async (req, res) => {
+  try {
+    const skills = await allQuery('SELECT * FROM BEHAVIORAL_SKILLS ORDER BY category, name');
+    res.json(skills);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add Skill (Admin)
+app.post('/api/skills', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { name, category } = req.body;
+  try {
+    await runQuery('INSERT INTO BEHAVIORAL_SKILLS (name, category) VALUES (?, ?)', [name, category]);
+    res.status(201).json({ message: 'Skill created successfully' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Update Skill (Admin)
+app.put('/api/skills/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { name, category } = req.body;
+  try {
+    await runQuery('UPDATE BEHAVIORAL_SKILLS SET name = ?, category = ? WHERE id = ?', [name, category, req.params.id]);
+    res.json({ message: 'Skill updated successfully' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Delete Skill (Admin)
+app.delete('/api/skills/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    await runQuery('DELETE FROM BEHAVIORAL_SKILLS WHERE id = ?', [req.params.id]);
+    res.json({ message: 'Skill deleted successfully' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Get Unrated/Rated students for Form Master
+app.get('/api/skills/students/:classId', authenticateToken, async (req, res) => {
+  const { classId } = req.params;
+  const { term, session } = req.query;
+
+  try {
+    if (req.user.role === 'teacher') {
+      const cls = await getQuery('SELECT form_master_id FROM CLASSES WHERE id = ?', [classId]);
+      if (!cls || cls.form_master_id !== req.user.id) {
+        return res.status(403).json({ error: 'Access denied: Not the Form Master' });
+      }
+    }
+
+    const students = await allQuery(`
+      SELECT s.id, u.full_name, s.admission_number 
+      FROM STUDENTS s 
+      JOIN USERS u ON s.id = u.id 
+      WHERE s.class_id = ?
+      ORDER BY u.full_name
+    `, [classId]);
+
+    const evaluations = await allQuery(`
+      SELECT DISTINCT student_id FROM STUDENT_SKILLS_EVALUATION 
+      WHERE term = ? AND academic_year = ? AND student_id IN (SELECT id FROM STUDENTS WHERE class_id = ?)
+    `, [term, session, classId]);
+
+    const ratedIds = evaluations.map(e => e.student_id);
+    const rated = students.filter(s => ratedIds.includes(s.id));
+    const unrated = students.filter(s => !ratedIds.includes(s.id));
+
+    res.json({ rated, unrated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get a specific student's evaluation for edit
+app.get('/api/skills/evaluations/:studentId', authenticateToken, async (req, res) => {
+  const { studentId } = req.params;
+  const { term, session } = req.query;
+  try {
+    const ratings = await allQuery(`
+      SELECT skill_id, rating FROM STUDENT_SKILLS_EVALUATION
+      WHERE student_id = ? AND term = ? AND academic_year = ?
+    `, [studentId, term, session]);
+    res.json(ratings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Save Student Skills Evaluation
+app.post('/api/skills/evaluate', authenticateToken, async (req, res) => {
+  const { student_id, term, session, ratings } = req.body; // ratings: [{ skill_id, rating }]
+  try {
+    for (const r of ratings) {
+      await runQuery(`
+        INSERT INTO STUDENT_SKILLS_EVALUATION (student_id, skill_id, term, academic_year, rating)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(student_id, skill_id, term, academic_year) DO UPDATE SET rating = excluded.rating
+      `, [student_id, r.skill_id, term, session, r.rating]);
+    }
+    res.json({ message: 'Skills evaluation saved successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -522,6 +723,47 @@ app.get('/api/teacher/assignments', authenticateToken, requireRole('teacher'), a
 // ==========================================
 // 5. ATTENDANCE (Form Masters & Admins Only)
 // ==========================================
+
+// Get Attendance Summary Report (Admin & Form Masters)
+app.get('/api/attendance/report/:classId', authenticateToken, async (req, res) => {
+  const { classId } = req.params;
+  const { start_date, end_date } = req.query;
+
+  try {
+    if (req.user.role === 'teacher') {
+      const cls = await getQuery('SELECT form_master_id FROM CLASSES WHERE id = ?', [classId]);
+      if (!cls || cls.form_master_id != req.user.id) {
+        return res.status(403).json({ error: 'Access denied: You are not the Form Master of this class.' });
+      }
+    }
+
+    let dateFilter = '';
+    const params = [classId];
+    if (start_date && end_date) {
+      dateFilter = 'AND date BETWEEN ? AND ?';
+      params.push(start_date, end_date);
+    }
+
+    const report = await allQuery(`
+      SELECT s.id as student_id, u.full_name, s.admission_number,
+             SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present_count,
+             SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as absent_count,
+             SUM(CASE WHEN a.status = 'late' THEN 1 ELSE 0 END) as late_count,
+             COUNT(a.status) as total_days
+      FROM STUDENTS s
+      JOIN USERS u ON s.id = u.id
+      LEFT JOIN ATTENDANCE a ON s.id = a.student_id ${dateFilter}
+      WHERE s.class_id = ?
+      GROUP BY s.id, u.full_name, s.admission_number
+      ORDER BY u.full_name
+    `, params);
+
+    res.json(report);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/attendance/:classId/:date', authenticateToken, async (req, res) => {
   const { classId, date } = req.params;
   
@@ -529,7 +771,7 @@ app.get('/api/attendance/:classId/:date', authenticateToken, async (req, res) =>
     // Check Permission: Must be Admin, or the assigned Form Master of this class
     if (req.user.role === 'teacher') {
       const cls = await getQuery('SELECT form_master_id FROM CLASSES WHERE id = ?', [classId]);
-      if (!cls || cls.form_master_id !== req.user.id) {
+      if (!cls || cls.form_master_id != req.user.id) {
         return res.status(403).json({ error: 'Access denied: You are not the Form Master of this class' });
       }
     }
@@ -556,7 +798,7 @@ app.post('/api/attendance/save', authenticateToken, async (req, res) => {
     // Check Permission
     if (req.user.role === 'teacher') {
       const cls = await getQuery('SELECT form_master_id FROM CLASSES WHERE id = ?', [class_id]);
-      if (!cls || cls.form_master_id !== req.user.id) {
+      if (!cls || cls.form_master_id != req.user.id) {
         return res.status(403).json({ error: 'Access denied: You are not the Form Master of this class' });
       }
     }
@@ -675,7 +917,7 @@ app.get('/api/broadsheet/:classId', authenticateToken, async (req, res) => {
     // Permission check
     if (req.user.role === 'teacher') {
       const cls = await getQuery('SELECT form_master_id FROM CLASSES WHERE id = ?', [classId]);
-      if (!cls || cls.form_master_id !== req.user.id) {
+      if (!cls || cls.form_master_id != req.user.id) {
         return res.status(403).json({ error: 'Access denied: You are not the Form Master of this class' });
       }
     }
@@ -765,19 +1007,18 @@ app.get('/api/broadsheet/:classId', authenticateToken, async (req, res) => {
 
 // Bulk Generate Pins (Admin)
 app.post('/api/pins/generate', authenticateToken, requireRole('admin'), async (req, res) => {
-  const { count, term, academic_year } = req.body;
+  const { count } = req.body;
   const pinCount = parseInt(count || 50);
 
   try {
     for (let i = 0; i < pinCount; i++) {
       const pin = generateRandomPIN();
       await runQuery(`
-        INSERT INTO RESULT_PINS (pin, term, academic_year, usage_count, status)
-        VALUES (?, ?, ?, 0, 'active')
-      `, [pin, term || null, academic_year || null]);
+        INSERT INTO RESULT_PINS (pin, usage_count, status)
+        VALUES (?, 0, 'active')
+      `, [pin]);
     }
-    const label = term ? `for ${term} (${academic_year})` : 'as universal tokens';
-    res.status(201).json({ message: `Successfully generated ${pinCount} PINs ${label}` });
+    res.status(201).json({ message: `Successfully generated ${pinCount} universal PINs` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -826,14 +1067,6 @@ app.post('/api/pins/verify', authenticateToken, requireRole('student'), async (r
         return res.status(403).json({ error: 'This PIN has exceeded its maximum limit of 5 checks.' });
       }
     } else {
-      // If not bound (unused), check if it has a pre-assigned term/year
-      if (pinRow.term && pinRow.term !== term) {
-        return res.status(403).json({ error: `This PIN was generated specifically for ${pinRow.term}.` });
-      }
-      if (pinRow.academic_year && pinRow.academic_year !== academic_year) {
-        return res.status(403).json({ error: `This PIN was generated specifically for session ${pinRow.academic_year}.` });
-      }
-
       // Bind it to this student, term, and academic session
       await runQuery(`
         UPDATE RESULT_PINS
@@ -878,6 +1111,17 @@ async function buildReportCardData(targetStudentId, reqTerm, reqYear) {
     LEFT JOIN USERS fm ON c.form_master_id = fm.id
     WHERE s.id = ?
   `, [targetStudentId]);
+
+  // Fetch Unpaid Balance
+  const unpaidRow = await getQuery(`
+    SELECT SUM(amount_due - amount_paid) as balance 
+    FROM FEE_INVOICES 
+    WHERE student_id = ?
+  `, [targetStudentId]);
+  
+  if (studentInfo) {
+    studentInfo.unpaid_balance = unpaidRow && unpaidRow.balance > 0 ? unpaidRow.balance : 0;
+  }
 
   // Fetch Attendance statistics for this term
   const attendanceStats = await getQuery(`
@@ -929,13 +1173,12 @@ async function buildReportCardData(targetStudentId, reqTerm, reqYear) {
     });
   }
 
-  const behavioral = await getQuery(`
-    SELECT * FROM BEHAVIORAL_GRADES 
-    WHERE student_id = ? AND term = ? AND academic_year = ?
-  `, [targetStudentId, reqTerm, reqYear]) || {
-    punctuality: 3, neatness: 3, honesty: 3, self_control: 3, 
-    peer_relationship: 3, sports: 3, manual_skills: 3, musical_skills: 3, verbal_fluency: 3
-  };
+  const behavioral = await allQuery(`
+    SELECT bs.name, bs.category, sse.rating 
+    FROM STUDENT_SKILLS_EVALUATION sse
+    JOIN BEHAVIORAL_SKILLS bs ON sse.skill_id = bs.id
+    WHERE sse.student_id = ? AND sse.term = ? AND sse.academic_year = ?
+  `, [targetStudentId, reqTerm, reqYear]);
 
   let position = null;
   let total_students = 0;
@@ -1355,7 +1598,7 @@ app.post('/api/behavioral/save', authenticateToken, async (req, res) => {
   try {
     if (req.user.role === 'teacher') {
       const cls = await getQuery('SELECT form_master_id FROM CLASSES WHERE id = ?', [class_id]);
-      if (!cls || cls.form_master_id !== req.user.id) {
+      if (!cls || cls.form_master_id != req.user.id) {
         return res.status(403).json({ error: 'Access denied: You are not the Form Master of this class.' });
       }
     }
@@ -1555,46 +1798,6 @@ app.post('/api/sessions/set-active', authenticateToken, requireRole('admin'), as
     `, [session.session_name]);
 
     res.json({ message: `Session ${session.session_name} is now the active current session.` });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Get Attendance Summary Report (Admin & Form Masters)
-app.get('/api/attendance/report/:classId', authenticateToken, async (req, res) => {
-  const { classId } = req.params;
-  const { start_date, end_date } = req.query;
-
-  try {
-    if (req.user.role === 'teacher') {
-      const cls = await getQuery('SELECT form_master_id FROM CLASSES WHERE id = ?', [classId]);
-      if (!cls || cls.form_master_id !== req.user.id) {
-        return res.status(403).json({ error: 'Access denied: You are not the Form Master of this class.' });
-      }
-    }
-
-    let dateFilter = '';
-    const params = [classId];
-    if (start_date && end_date) {
-      dateFilter = 'AND date BETWEEN ? AND ?';
-      params.push(start_date, end_date);
-    }
-
-    const report = await allQuery(`
-      SELECT s.id as student_id, u.full_name, s.admission_number,
-             SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present_count,
-             SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as absent_count,
-             SUM(CASE WHEN a.status = 'late' THEN 1 ELSE 0 END) as late_count,
-             COUNT(a.status) as total_days
-      FROM STUDENTS s
-      JOIN USERS u ON s.id = u.id
-      LEFT JOIN ATTENDANCE a ON s.id = a.student_id ${dateFilter}
-      WHERE s.class_id = ?
-      GROUP BY s.id, u.full_name, s.admission_number
-      ORDER BY u.full_name
-    `, params);
-
-    res.json(report);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

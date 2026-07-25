@@ -7,3 +7,5 @@ frontend/dist/
 Thumbs.db
 .env
 .env.local
+backend/school.db
+backend/school.db-journal

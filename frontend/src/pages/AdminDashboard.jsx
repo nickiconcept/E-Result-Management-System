@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
+import TeacherProfileCard from '../components/TeacherProfileCard';
+import SignaturePad from '../components/SignaturePad';
 import BulkResultPrinter from '../components/BulkResultPrinter';
 import ClassBroadsheet from '../components/ClassBroadsheet';
 
@@ -206,6 +208,7 @@ function ThreeDPieChart({ title, subtitle, data, size = 180 }) {
   );
 }
 
+
 export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const [activeSubTab, setActiveSubTab] = useState('overview');
   const [settingsSubTab, setSettingsSubTab] = useState('academic');
@@ -218,6 +221,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const [subjects, setSubjects] = useState([]);
   const [classSubjects, setClassSubjects] = useState([]);
   const [pins, setPins] = useState([]);
+  const [skills, setSkills] = useState([]);
+  const [skillForm, setSkillForm] = useState({ name: '', category: 'AFFECTIVE' });
   
   // Registration form states
   const [showStudentModal, setShowStudentModal] = useState(false);
@@ -231,6 +236,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
 
   // Selected details
   const [selectedStudentForForm, setSelectedStudentForForm] = useState(null);
+  const [selectedTeacherForProfile, setSelectedTeacherForProfile] = useState(null);
   
   // Form input states
   const [studentForm, setStudentForm] = useState({
@@ -246,8 +252,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
     surname: '', first_name: '', other_names: '', address: '', state_of_residence: '', lga_of_residence: '', signature: ''
   });
   const [classForm, setClassForm] = useState({ name: '', tier: 'jss' });
-  const [subjectForm, setSubjectForm] = useState({ name: '', tier: 'jss' });
-  const [assignForm, setAssignForm] = useState({ class_id: '', subject_id: '', teacher_id: '' });
+  const [subjectForm, setSubjectForm] = useState({ name: '', tier: 'jss', class_ids: [] });
+  const [assignForm, setAssignForm] = useState({ class_ids: [], subject_id: '', teacher_id: '' });
   const [feeForm, setFeeForm] = useState({ title: '', amount: '', class_id: '', tier: '' });
   const [payForm, setPayForm] = useState({ invoice_id: '', amount_paid: '', payment_method: 'Cash', student_name: '' });
   const [pinCount, setPinCount] = useState(20);
@@ -533,6 +539,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       const subList = await api.getSubjects();
       const csList = await api.getClassSubjects();
       const pinList = await api.getPins();
+      const skillsList = await api.getSkills();
       
       setStudents([...studList].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '')));
       setTeachers([...teachList].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '')));
@@ -540,6 +547,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       setSubjects(subList);
       setClassSubjects(csList);
       setPins(pinList);
+      setSkills(skillsList);
 
       loadSessions();
       loadFeeStructures();
@@ -597,6 +605,22 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
     }
   };
 
+  const handleBulkSubjectClassSelect = (type) => {
+    let ids = [];
+    if (type === 'all') {
+      ids = classes.map(c => c.id);
+    } else if (type === 'nursery') {
+      ids = classes.filter(c => c.name.toLowerCase().includes('nursery')).map(c => c.id);
+    } else if (type === 'primary') {
+      ids = classes.filter(c => c.name.toLowerCase().includes('primary')).map(c => c.id);
+    } else if (type === 'jss') {
+      ids = classes.filter(c => c.name.toLowerCase().includes('jss')).map(c => c.id);
+    } else if (type === 'sss') {
+      ids = classes.filter(c => c.name.toLowerCase().includes('sss')).map(c => c.id);
+    }
+    setSubjectForm(prev => ({ ...prev, class_ids: ids }));
+  };
+
   const handleSubjectCreate = async (e) => {
     e.preventDefault();
     try {
@@ -612,7 +636,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const handleAssignTeacher = async (e) => {
     e.preventDefault();
     try {
-      await api.assignSubjectTeacher(assignForm.class_id, assignForm.subject_id, assignForm.teacher_id);
+      await api.assignSubjectTeacher(assignForm.class_ids, assignForm.subject_id, assignForm.teacher_id);
       setNotify('Subject Teacher mapped successfully!');
       setShowAssignModal(false);
       loadAllData();
@@ -639,6 +663,29 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       setShowFeeModal(false);
       loadAllData();
       setFeeForm({ title: '', amount: '', class_id: '', tier: '' });
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
+  const handleSkillCreate = async (e) => {
+    e.preventDefault();
+    try {
+      await api.addSkill(skillForm);
+      setNotify('Skill added successfully!');
+      setSkillForm({ name: '', category: 'AFFECTIVE' });
+      loadAllData();
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
+  const handleSkillDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this skill?')) return;
+    try {
+      await api.deleteSkill(id);
+      setNotify('Skill deleted successfully!');
+      loadAllData();
     } catch (err) {
       setErrorMsg(err.message);
     }
@@ -896,6 +943,12 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const [adminSchemeTerm, setAdminSchemeTerm] = useState('3rd Term');
   const [adminSchemeWeeks, setAdminSchemeWeeks] = useState(Array.from({ length: 12 }, (_, i) => ({ week: i + 1, topic: '', objectives: '', id: null })));
 
+  // Admin Enter Marks States
+  const [adminGradesClass, setAdminGradesClass] = useState('');
+  const [adminGradesSubject, setAdminGradesSubject] = useState('');
+  const [adminStudentsGrades, setAdminStudentsGrades] = useState([]);
+  const [adminGradesSearch, setAdminGradesSearch] = useState('');
+
   useEffect(() => {
     if (adminSchemeClass) {
       const filtered = classSubjects.filter(cs => cs.class_id === parseInt(adminSchemeClass));
@@ -993,6 +1046,83 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       loadAdminSchemes();
     }
   }, [activeSubTab, adminSchemeClass, adminSchemeSubject, adminSchemeTerm]);
+
+  useEffect(() => {
+    if (adminGradesClass) {
+      const filtered = classSubjects.filter(cs => cs.class_id === parseInt(adminGradesClass));
+      const hasSelected = filtered.some(cs => cs.subject_id === parseInt(adminGradesSubject));
+      if (!hasSelected) {
+        setAdminGradesSubject(filtered.length > 0 ? String(filtered[0].subject_id) : '');
+      }
+    } else {
+      setAdminGradesSubject('');
+    }
+  }, [adminGradesClass, classSubjects]);
+
+  const loadAdminGrades = async () => {
+    if (!adminGradesClass || !adminGradesSubject) return;
+    try {
+      const data = await api.getGradesForEntry(
+        parseInt(adminGradesClass),
+        parseInt(adminGradesSubject),
+        settings.active_term,
+        settings.active_session
+      );
+      setAdminStudentsGrades(data);
+    } catch (err) {
+      setErrorMsg('Failed to load grades: ' + err.message);
+    }
+  };
+
+  const handleAdminGradeChange = (studentId, field, value) => {
+    setAdminStudentsGrades(prev => prev.map(g => {
+      if (g.student_id === studentId) {
+        const updated = { ...g, [field]: value };
+        const c1 = parseFloat(field === 'ca1' ? value : updated.ca1 || 0);
+        const c2 = parseFloat(field === 'ca2' ? value : updated.ca2 || 0);
+        const c3 = parseFloat(field === 'ca3' ? value : updated.ca3 || 0);
+        const c4 = parseFloat(field === 'ca4' ? value : updated.ca4 || 0);
+        const ex = parseFloat(field === 'exam' ? value : updated.exam || 0);
+        const tot = c1 + c2 + c3 + c4 + ex;
+        updated.total = isNaN(tot) ? 0 : tot;
+        
+        let gradeLetter = 'F';
+        if (updated.total >= 70) gradeLetter = 'A';
+        else if (updated.total >= 60) gradeLetter = 'B';
+        else if (updated.total >= 50) gradeLetter = 'C';
+        else if (updated.total >= 40) gradeLetter = 'D';
+        else if (updated.total >= 30) gradeLetter = 'E';
+        updated.grade = gradeLetter;
+        
+        return updated;
+      }
+      return g;
+    }));
+  };
+
+  const handleAdminSaveGrades = async () => {
+    if (!adminGradesClass || !adminGradesSubject) return;
+    setNotify('');
+    setErrorMsg('');
+    try {
+      await api.saveGrades({
+        class_id: parseInt(adminGradesClass),
+        subject_id: parseInt(adminGradesSubject),
+        term: settings.active_term,
+        academic_year: settings.active_session,
+        grades: adminStudentsGrades
+      });
+      setNotify('Grades submitted and saved successfully!');
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
+  useEffect(() => {
+    if (activeSubTab === 'student-results' && resultsSubTab === 'enter-marks' && adminGradesClass && adminGradesSubject) {
+      loadAdminGrades();
+    }
+  }, [activeSubTab, resultsSubTab, adminGradesClass, adminGradesSubject, settings.active_term, settings.active_session]);
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
@@ -1109,9 +1239,6 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Click any student's name to view and print their official registration profile.</p>
             </div>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button className="btn btn-secondary" onClick={() => setShowBulkPrintModal(true)} style={{ border: '1px solid var(--primary)', color: 'var(--primary)' }}>
-                🖨️ Print Results
-              </button>
               <button className="btn btn-primary" onClick={() => setShowStudentModal(true)}>+ Register New Student</button>
             </div>
           </div>
@@ -1260,7 +1387,16 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                         {teach.passport_photo ? <img src={teach.passport_photo} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : teach.full_name.charAt(0)}
                       </div>
                     </td>
-                    <td style={{ fontWeight: '600' }}>{teach.full_name}</td>
+                    <td style={{ fontWeight: '600' }}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTeacherForProfile(teach)}
+                        style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '700', cursor: 'pointer', textAlign: 'left', padding: 0 }}
+                        title="Click to view teacher profile"
+                      >
+                        {teach.full_name}
+                      </button>
+                    </td>
                     <td><code>{teach.username}</code></td>
                     <td>{teach.email || 'N/A'}</td>
                     <td>{teach.created_at ? teach.created_at.split(' ')[0] : 'N/A'}</td>
@@ -1380,7 +1516,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               <h3>Curriculum Subjects</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>View, add, edit, or delete subjects in the school curriculum.</p>
             </div>
-            <button className="btn btn-primary" onClick={() => setShowSubjectModal(true)}>+ Add Subject</button>
+            <button className="btn btn-primary" onClick={() => { setSubjectForm({ name: '', tier: 'jss', class_ids: [] }); setShowSubjectModal(true); }}>+ Add Subject</button>
           </div>
 
           <div className="table-container">
@@ -1886,6 +2022,13 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
           <div className="settings-tab-bar">
             <button
               type="button"
+              className={`settings-tab-btn ${resultsSubTab === 'enter-marks' ? 'active' : ''}`}
+              onClick={() => setResultsSubTab('enter-marks')}
+            >
+              <span>✍️</span> Enter Marks
+            </button>
+            <button
+              type="button"
               className={`settings-tab-btn ${resultsSubTab === 'bulk' ? 'active' : ''}`}
               onClick={() => setResultsSubTab('bulk')}
             >
@@ -2017,7 +2160,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                     <tr>
                       <th>Result Checker PIN</th>
                       <th>Term / Session</th>
-                      <th>Checked By Student</th>
+                      <th>Assigned Student</th>
                       <th>Checks Remaining</th>
                       <th>Status</th>
                     </tr>
@@ -2044,6 +2187,113 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {resultsSubTab === 'enter-marks' && (
+            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                <div>
+                  <h3>Enter Student Marks</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Select a class and subject to enter or edit grades.</p>
+                </div>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Class</label>
+                    <select className="form-control" value={adminGradesClass} onChange={(e) => setAdminGradesClass(e.target.value)}>
+                      <option value="">Choose...</option>
+                      {classes.map((cls, idx) => <option key={idx} value={cls.id}>{cls.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Subject</label>
+                    <select className="form-control" value={adminGradesSubject} onChange={(e) => setAdminGradesSubject(e.target.value)}>
+                      <option value="">Choose...</option>
+                      {classSubjects.filter(cs => cs.class_id === parseInt(adminGradesClass)).map((cs, idx) => (
+                        <option key={idx} value={cs.subject_id}>{cs.subject_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button className="btn btn-primary" style={{ alignSelf: 'flex-end', padding: '9px 18px' }} onClick={handleAdminSaveGrades}>
+                    Save Marks
+                  </button>
+                </div>
+              </div>
+
+              {adminGradesClass && adminGradesSubject ? (
+                <>
+                  <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+                    <input
+                      type="text"
+                      className="form-control"
+                      style={{ maxWidth: '300px', padding: '10px' }}
+                      placeholder="Search student by name..."
+                      value={adminGradesSearch}
+                      onChange={(e) => setAdminGradesSearch(e.target.value)}
+                    />
+                  </div>
+                  <div className="grade-table-container">
+                    <table className="grade-entry-table">
+                      <thead>
+                        <tr>
+                          <th>Student Name</th>
+                          <th>Admission No</th>
+                          <th>{settings.ca1_name || 'CA 1'} (10)</th>
+                          <th>{settings.ca2_name || 'CA 2'} (10)</th>
+                          <th>{settings.ca3_name || 'CA 3'} (10)</th>
+                          <th>{settings.ca4_name || 'CA 4'} (10)</th>
+                          <th>Exam (60)</th>
+                          <th>Total</th>
+                          <th>Grade</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adminStudentsGrades.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No students found.</td>
+                          </tr>
+                        ) : (
+                          adminStudentsGrades.filter(g => 
+                            g.full_name.toLowerCase().includes(adminGradesSearch.toLowerCase()) ||
+                            g.admission_number.toLowerCase().includes(adminGradesSearch.toLowerCase())
+                          ).map((g, idx) => (
+                            <tr key={idx}>
+                              <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{g.full_name}</td>
+                              <td><code>{g.admission_number}</code></td>
+                              <td>
+                                <input type="number" className="grade-input" min="0" max="10" placeholder="-" value={g.ca1 !== null ? g.ca1 : ''} onChange={(e) => handleAdminGradeChange(g.student_id, 'ca1', e.target.value)} />
+                              </td>
+                              <td>
+                                <input type="number" className="grade-input" min="0" max="10" placeholder="-" value={g.ca2 !== null ? g.ca2 : ''} onChange={(e) => handleAdminGradeChange(g.student_id, 'ca2', e.target.value)} />
+                              </td>
+                              <td>
+                                <input type="number" className="grade-input" min="0" max="10" placeholder="-" value={g.ca3 !== null ? g.ca3 : ''} onChange={(e) => handleAdminGradeChange(g.student_id, 'ca3', e.target.value)} />
+                              </td>
+                              <td>
+                                <input type="number" className="grade-input" min="0" max="10" placeholder="-" value={g.ca4 !== null ? g.ca4 : ''} onChange={(e) => handleAdminGradeChange(g.student_id, 'ca4', e.target.value)} />
+                              </td>
+                              <td>
+                                <input type="number" className="grade-input" min="0" max="60" placeholder="-" value={g.exam !== null ? g.exam : ''} onChange={(e) => handleAdminGradeChange(g.student_id, 'exam', e.target.value)} />
+                              </td>
+                              <td>
+                                <span className="grade-total">{g.total || 0}</span>
+                              </td>
+                              <td>
+                                <span className={`grade-badge grade-${g.grade || 'F'}`}>{g.grade || '-'}</span>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>📊</div>
+                  <p>Please select a class and subject to view and enter marks.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -2304,6 +2554,13 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
             >
               <span>🌐</span> Website & Contact Info
             </button>
+            <button
+              type="button"
+              className={`settings-tab-btn ${settingsSubTab === 'skills' ? 'active' : ''}`}
+              onClick={() => setSettingsSubTab('skills')}
+            >
+              <span>🧠</span> Psychomotor Skills
+            </button>
           </div>
 
           {/* Sub-Tab 1: School Year & Term */}
@@ -2540,6 +2797,77 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
 
                 <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px' }}>Save Website Information</button>
               </form>
+            </div>
+          )}
+
+          {/* Sub-Tab: Psychomotor Skills */}
+          {settingsSubTab === 'skills' && (
+            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+              <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>Affective & Psychomotor Skills</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
+                Manage behavioral traits and skills evaluated by form masters for students' report cards.
+              </p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+                <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                  <h4 style={{ margin: '0 0 15px 0', fontSize: '1rem' }}>Add New Skill</h4>
+                  <form onSubmit={handleSkillCreate}>
+                    <div className="form-group">
+                      <label>Skill Name</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        placeholder="e.g. Punctuality" 
+                        required 
+                        value={skillForm.name}
+                        onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Category</label>
+                      <select 
+                        className="form-control" 
+                        value={skillForm.category}
+                        onChange={(e) => setSkillForm({ ...skillForm, category: e.target.value })}
+                      >
+                        <option value="AFFECTIVE">Affective Domain (Character)</option>
+                        <option value="PSYCHOMOTOR">Psychomotor Domain (Skills)</option>
+                      </select>
+                    </div>
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Add Skill</button>
+                  </form>
+                </div>
+                
+                <div>
+                  <h4 style={{ margin: '0 0 15px 0', fontSize: '1rem' }}>Existing Skills</h4>
+                  <div className="table-container" style={{ margin: 0, maxHeight: '400px', overflowY: 'auto' }}>
+                    <table className="school-table" style={{ margin: 0 }}>
+                      <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                        <tr>
+                          <th>Skill Name</th>
+                          <th>Category</th>
+                          <th style={{ textAlign: 'center' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {skills.length === 0 ? (
+                          <tr><td colSpan="3" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No skills found.</td></tr>
+                        ) : (
+                          skills.map(s => (
+                            <tr key={s.id}>
+                              <td>{s.name}</td>
+                              <td><span className="badge" style={{ backgroundColor: s.category === 'AFFECTIVE' ? '#e0f2fe' : '#fef3c7', color: s.category === 'AFFECTIVE' ? '#075985' : '#92400e' }}>{s.category}</span></td>
+                              <td style={{ textAlign: 'center' }}>
+                                <button className="btn btn-danger" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => handleSkillDelete(s.id)}>Delete</button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -3221,9 +3549,40 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Digital Signature (Base64 or URL)</label>
-                <input type="text" className="form-control" placeholder="Optional signature data..." value={teacherForm.signature} onChange={(e) => setTeacherForm({ ...teacherForm, signature: e.target.value })} />
+              <div className="form-group" style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Digital Signature</span>
+                  <label className="btn btn-secondary" style={{ padding: '2px 8px', fontSize: '0.75rem', margin: 0, cursor: 'pointer' }}>
+                    Upload Image
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = () => setTeacherForm({ ...teacherForm, signature: reader.result });
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                </label>
+                {teacherForm.signature && teacherForm.signature.startsWith('data:image') ? (
+                  <div style={{ position: 'relative', display: 'inline-block', marginTop: '8px' }}>
+                    <img src={teacherForm.signature} alt="Signature" style={{ height: '60px', border: '1px solid var(--border-color)', borderRadius: '4px', background: '#fff' }} />
+                    <button 
+                      type="button" 
+                      style={{ position: 'absolute', top: '-8px', right: '-8px', background: 'red', color: 'white', borderRadius: '50%', border: 'none', cursor: 'pointer', width: '20px', height: '20px', fontSize: '12px', lineHeight: '20px' }}
+                      onClick={() => setTeacherForm({ ...teacherForm, signature: '' })}
+                    >✕</button>
+                  </div>
+                ) : (
+                  <div style={{ marginTop: '8px' }}>
+                    <SignaturePad onSave={(dataUrl) => setTeacherForm({ ...teacherForm, signature: dataUrl })} />
+                  </div>
+                )}
               </div>
 
               <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>Save Teacher</button>
@@ -3282,6 +3641,37 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                   <option value="sss">Senior Secondary (SSS)</option>
                 </select>
               </div>
+              <div className="form-group">
+                <label>Map to Classes (Optional)</label>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => handleBulkSubjectClassSelect('all')}>All Classes</button>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => handleBulkSubjectClassSelect('nursery')}>All Nursery</button>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => handleBulkSubjectClassSelect('primary')}>All Primary</button>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => handleBulkSubjectClassSelect('jss')}>All JSS</button>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => handleBulkSubjectClassSelect('sss')}>All SSS</button>
+                  <button type="button" className="btn btn-sm btn-outline" onClick={() => setSubjectForm(prev => ({ ...prev, class_ids: [] }))}>Clear</button>
+                </div>
+                <div className="checkbox-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border-color)', padding: '10px', borderRadius: '4px' }}>
+                  {classes.map(c => (
+                    <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={subjectForm.class_ids.includes(c.id)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setSubjectForm(prev => {
+                            const newIds = checked 
+                              ? [...prev.class_ids, c.id]
+                              : prev.class_ids.filter(id => id !== c.id);
+                            return { ...prev, class_ids: newIds };
+                          });
+                        }} 
+                      />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
               <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Save Subject</button>
             </form>
           </div>
@@ -3298,13 +3688,28 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
             <h3>Assign Teacher to Class</h3>
             <form onSubmit={handleAssignTeacher} style={{ marginTop: '20px' }}>
               <div className="form-group">
-                <label>Class</label>
-                <select className="form-control" required value={assignForm.class_id} onChange={(e) => setAssignForm({ ...assignForm, class_id: e.target.value })}>
-                  <option value="">Select Class...</option>
+                <label>Select Classes to Map (Check all that apply)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', maxHeight: '180px', overflowY: 'auto', padding: '10px', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
                   {classes.map((c, idx) => (
-                    <option key={idx} value={c.id}>{c.name}</option>
+                    <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                      <input 
+                        type="checkbox" 
+                        value={c.id} 
+                        checked={assignForm.class_ids.includes(c.id)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setAssignForm(prev => {
+                            const newIds = checked 
+                              ? [...prev.class_ids, c.id]
+                              : prev.class_ids.filter(id => id !== c.id);
+                            return { ...prev, class_ids: newIds };
+                          });
+                        }} 
+                      />
+                      {c.name}
+                    </label>
                   ))}
-                </select>
+                </div>
               </div>
 
               <div className="form-group">
@@ -3425,6 +3830,15 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
         <StudentRegistrationForm
           student={selectedStudentForForm}
           onClose={() => setSelectedStudentForForm(null)}
+          onUpdate={() => { setSelectedStudentForForm(null); loadAllData(); }}
+        />
+      )}
+
+      {selectedTeacherForProfile && (
+        <TeacherProfileCard
+          teacher={selectedTeacherForProfile}
+          onClose={() => setSelectedTeacherForProfile(null)}
+          onUpdate={() => { setSelectedTeacherForProfile(null); loadAllData(); }}
         />
       )}
 

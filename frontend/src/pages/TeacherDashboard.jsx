@@ -24,12 +24,10 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
   const [broadsheetData, setBroadsheetData] = useState(null);
 
   // Behavioral / Psychomotor States
-  const [formClassStudents, setFormClassStudents] = useState([]);
-  const [selectedStudentForBehavior, setSelectedStudentForBehavior] = useState('');
-  const [behaviorForm, setBehaviorForm] = useState({
-    punctuality: 3, neatness: 3, honesty: 3, self_control: 3,
-    peer_relationship: 3, sports: 3, manual_skills: 3, musical_skills: 3, verbal_fluency: 3
-  });
+  const [skillsList, setSkillsList] = useState([]);
+  const [behavioralStudents, setBehavioralStudents] = useState({ rated: [], unrated: [] });
+  const [evaluatingStudent, setEvaluatingStudent] = useState(null);
+  const [skillRatings, setSkillRatings] = useState({});
 
   // Search & Filter States
   const [gradesSearch, setGradesSearch] = useState('');
@@ -209,51 +207,57 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
   const loadBehavioralRoster = async () => {
     if (!assignments.formClass) return;
     try {
-      const roster = await api.getStudents();
-      const filtered = roster.filter(s => s.class_id === assignments.formClass.id);
-      setFormClassStudents(filtered);
-      if (filtered.length > 0) {
-        setSelectedStudentForBehavior(filtered[0].id);
-        fetchStudentBehavior(filtered[0].id);
-      }
+      // 1. Fetch Skills
+      const fetchedSkills = await api.getSkills();
+      setSkillsList(fetchedSkills);
+
+      // 2. Fetch Rated/Unrated Students
+      const data = await api.getSkillsStudents(assignments.formClass.id, settings.active_term, settings.active_session);
+      setBehavioralStudents(data);
     } catch (err) {
-      setErrorMsg('Failed to load students list: ' + err.message);
+      setErrorMsg('Failed to load psychomotor data: ' + err.message);
     }
   };
 
-  const fetchStudentBehavior = async (studentId) => {
-    try {
-      const data = await api.getBehavioralGrades(studentId, settings.active_term, settings.active_session);
-      setBehaviorForm({
-        punctuality: data.punctuality,
-        neatness: data.neatness,
-        honesty: data.honesty,
-        self_control: data.self_control,
-        peer_relationship: data.peer_relationship,
-        sports: data.sports,
-        manual_skills: data.manual_skills,
-        musical_skills: data.musical_skills,
-        verbal_fluency: data.verbal_fluency
-      });
-    } catch (err) {
-      setErrorMsg('Failed to fetch behavioral data: ' + err.message);
-    }
-  };
-
-  const handleSaveBehavior = async (e) => {
-    e.preventDefault();
-    if (!selectedStudentForBehavior || !assignments.formClass) return;
+  const handleSelectStudentForEval = async (student) => {
+    setEvaluatingStudent(student);
     setNotify('');
     setErrorMsg('');
     try {
-      await api.saveBehavioralGrades({
-        student_id: selectedStudentForBehavior,
-        class_id: assignments.formClass.id,
+      const existing = await api.getStudentSkillsEvaluation(student.id, settings.active_term, settings.active_session);
+      const ratingsMap = {};
+      existing.forEach(r => { ratingsMap[r.skill_id] = r.rating; });
+      setSkillRatings(ratingsMap);
+    } catch (err) {
+      setErrorMsg('Failed to fetch existing ratings: ' + err.message);
+    }
+  };
+
+  const handleSaveSkillEvaluation = async (e) => {
+    e.preventDefault();
+    if (!evaluatingStudent) return;
+    setNotify('');
+    setErrorMsg('');
+    
+    // Validate all skills have a rating
+    for (let skill of skillsList) {
+      if (!skillRatings[skill.id]) {
+        setErrorMsg(`Please select a rating for ${skill.name}`);
+        return;
+      }
+    }
+
+    try {
+      const payload = {
+        student_id: evaluatingStudent.id,
         term: settings.active_term,
-        academic_year: settings.active_session,
-        ...behaviorForm
-      });
-      setNotify('Behavioral traits and skills saved successfully!');
+        session: settings.active_session,
+        ratings: Object.keys(skillRatings).map(skill_id => ({ skill_id, rating: skillRatings[skill_id] }))
+      };
+      await api.saveStudentSkillsEvaluation(payload);
+      setNotify('Skills evaluation saved successfully!');
+      setEvaluatingStudent(null);
+      loadBehavioralRoster(); // Reload roster to move student to 'rated'
     } catch (err) {
       setErrorMsg(err.message);
     }
@@ -385,17 +389,19 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
               Select a subject stream below to open the grading spreadsheet.
             </p>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
               {assignments.subjects.length === 0 ? (
                 <p style={{ color: 'var(--text-muted)' }}>You are not currently assigned to teach any subjects.</p>
               ) : (
                 assignments.subjects.map((assign, idx) => (
-                  <button
-                    key={idx}
-                    className="btn btn-secondary"
-                    style={{ justifyContent: 'space-between', padding: '15px 20px', width: '100%' }}
-                    onClick={() => handleSelectClassSubjectForGrades(assign)}
-                  >
+                <button
+                  key={idx}
+                  className="btn"
+                  style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', textAlign: 'left', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'background-color 0.2s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-surface)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-light)'}
+                  onClick={() => handleSelectClassSubjectForGrades(assign)}
+                >
                     <span><strong>{assign.class_name}</strong> - {assign.subject_name}</span>
                     <span>📝 Enter Marks →</span>
                   </button>
@@ -418,6 +424,7 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
                 <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                   <button className="btn btn-primary" onClick={() => { setActiveSubTab('attendance'); fetchAttendance(assignments.formClass.id, attendanceDate); }}>Mark Attendance</button>
                   <button className="btn btn-secondary" onClick={() => { setActiveSubTab('broadsheet'); fetchBroadsheet(assignments.formClass.id); }}>View Class Results</button>
+                  <button className="btn btn-secondary" onClick={() => { setActiveSubTab('behavioral'); loadBehavioralRoster(); }}>Evaluate Psychomotor</button>
                 </div>
               </div>
             ) : (
@@ -433,6 +440,34 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
       {/* ==========================================
           TAB 2: GRADES ENTRY SHEET (SPREADSHEET LAYOUT)
           ========================================== */}
+      {activeSubTab === 'grades' && !selectedClassSubject && (
+        <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+          <h3>Select Subject to Enter Marks</h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '15px' }}>
+            Choose one of your assigned subjects below to load the grading spreadsheet.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
+            {assignments.subjects.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)' }}>You are not currently assigned to teach any subjects.</p>
+            ) : (
+              assignments.subjects.map((assign, idx) => (
+                <button
+                  key={idx}
+                  className="btn"
+                  style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px', textAlign: 'left', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', border: '1px solid var(--primary)', borderRadius: 'var(--radius-sm)', cursor: 'pointer', transition: 'background-color 0.2s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-surface)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--primary-light)'}
+                  onClick={() => handleSelectClassSubjectForGrades(assign)}
+                >
+                  <span><strong>{assign.class_name}</strong> - {assign.subject_name}</span>
+                  <span>📝 Enter Marks →</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       {activeSubTab === 'grades' && selectedClassSubject && (
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
           <button className="btn btn-secondary no-print" onClick={() => { setSelectedClassSubject(null); setActiveSubTab('overview'); }} style={{ marginBottom: '20px', border: '1px solid var(--border-color)', padding: '6px 12px', fontSize: '0.85rem' }}>
@@ -835,109 +870,85 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
           <h3>Behavioral Traits & Psychomotor Ratings</h3>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '20px' }}>
-            Rate the student's traits and skills on a scale of 1 (Poor) to 5 (Excellent).
+            Evaluate students on a scale of 1 (Poor) to 5 (Excellent).
           </p>
 
-          <form onSubmit={handleSaveBehavior}>
-            <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', marginBottom: '25px', maxWidth: '500px', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 200px' }}>
-                <label>Find Student</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  style={{ padding: '8px' }}
-                  placeholder="Type to filter list..."
-                  value={behavioralSearch}
-                  onChange={(e) => setBehavioralSearch(e.target.value)}
-                />
-              </div>
-              <div style={{ flex: '1.5 1 250px' }}>
-                <label>Select Student</label>
-                <select
-                  className="form-control"
-                  style={{ padding: '8px' }}
-                  value={selectedStudentForBehavior}
-                  onChange={(e) => { setSelectedStudentForBehavior(e.target.value); fetchStudentBehavior(e.target.value); }}
-                  required
+          {!evaluatingStudent ? (
+            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ flex: '1 1 300px' }}>
+                <label style={{ fontWeight: 'bold', marginBottom: '8px', display: 'block' }}>Select Student to Evaluate</label>
+                <select 
+                  className="form-control" 
+                  onChange={(e) => {
+                    const stId = parseInt(e.target.value);
+                    if (!stId) return;
+                    const st = [...behavioralStudents.unrated, ...behavioralStudents.rated].find(s => s.id === stId);
+                    if (st) handleSelectStudentForEval(st);
+                  }}
+                  defaultValue=""
                 >
-                  <option value="">-- Choose Student --</option>
-                  {formClassStudents.filter(s => 
-                    s.full_name.toLowerCase().includes(behavioralSearch.toLowerCase()) ||
-                    s.admission_number.toLowerCase().includes(behavioralSearch.toLowerCase())
-                  ).map((s, idx) => (
-                    <option key={idx} value={s.id}>{s.full_name} ({s.admission_number})</option>
-                  ))}
+                  <option value="" disabled>-- Select a student --</option>
+                  {behavioralStudents.unrated.length > 0 && (
+                    <optgroup label="Not Evaluated Yet">
+                      {behavioralStudents.unrated.map(s => (
+                        <option key={s.id} value={s.id}>{s.full_name} ({s.admission_number})</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {behavioralStudents.rated.length > 0 && (
+                    <optgroup label="Already Evaluated">
+                      {behavioralStudents.rated.map(s => (
+                        <option key={s.id} value={s.id}>{s.full_name} ({s.admission_number}) ✅</option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
-              {/* Behavior */}
-              <div>
-                <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '6px', marginBottom: '15px' }}>
-                  Student Behavior
-                </h4>
-                
-                {[
-                  { key: 'punctuality', label: 'Punctuality' },
-                  { key: 'neatness', label: 'Neatness' },
-                  { key: 'honesty', label: 'Honesty' },
-                  { key: 'self_control', label: 'Self-Control' },
-                  { key: 'peer_relationship', label: 'Peer Relationship' }
-                ].map(trait => (
-                  <div className="form-group" key={trait.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px' }}>
-                    <label style={{ marginBottom: '0' }}>{trait.label}</label>
-                    <select
-                      className="form-control"
-                      style={{ width: '120px' }}
-                      value={behaviorForm[trait.key]}
-                      onChange={(e) => setBehaviorForm({ ...behaviorForm, [trait.key]: parseInt(e.target.value) })}
-                    >
-                      <option value="5">5 - Excellent</option>
-                      <option value="4">4 - Very Good</option>
-                      <option value="3">3 - Good</option>
-                      <option value="2">2 - Fair</option>
-                      <option value="1">1 - Poor</option>
-                    </select>
-                  </div>
-                ))}
+          ) : (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h4 style={{ margin: 0 }}>Evaluating: <span style={{ color: 'var(--primary)' }}>{evaluatingStudent.full_name}</span></h4>
+                <button className="btn btn-secondary" style={{ padding: '4px 12px', fontSize: '0.8rem' }} onClick={() => setEvaluatingStudent(null)}>Cancel / Back</button>
               </div>
 
-              {/* Skills */}
-              <div>
-                <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '6px', marginBottom: '15px' }}>
-                  Practical Skills
-                </h4>
+              <form onSubmit={handleSaveSkillEvaluation}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                  {skillsList.map(skill => (
+                    <div key={skill.id} style={{ border: '1px solid var(--border-color)', padding: '12px', borderRadius: '6px', backgroundColor: '#f8fafc' }}>
+                      <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '10px' }}>
+                        {skill.name} 
+                        <span className="badge" style={{ float: 'right', fontSize: '0.7rem', backgroundColor: skill.category === 'AFFECTIVE' ? '#e0f2fe' : '#fef3c7', color: skill.category === 'AFFECTIVE' ? '#075985' : '#92400e' }}>{skill.category}</span>
+                      </label>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0 10px' }}>
+                        {[1, 2, 3, 4, 5].map(rating => (
+                          <label key={rating} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name={`skill_${skill.id}`}
+                              value={rating}
+                              checked={skillRatings[skill.id] === rating}
+                              onChange={() => setSkillRatings(prev => ({ ...prev, [skill.id]: rating }))}
+                              required
+                            />
+                            <span style={{ fontSize: '0.85rem', marginTop: '6px', fontWeight: skillRatings[skill.id] === rating ? 'bold' : 'normal' }}>{rating}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
                 
-                {[
-                  { key: 'sports', label: 'Sports & Athletics' },
-                  { key: 'manual_skills', label: 'Manual Skills (Handicraft)' },
-                  { key: 'musical_skills', label: 'Musical & Arts Skills' },
-                  { key: 'verbal_fluency', label: 'Verbal Fluency' }
-                ].map(skill => (
-                  <div className="form-group" key={skill.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '20px' }}>
-                    <label style={{ marginBottom: '0' }}>{skill.label}</label>
-                    <select
-                      className="form-control"
-                      style={{ width: '120px' }}
-                      value={behaviorForm[skill.key]}
-                      onChange={(e) => setBehaviorForm({ ...behaviorForm, [skill.key]: parseInt(e.target.value) })}
-                    >
-                      <option value="5">5 - Excellent</option>
-                      <option value="4">4 - Very Good</option>
-                      <option value="3">3 - Good</option>
-                      <option value="2">2 - Fair</option>
-                      <option value="1">1 - Poor</option>
-                    </select>
-                  </div>
-                ))}
-              </div>
+                {skillsList.length === 0 && <p style={{ color: 'var(--danger)', marginTop: '10px' }}>No skills configured by admin yet.</p>}
+
+                <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="submit" className="btn btn-primary" disabled={skillsList.length === 0}>
+                    Save Evaluation
+                  </button>
+                </div>
+              </form>
             </div>
-
-            <button type="submit" className="btn btn-primary" style={{ marginTop: '20px' }}>
-              Save Behavior & Skills
-            </button>
-          </form>
+          )}
         </div>
       )}
 
@@ -1041,7 +1052,6 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
                       <th style={{ width: '80px', textAlign: 'center' }}>Week</th>
                       <th style={{ width: '35%' }}>Topic / Content</th>
                       <th>Learning Objectives / Remarks</th>
-                      <th style={{ width: '130px', textAlign: 'center' }} className="no-print">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1056,46 +1066,11 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
                             fontWeight: '700', fontSize: '0.8rem'
                           }}>{w.week}</span>
                         </td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <input
-                            type="text"
-                            className="form-control"
-                            style={{ fontSize: '0.88rem', padding: '8px 10px', margin: 0 }}
-                            placeholder="e.g. Introduction to Algebra"
-                            value={w.topic}
-                            onChange={(e) => handleTeacherSchemeFieldChange(w.week, 'topic', e.target.value)}
-                          />
+                        <td style={{ padding: '10px 12px', fontSize: '0.88rem' }}>
+                          {w.topic || <span style={{ color: 'var(--text-muted)' }}>Not specified</span>}
                         </td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <input
-                            type="text"
-                            className="form-control"
-                            style={{ fontSize: '0.88rem', padding: '8px 10px', margin: 0 }}
-                            placeholder="e.g. Students will be able to..."
-                            value={w.objectives}
-                            onChange={(e) => handleTeacherSchemeFieldChange(w.week, 'objectives', e.target.value)}
-                          />
-                        </td>
-                        <td style={{ textAlign: 'center', padding: '10px 12px' }} className="no-print">
-                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                            <button
-                              className="btn btn-primary"
-                              style={{ padding: '6px 14px', fontSize: '0.8rem' }}
-                              onClick={() => handleSaveTeacherSchemeWeek(w)}
-                            >
-                              Save
-                            </button>
-                            {(w.id || w.topic || w.objectives) && (
-                              <button
-                                className="btn btn-danger"
-                                style={{ padding: '6px 10px', fontSize: '0.8rem' }}
-                                onClick={() => handleDeleteTeacherSchemeWeek(w)}
-                                title="Clear this week"
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </div>
+                        <td style={{ padding: '10px 12px', fontSize: '0.88rem' }}>
+                          {w.objectives || <span style={{ color: 'var(--text-muted)' }}>Not specified</span>}
                         </td>
                       </tr>
                     ))}
