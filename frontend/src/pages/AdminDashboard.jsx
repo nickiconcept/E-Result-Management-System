@@ -1082,17 +1082,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
         const c2 = parseFloat(field === 'ca2' ? value : updated.ca2 || 0);
         const c3 = parseFloat(field === 'ca3' ? value : updated.ca3 || 0);
         const c4 = parseFloat(field === 'ca4' ? value : updated.ca4 || 0);
-        const ex = parseFloat(field === 'exam' ? value : updated.exam || 0);
+        const ex = parseFloat(field === 'exam_score' ? value : updated.exam_score || 0);
         const tot = c1 + c2 + c3 + c4 + ex;
-        updated.total = isNaN(tot) ? 0 : tot;
+        updated.total_score = isNaN(tot) ? 0 : tot;
         
         let gradeLetter = 'F';
-        if (updated.total >= 70) gradeLetter = 'A';
-        else if (updated.total >= 60) gradeLetter = 'B';
-        else if (updated.total >= 50) gradeLetter = 'C';
-        else if (updated.total >= 40) gradeLetter = 'D';
-        else if (updated.total >= 30) gradeLetter = 'E';
-        updated.grade = gradeLetter;
+        if (updated.total_score >= 70) gradeLetter = 'A';
+        else if (updated.total_score >= 60) gradeLetter = 'B';
+        else if (updated.total_score >= 50) gradeLetter = 'C';
+        else if (updated.total_score >= 40) gradeLetter = 'D';
+        else if (updated.total_score >= 30) gradeLetter = 'E';
+        updated.grade_letter = gradeLetter;
         
         return updated;
       }
@@ -2273,13 +2273,13 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                                 <input type="number" className="grade-input" min="0" max="10" placeholder="-" value={g.ca4 !== null ? g.ca4 : ''} onChange={(e) => handleAdminGradeChange(g.student_id, 'ca4', e.target.value)} />
                               </td>
                               <td>
-                                <input type="number" className="grade-input" min="0" max="60" placeholder="-" value={g.exam !== null ? g.exam : ''} onChange={(e) => handleAdminGradeChange(g.student_id, 'exam', e.target.value)} />
+                                <input type="number" className="grade-input" min="0" max="60" placeholder="-" value={g.exam_score !== null && g.exam_score !== undefined ? g.exam_score : ''} onChange={(e) => handleAdminGradeChange(g.student_id, 'exam_score', e.target.value)} />
                               </td>
                               <td>
-                                <span className="grade-total">{g.total || 0}</span>
+                                <span className="grade-total">{g.total_score || 0}</span>
                               </td>
                               <td>
-                                <span className={`grade-badge grade-${g.grade || 'F'}`}>{g.grade || '-'}</span>
+                                <span className={`grade-badge grade-${g.grade_letter || 'F'}`}>{g.grade_letter || '-'}</span>
                               </td>
                             </tr>
                           ))
