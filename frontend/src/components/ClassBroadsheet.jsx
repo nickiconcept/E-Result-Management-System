@@ -46,7 +46,7 @@ export default function ClassBroadsheet({ data, className, term, session, settin
       subjects.forEach(sub => {
         const g = row.grades ? row.grades[sub.id] : null;
         if (g) {
-          line.push(g.ca1 || 0, g.ca2 || 0, g.ca3 || 0, g.ca4 || 0, g.exam || 0, g.total || 0, g.grade || '-');
+          line.push(g.ca1 || 0, g.ca2 || 0, g.ca3 || 0, g.ca4 || 0, g.exam_score || 0, g.total_score || 0, g.grade_letter || '-');
         } else {
           line.push(0, 0, 0, 0, 0, 0, '-');
         }

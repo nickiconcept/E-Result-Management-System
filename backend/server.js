@@ -522,8 +522,27 @@ app.post('/api/classes/assign-form-master', authenticateToken, requireRole('admi
 // List Subjects
 app.get('/api/subjects', authenticateToken, async (req, res) => {
   try {
-    const subjects = await allQuery('SELECT * FROM SUBJECTS ORDER BY tier, name');
-    res.json(subjects);
+    const subjects = await allQuery(`
+      SELECT s.*,
+        (SELECT '[' || group_concat(json_object('class_id', cs.class_id)) || ']'
+         FROM CLASS_SUBJECTS cs WHERE cs.subject_id = s.id) as classes
+      FROM SUBJECTS s ORDER BY s.tier, s.name
+    `);
+    
+    // Parse the classes JSON string into an array of objects
+    const parsedSubjects = subjects.map(sub => {
+      let classesArr = [];
+      if (sub.classes) {
+        try {
+          classesArr = JSON.parse(sub.classes);
+        } catch (e) {
+          classesArr = [];
+        }
+      }
+      return { ...sub, classes: classesArr };
+    });
+    
+    res.json(parsedSubjects);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -538,7 +557,7 @@ app.post('/api/subjects', authenticateToken, requireRole('admin'), async (req, r
 
     if (class_ids && Array.isArray(class_ids)) {
       for (const cid of class_ids) {
-        await runQuery('INSERT IGNORE INTO CLASS_SUBJECTS (class_id, subject_id) VALUES (?, ?)', [cid, subjectId]);
+        await runQuery('INSERT OR IGNORE INTO CLASS_SUBJECTS (class_id, subject_id) VALUES (?, ?)', [cid, subjectId]);
       }
     }
 
@@ -1722,7 +1741,7 @@ app.post('/api/students/promote-individual', authenticateToken, requireRole('adm
 // Subject PUT (Admin Only)
 app.put('/api/subjects/:id', authenticateToken, requireRole('admin'), async (req, res) => {
   const { id } = req.params;
-  const { name, tier } = req.body;
+  const { name, tier, class_ids } = req.body;
   if (!name || !tier) {
     return res.status(400).json({ error: 'Name and tier are required' });
   }
@@ -1731,6 +1750,14 @@ app.put('/api/subjects/:id', authenticateToken, requireRole('admin'), async (req
     if (!subject) return res.status(404).json({ error: 'Subject not found' });
 
     await runQuery('UPDATE SUBJECTS SET name = ?, tier = ? WHERE id = ?', [name, tier, id]);
+    
+    if (class_ids && Array.isArray(class_ids)) {
+      await runQuery('DELETE FROM CLASS_SUBJECTS WHERE subject_id = ?', [id]);
+      for (const cid of class_ids) {
+        await runQuery('INSERT OR IGNORE INTO CLASS_SUBJECTS (class_id, subject_id) VALUES (?, ?)', [cid, id]);
+      }
+    }
+    
     res.json({ message: 'Subject updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
