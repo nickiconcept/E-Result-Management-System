@@ -812,7 +812,11 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
     setNotify('');
     setErrorMsg('');
     try {
-      await api.updateSubject(selectedSubject.id, subjectEditForm.name, subjectEditForm.tier);
+      await api.updateSubject(selectedSubject.id, {
+        name: subjectEditForm.name,
+        tier: subjectEditForm.tier,
+        class_ids: subjectEditForm.class_ids
+      });
       setNotify('Subject curriculum details updated successfully!');
       setShowEditSubjectModal(false);
       loadAllData();

@@ -11,6 +11,20 @@ const JWT_SECRET = 'jere-model-academy-super-secret-key-2026';
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// Catch body-parser SyntaxErrors to debug
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    console.error('BodyParser SyntaxError caught!');
+    console.error('Method:', req.method);
+    console.error('URL:', req.url);
+    console.error('Headers:', req.headers);
+    console.error('Body text:', err.body);
+    console.error('Error message:', err.message);
+    return res.status(400).json({ error: 'Invalid JSON payload: ' + err.message, body: err.body });
+  }
+  next();
+});
+
 // Middleware to Authenticate JWT
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
