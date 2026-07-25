@@ -400,11 +400,11 @@ const api = {
   },
 
   // Subjects Editing & Deleting
-  updateSubject: async (id, name, tier) => {
+  updateSubject: async (id, data) => {
     const res = await fetch(`${API_BASE}/subjects/${id}`, {
       method: 'PUT',
       headers: getHeaders(),
-      body: JSON.stringify({ name, tier })
+      body: JSON.stringify(data)
     });
     return handleResponse(res);
   },
