@@ -51,16 +51,23 @@ export default function DashboardLayout({ children, user, activeTab, setActiveTa
         onClose={() => setSidebarOpen(false)}
         settings={settings}
       />
+      {/* Mobile Sidebar Overlay */}
+      <div 
+        className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''} mobile-only`}
+        onClick={() => setSidebarOpen(false)}
+      ></div>
 
       {/* Main Work Area */}
       <div className="main-content" style={{ flexGrow: 1, backgroundColor: 'var(--bg-primary)' }}>
         {/* Top Header Bar */}
         <header className="glass-panel no-print" style={{
-          padding: '16px 24px',
+          padding: '16px',
           display: 'flex',
+          flexWrap: 'wrap',
+          gap: '15px',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '32px',
+          marginBottom: '20px',
           backgroundColor: 'var(--bg-surface)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>

@@ -1252,13 +1252,13 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               <h3>Student Roster</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Click any student's name to view and print their official registration profile.</p>
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
               <button className="btn btn-primary" onClick={() => setShowStudentModal(true)}>+ Register New Student</button>
             </div>
           </div>
 
           {/* Search & Filter Controls */}
-          <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
             <input
               type="text"
               className="form-control"
@@ -1367,7 +1367,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
           </div>
 
           {/* Search Controls */}
-          <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
             <input
               type="text"
               className="form-control"
@@ -1698,7 +1698,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                     </div>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                   <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '600', backgroundColor: 'var(--success-light)', color: 'var(--success)' }}>
                     {adminSchemeWeeks.filter(w => w.topic).length} / 12 Weeks Filled
                   </span>
@@ -1851,7 +1851,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               </div>
 
               {/* Search & Filter Controls */}
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
                 <input
                   type="text"
                   className="form-control"
@@ -2057,7 +2057,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                       Click any student's name to view their complete payment history log and print receipt slips.
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: '10px' }} className="no-print">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }} className="no-print">
                     <button className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '8px 14px' }} onClick={() => handleExportPaymentReportExcel(filteredList)}>
                       📊 Export to Excel
                     </button>
@@ -2369,7 +2369,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               </div>
 
               {/* Search Controls */}
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
                 <input
                   type="text"
                   className="form-control"
@@ -2448,7 +2448,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
 
               {adminGradesClass && adminGradesSubject ? (
                 <>
-                  <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
                     <input
                       type="text"
                       className="form-control"
@@ -2543,7 +2543,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               <span>
                 ℹ️ <strong>{promotedClassIds.length} class(es)</strong> already promoted in <strong>{settings?.active_session}</strong> are hidden from selection.
               </span>
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -2626,7 +2626,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                       </p>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
                       <input
                         type="text"
                         className="form-control"
@@ -3190,7 +3190,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                 Select a class and date to view or mark attendance roster.
               </p>
 
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }} className="no-print">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }} className="no-print">
                 <div className="form-group" style={{ margin: 0, minWidth: '200px' }}>
                   <label>Select Class Arm</label>
                   <select
@@ -3323,7 +3323,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                 View cumulative class attendance tallies by date range.
               </p>
 
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'flex-end' }} className="no-print">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'flex-end' }} className="no-print">
                 <div className="form-group" style={{ margin: 0, minWidth: '180px' }}>
                   <label>Select Class</label>
                   <select
@@ -4262,7 +4262,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               </div>
             </div>
 
-            <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }} className="no-print">
+            <div style={{ marginTop: '20px', display: 'flex', flexWrap: 'wrap', gap: '10px' }} className="no-print">
               <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => window.print()}>🖨️ Print Slip</button>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setSelectedReceipt(null)}>Close</button>
             </div>

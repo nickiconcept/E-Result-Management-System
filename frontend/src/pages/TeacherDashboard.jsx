@@ -421,7 +421,7 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '15px' }}>
                   As Form Master, you have access to roll-call attendance checklists and complete class broadsheets for academic meetings.
                 </p>
-                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginTop: '20px' }}>
                   <button className="btn btn-primary" onClick={() => { setActiveSubTab('attendance'); fetchAttendance(assignments.formClass.id, attendanceDate); }}>Mark Attendance</button>
                   <button className="btn btn-secondary" onClick={() => { setActiveSubTab('broadsheet'); fetchBroadsheet(assignments.formClass.id); }}>View Class Results</button>
                   <button className="btn btn-secondary" onClick={() => { setActiveSubTab('behavioral'); loadBehavioralRoster(); }}>Evaluate Psychomotor</button>
@@ -488,7 +488,7 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
           </div>
 
           {/* Student Search */}
-          <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
             <input
               type="text"
               className="form-control"
@@ -673,7 +673,7 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
               </div>
 
               {/* Attendance Search */}
-              <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }} className="no-print">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }} className="no-print">
                 <input
                   type="text"
                   className="form-control"
@@ -773,7 +773,7 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Select date filters to view student records summary.</p>
                 </div>
                 
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }} className="no-print">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }} className="no-print">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '0.8rem', fontWeight: '600' }}>From:</span>
                     <input
