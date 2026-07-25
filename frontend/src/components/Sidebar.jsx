@@ -10,8 +10,6 @@ export default function Sidebar({ role, activeTab, setActiveTab, onLogout, user,
       { id: 'subjects', label: 'Subjects', color: '#00dbde' },
       { id: 'attendance', label: 'Attendance', color: '#825a2c' },
       { id: 'student-results', label: 'Student Results', color: '#ff3366' },
-      { id: 'promotions', label: 'Promotions', color: '#9b59b6' },
-      { id: 'schemes', label: 'Scheme of Work', color: '#ff9900' },
       { id: 'fees', label: 'School Fees', color: '#f2c94c' },
       { id: 'settings', label: 'Settings', color: '#ff4b2b' }
     ],

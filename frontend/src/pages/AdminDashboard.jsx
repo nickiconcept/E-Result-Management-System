@@ -213,6 +213,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const [activeSubTab, setActiveSubTab] = useState('overview');
   const [settingsSubTab, setSettingsSubTab] = useState('academic');
   const [resultsSubTab, setResultsSubTab] = useState('bulk');
+  const [subjectsSubTab, setSubjectsSubTab] = useState('list');
   
   // Data lists
   const [students, setStudents] = useState([]);
@@ -1523,14 +1524,35 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
           TAB 5: SUBJECTS CURRICULUM MANAGEMENT
           ======================================================= */}
       {activeSubTab === 'subjects' && (
-        <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-            <div>
-              <h3>Curriculum Subjects</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>View, add, edit, or delete subjects in the school curriculum.</p>
-            </div>
-            <button className="btn btn-primary" onClick={() => { setSubjectForm({ name: '', tier: 'jss', class_ids: [] }); setShowSubjectModal(true); }}>+ Add Subject</button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
+          {/* Sub-Tab Navigation Bar */}
+          <div className="settings-tab-bar">
+            <button
+              type="button"
+              className={`settings-tab-btn ${subjectsSubTab === 'list' ? 'active' : ''}`}
+              onClick={() => setSubjectsSubTab('list')}
+            >
+              <span>📚</span> Subjects List
+            </button>
+            <button
+              type="button"
+              className={`settings-tab-btn ${subjectsSubTab === 'schemes' ? 'active' : ''}`}
+              onClick={() => setSubjectsSubTab('schemes')}
+            >
+              <span>📑</span> Scheme of Work
+            </button>
           </div>
+
+          {subjectsSubTab === 'list' && (
+            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                <div>
+                  <h3>Curriculum Subjects</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>View, add, edit, or delete subjects in the school curriculum.</p>
+                </div>
+                <button className="btn btn-primary" onClick={() => { setSubjectForm({ name: '', tier: 'universal', class_ids: [] }); setShowSubjectModal(true); }}>+ Add Subject</button>
+              </div>
 
           <div className="table-container">
             <table className="school-table">
@@ -2068,6 +2090,13 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
             >
               <span>🔑</span> Result PINs
             </button>
+            <button
+              type="button"
+              className={`settings-tab-btn ${resultsSubTab === 'promotions' ? 'active' : ''}`}
+              onClick={() => setResultsSubTab('promotions')}
+            >
+              <span>🎓</span> Promotions
+            </button>
           </div>
 
           {/* Sub-Tab 1: Bulk Print Cards */}
@@ -2311,12 +2340,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
           )}
 
         </div>
-      )}
-
-      {/* =======================================================
-          TAB: PROMOTIONS WORKSPACE (STANDALONE WITH CHECKLIST)
-          ======================================================= */}
-      {activeSubTab === 'promotions' && (
+      {resultsSubTab === 'promotions' && (
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
             <div>
@@ -2535,6 +2559,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               </div>
             )}
           </form>
+        </div>
         </div>
       )}
 
@@ -3213,7 +3238,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       {/* =======================================================
           TAB 9: SCHEME OF WORK MANAGEMENT (ADMIN)
           ======================================================= */}
-      {activeSubTab === 'schemes' && (
+      {subjectsSubTab === 'schemes' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
           {/* Filter Bar */}
@@ -3391,6 +3416,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               </div>
             </div>
           )}
+        </div>
         </div>
       )}
 
