@@ -615,6 +615,12 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
       {/* ==========================================
           TAB 3: CLASS ATTENDANCE SHEET (FORM MASTER)
           ========================================== */}
+      {activeSubTab === 'attendance' && !assignments.formClass && (
+        <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+          <h3>Class Attendance</h3>
+          <p style={{ color: 'var(--text-muted)' }}>You must be assigned as a Form Master to manage class attendance.</p>
+        </div>
+      )}
       {activeSubTab === 'attendance' && assignments.formClass && (
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
           
@@ -862,10 +868,22 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
           settings={settings}
         />
       )}
+      {activeSubTab === 'broadsheet' && !assignments.formClass && (
+        <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+          <h3>Class Results</h3>
+          <p style={{ color: 'var(--text-muted)' }}>You must be assigned as a Form Master to view class broadsheets.</p>
+        </div>
+      )}
 
       {/* ==========================================
           TAB 5: BEHAVIORAL & PSYCHOMOTOR GRADES (FORM MASTER)
           ========================================== */}
+      {activeSubTab === 'behavioral' && !assignments.formClass && (
+        <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+          <h3>Behavioral Traits</h3>
+          <p style={{ color: 'var(--text-muted)' }}>You must be assigned as a Form Master to evaluate psychomotor traits.</p>
+        </div>
+      )}
       {activeSubTab === 'behavioral' && assignments.formClass && (
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
           <h3>Behavioral Traits & Psychomotor Ratings</h3>
