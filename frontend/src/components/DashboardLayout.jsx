@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import api from '../utils/api';
+import { Sun, User, LogOut, Menu as MenuIcon, ShieldAlert } from 'lucide-react';
 
-export default function DashboardLayout({ children, user, activeTab, setActiveTab, onLogout, settings }) {
+export default function DashboardLayout({ children, user, activeTab, setActiveTab, subTab, onSelectTab, onLogout, settings }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
 
@@ -38,13 +39,22 @@ export default function DashboardLayout({ children, user, activeTab, setActiveTa
     }
   };
 
+  const handleSidebarSelectTab = (tabId, subTabId) => {
+    if (onSelectTab) {
+      onSelectTab(tabId, subTabId);
+    } else {
+      setActiveTab(tabId);
+    }
+  };
+
   return (
     <div className="app-container">
       {/* Sidebar Navigation */}
       <Sidebar
         role={user.role}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        subTab={subTab}
+        onSelectTab={handleSidebarSelectTab}
         onLogout={onLogout}
         user={user}
         isOpen={sidebarOpen}
@@ -61,7 +71,7 @@ export default function DashboardLayout({ children, user, activeTab, setActiveTa
       <div className="main-content" style={{ flexGrow: 1, backgroundColor: 'var(--bg-primary)' }}>
         {/* Top Header Bar */}
         <header className="glass-panel no-print" style={{
-          padding: '16px',
+          padding: '16px 24px',
           display: 'flex',
           flexWrap: 'wrap',
           gap: '15px',
@@ -76,13 +86,17 @@ export default function DashboardLayout({ children, user, activeTab, setActiveTa
               className="mobile-only btn btn-secondary"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               style={{
-                padding: '6px 12px',
+                padding: '8px 12px',
                 fontSize: '0.85rem',
                 border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)'
+                borderRadius: 'var(--radius-sm)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}
             >
-              Menu
+              <MenuIcon size={18} />
+              <span>Menu</span>
             </button>
             <div>
               <h1 style={{ fontSize: '1.15rem', fontWeight: '700', margin: 0 }}>
@@ -106,7 +120,9 @@ export default function DashboardLayout({ children, user, activeTab, setActiveTa
               }} className="desktop-only">
                 Active: {settings.active_session} | {settings.active_term}
                 {!settings.result_entry_open && (
-                  <span style={{ color: 'var(--danger)', marginLeft: '10px' }}>(Locked)</span>
+                  <span style={{ color: 'var(--danger)', marginLeft: '10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                    <ShieldAlert size={14} /> (Locked)
+                  </span>
                 )}
               </div>
             )}
@@ -136,17 +152,7 @@ export default function DashboardLayout({ children, user, activeTab, setActiveTa
               }}
               title="Toggle Theme"
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="5"></circle>
-                <line x1="12" y1="1" x2="12" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="23"></line>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                <line x1="1" y1="12" x2="3" y2="12"></line>
-                <line x1="21" y1="12" x2="23" y2="12"></line>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-              </svg>
+              <Sun size={18} />
             </button>
 
             {/* Profile Avatar Trigger */}
@@ -169,16 +175,14 @@ export default function DashboardLayout({ children, user, activeTab, setActiveTa
                   style={{ width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover' }} 
                 />
               ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
+                <User size={16} />
               )}
               <span>Profile</span>
             </button>
 
-            <button onClick={onLogout} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', border: '1px solid var(--border-color)' }}>
-              Sign Out
+            <button onClick={onLogout} className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <LogOut size={15} />
+              <span>Sign Out</span>
             </button>
           </div>
         </header>

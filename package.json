@@ -4,6 +4,7 @@
   "description": "School Management System for Jere Model Academy",
   "main": "backend/server.js",
   "scripts": {
+    "dev": "npm run dev --prefix frontend",
     "start": "node backend/server.js",
     "backend": "node backend/server.js",
     "frontend": "npm run dev --prefix frontend"

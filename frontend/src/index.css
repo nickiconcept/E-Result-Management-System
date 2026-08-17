@@ -648,6 +648,29 @@ html {
 /* ==========================================
    ROBUST GLOBAL PRINT STYLES
    ========================================== */
+.only-print {
+  display: none;
+}
+
+/* Table single-line nowrap rule */
+table.school-table th,
+table.school-table td {
+  white-space: nowrap !important;
+}
+
+/* Badge border removal */
+.badge,
+.badge-success,
+.badge-warning,
+.badge-danger,
+.badge-secondary,
+.badge-primary,
+.badge-info {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 @media print {
   @page {
     size: auto;

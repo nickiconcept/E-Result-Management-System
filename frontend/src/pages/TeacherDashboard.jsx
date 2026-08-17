@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import ClassBroadsheet from '../components/ClassBroadsheet';
+import { ArrowLeft, Edit3, CheckSquare, BarChart2, FileSpreadsheet, FileText, Save, Search, Users, Award, CheckCircle, XCircle, Plus, Lock } from 'lucide-react';
 
-export default function TeacherDashboard({ user, settings, activeTab }) {
+export default function TeacherDashboard({ user, settings, activeTab, subTab }) {
   const [activeSubTab, setActiveSubTab] = useState('overview');
   
   // Teacher metadata
   const [assignments, setAssignments] = useState({ subjects: [], formClass: null });
+  const [resultProgress, setResultProgress] = useState(null);
   
   // Marks Entry States
   const [selectedClassSubject, setSelectedClassSubject] = useState(null); // {class_id, class_name, subject_id, subject_name}
@@ -40,6 +42,7 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
 
   useEffect(() => {
     loadTeacherInfo();
+    loadResultProgress();
   }, []);
 
   useEffect(() => {
@@ -60,13 +63,26 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
     } else if (activeTab === 'dashboard') {
       setActiveSubTab('overview');
     }
-  }, [activeTab, assignments.formClass, assignments.subjects]);
+
+    if (subTab && activeTab === 'attendance') {
+      setActiveAttendanceSubTab(subTab);
+    }
+  }, [activeTab, subTab, assignments.formClass, assignments.subjects]);
 
   useEffect(() => {
     if (activeSubTab === 'attendance' && activeAttendanceSubTab === 'report' && assignments.formClass) {
       fetchAttendanceReport();
     }
   }, [activeSubTab, activeAttendanceSubTab, attendanceReportStartDate, attendanceReportEndDate, assignments.formClass]);
+
+  const loadResultProgress = async () => {
+    try {
+      const data = await api.getTeacherResultProgress();
+      setResultProgress(data);
+    } catch (err) {
+      console.error('Failed to load result progress:', err);
+    }
+  };
 
   const loadTeacherInfo = async () => {
     try {
@@ -382,6 +398,117 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
           ========================================== */}
       {activeSubTab === 'overview' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          
+          {/* RESULT UPLOAD PROGRESS WIDGET */}
+          <div className="glass-panel" style={{ gridColumn: '1 / -1', padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📊</span> Result Upload Progress
+                </h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                  Subject marks submission status for <strong>{resultProgress?.term || 'Current Term'} ({resultProgress?.academic_year || 'Session'})</strong>
+                </p>
+              </div>
+              
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontSize: '1.6rem', fontWeight: 'bold', color: resultProgress?.summary?.percentage === 100 ? '#10b981' : '#3b82f6' }}>
+                  {resultProgress?.summary?.percentage || 0}%
+                </span>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Completion Rate</div>
+              </div>
+            </div>
+
+            {/* Overall Progress Bar */}
+            <div style={{ width: '100%', height: '10px', backgroundColor: 'var(--bg-secondary)', borderRadius: '5px', overflow: 'hidden', marginBottom: '20px' }}>
+              <div style={{ 
+                width: `${resultProgress?.summary?.percentage || 0}%`, 
+                height: '100%', 
+                background: 'linear-gradient(90deg, #3b82f6 0%, #10b981 100%)', 
+                borderRadius: '5px', 
+                transition: 'width 0.5s ease' 
+              }} />
+            </div>
+
+            {/* Summary Counters */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                <div style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 600 }}>ASSIGNED SUBJECTS</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#1d4ed8' }}>{resultProgress?.summary?.total || 0}</div>
+              </div>
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>FULLY UPLOADED</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#047857' }}>{resultProgress?.summary?.completed || 0}</div>
+              </div>
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                <div style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: 600 }}>IN PROGRESS</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#b45309' }}>{resultProgress?.summary?.in_progress || 0}</div>
+              </div>
+              <div style={{ padding: '12px', borderRadius: '8px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                <div style={{ fontSize: '0.72rem', color: '#dc2626', fontWeight: 600 }}>PENDING UPLOADS</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: '#b91c1c' }}>{resultProgress?.summary?.pending || 0}</div>
+              </div>
+            </div>
+
+            {/* Detailed Table */}
+            {resultProgress?.details && resultProgress.details.length > 0 && (
+              <div style={{ overflowX: 'auto' }}>
+                <table className="school-table" style={{ width: '100%', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr>
+                      <th>Class Arm</th>
+                      <th>Subject</th>
+                      <th>Students Uploaded</th>
+                      <th>Progress</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {resultProgress.details.map((item, idx) => (
+                      <tr key={idx}>
+                        <td><strong>{item.class_name}</strong></td>
+                        <td>{item.subject_name}</td>
+                        <td>
+                          <strong>{item.uploaded_count}</strong> / {item.total_students} Students
+                        </td>
+                        <td style={{ width: '160px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ flex: 1, height: '8px', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px', overflow: 'hidden' }}>
+                              <div style={{ 
+                                width: `${item.percentage}%`, 
+                                height: '100%', 
+                                backgroundColor: item.status === 'Completed' ? '#10b981' : item.status === 'In Progress' ? '#f59e0b' : '#ef4444' 
+                              }} />
+                            </div>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{item.percentage}%</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="badge" style={{
+                            backgroundColor: item.status === 'Completed' ? '#dcfce7' : item.status === 'In Progress' ? '#fef3c7' : '#fee2e2',
+                            color: item.status === 'Completed' ? '#15803d' : item.status === 'In Progress' ? '#b45309' : '#b91c1c',
+                            border: `1px solid ${item.status === 'Completed' ? '#86efac' : item.status === 'In Progress' ? '#fde68a' : '#fca5a5'}`
+                          }}>
+                            {item.status === 'Completed' ? '✓ Completed' : item.status === 'In Progress' ? '⏳ In Progress' : '❌ Pending'}
+                          </span>
+                        </td>
+                        <td>
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ fontSize: '0.78rem', padding: '4px 10px' }}
+                            onClick={() => handleSelectClassSubjectForGrades({ class_id: item.class_id, class_name: item.class_name, subject_id: item.subject_id, subject_name: item.subject_name })}
+                          >
+                            {item.status === 'Completed' ? 'View/Edit' : 'Upload Marks →'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
           
           <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
             <h3>My Assigned Subjects</h3>
@@ -1067,15 +1194,15 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
                 <table className="school-table" style={{ margin: 0 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '80px', textAlign: 'center' }}>Week</th>
-                      <th style={{ width: '35%' }}>Topic / Content</th>
-                      <th>Learning Objectives / Remarks</th>
+                      <th style={{ width: '70px', textAlign: 'center' }}>Week</th>
+                      <th style={{ width: '38%' }}>Title & Subtitle</th>
+                      <th>Content / Objectives</th>
                     </tr>
                   </thead>
                   <tbody>
                     {teacherSchemeWeeks.map((w, idx) => (
                       <tr key={idx} style={{ backgroundColor: w.topic ? 'transparent' : 'rgba(255,59,48,0.03)' }}>
-                        <td style={{ textAlign: 'center' }}>
+                        <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '14px' }}>
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             width: '32px', height: '32px', borderRadius: '50%',
@@ -1084,10 +1211,21 @@ export default function TeacherDashboard({ user, settings, activeTab }) {
                             fontWeight: '700', fontSize: '0.8rem'
                           }}>{w.week}</span>
                         </td>
-                        <td style={{ padding: '10px 12px', fontSize: '0.88rem' }}>
-                          {w.topic || <span style={{ color: 'var(--text-muted)' }}>Not specified</span>}
+                        <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                          {w.topic ? (
+                            <div>
+                              <div style={{ fontWeight: '700', fontSize: '0.92rem', color: 'var(--text-primary)' }}>{w.topic}</div>
+                              {w.subtitle && (
+                                <div style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '3px', fontWeight: '500' }}>
+                                  📌 {w.subtitle}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>Not specified</span>
+                          )}
                         </td>
-                        <td style={{ padding: '10px 12px', fontSize: '0.88rem' }}>
+                        <td style={{ padding: '12px 14px', fontSize: '0.88rem', verticalAlign: 'top', whiteSpace: 'pre-line' }}>
                           {w.objectives || <span style={{ color: 'var(--text-muted)' }}>Not specified</span>}
                         </td>
                       </tr>

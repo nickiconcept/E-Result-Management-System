@@ -10,6 +10,7 @@ import api from './utils/api';
 export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [subTab, setSubTab] = useState(null);
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
@@ -20,12 +21,31 @@ export default function App() {
     verifySession();
   }, []);
 
+  const handleSelectTab = (tabId, subTabId = null) => {
+    setActiveTab(tabId);
+    setSubTab(subTabId);
+  };
+
   const fetchSettings = async () => {
     try {
       const data = await api.getSettings();
       setSettings(data);
     } catch (err) {
       console.error('Failed to load system settings:', err);
+      setSettings({
+        active_session: '2025/2025',
+        active_term: '3rd Term',
+        landing_school_name: 'Jere Model Academy',
+        landing_tagline: 'KADUNA STATE, NIGERIA',
+        landing_hero_title: 'Shaping Minds, Building the Future.',
+        landing_hero_desc: 'Welcome to the Jere Model Academy online school portal.',
+        landing_address: 'Opposite Jabal-Annur Mosque, New Abuja Road, Jere Kagarko LGA, Kaduna State.',
+        ca1_name: 'CA 1',
+        ca2_name: 'CA 2',
+        ca3_name: 'CA 3',
+        ca4_name: 'CA 4',
+        exam_name: 'Exam'
+      });
     }
   };
 
@@ -55,12 +75,14 @@ export default function App() {
   const handleLoginSuccess = (loggedInUser) => {
     setUser(loggedInUser);
     setActiveTab('dashboard'); // Default landing page
+    setSubTab(null);
   };
 
   const handleLogout = () => {
     api.logout();
     setUser(null);
     setActiveTab('dashboard');
+    setSubTab(null);
   };
 
   if (loading || !settings) {
@@ -95,6 +117,8 @@ export default function App() {
       user={user}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
+      subTab={subTab}
+      onSelectTab={handleSelectTab}
       onLogout={handleLogout}
       settings={settings}
     >
@@ -103,6 +127,7 @@ export default function App() {
           settings={settings}
           fetchSettings={fetchSettings}
           activeTab={activeTab}
+          subTab={subTab}
         />
       )}
       {user.role === 'teacher' && (
@@ -110,6 +135,7 @@ export default function App() {
           user={user}
           settings={settings}
           activeTab={activeTab}
+          subTab={subTab}
         />
       )}
       {user.role === 'student' && (
@@ -117,6 +143,7 @@ export default function App() {
           user={user}
           settings={settings}
           activeTab={activeTab}
+          subTab={subTab}
         />
       )}
     </DashboardLayout>

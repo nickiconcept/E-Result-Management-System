@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowLeft, Printer, Award, X } from 'lucide-react';
 
 export default function ReportCard({ data, settings, onClose, closeLabel, isBulk = false }) {
   if (!data) return null;
@@ -68,15 +69,18 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
         {/* Navigation / Action bar (Hidden in bulk printing loop to avoid duplicate header bars) */}
         {!isBulk && (
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', alignItems: 'center' }} className="no-print">
-            <button className="btn btn-secondary" onClick={onClose || (() => window.history.back())} style={{ border: '1px solid #ccc', padding: '8px 16px', fontSize: '0.85rem' }}>
-              {closeLabel ? closeLabel : onClose ? '✕ Close Result' : '← Back to Dashboard'}
+            <button className="btn btn-secondary" onClick={onClose || (() => window.history.back())} style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid #ccc', padding: '8px 16px', fontSize: '0.85rem' }}>
+              <ArrowLeft size={16} />
+              <span>{closeLabel ? closeLabel : onClose ? 'Back to Results' : 'Back to Dashboard'}</span>
             </button>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <span className="badge badge-success" style={{ padding: '6px 12px', textTransform: 'uppercase' }}>
+              <span className="badge badge-success" style={{ padding: '6px 12px', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <Award size={14} />
                 {isNursery ? 'Nursery Template' : isPrimary ? 'Primary Template' : 'Secondary Template'}
               </span>
-              <button className="btn btn-primary" onClick={handlePrint} style={{ padding: '8px 20px', fontWeight: 'bold' }}>
-                🖨️ Print Report Sheet
+              <button className="btn btn-primary" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 20px', fontWeight: 'bold' }}>
+                <Printer size={16} />
+                <span>Print Report Sheet</span>
               </button>
             </div>
           </div>
@@ -299,34 +303,54 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
             <div className="m-behavior-grid">
               <div className="m-behavior-col">
                 <div className="m-behavior-header">Personal & Social Traits</div>
-                {[
-                  { name: 'Punctuality', val: behavioral?.punctuality || 4 },
-                  { name: 'Neatness & Dressing', val: behavioral?.neatness || 4 },
-                  { name: 'Honesty & Integrity', val: behavioral?.honesty || 4 },
-                  { name: 'Self Control & Discipline', val: behavioral?.self_control || 4 },
-                  { name: 'Peer Relationship', val: behavioral?.peer_relationship || 4 }
-                ].map((item, idx) => (
-                  <div key={idx} className="m-behavior-row">
-                    <span>{item.name}</span>
-                    <strong>{item.val}</strong>
-                  </div>
-                ))}
+                {(() => {
+                  const affectiveSkills = Array.isArray(behavioral)
+                    ? behavioral.filter(b => (b.category || '').toLowerCase() === 'affective')
+                    : [];
+
+                  const displayList = affectiveSkills.length > 0
+                    ? affectiveSkills.map(b => ({ name: b.name, val: b.rating || 4 }))
+                    : [
+                        { name: 'Punctuality', val: behavioral?.punctuality || 4 },
+                        { name: 'Neatness & Dressing', val: behavioral?.neatness || 4 },
+                        { name: 'Honesty & Integrity', val: behavioral?.honesty || 4 },
+                        { name: 'Self Control & Discipline', val: behavioral?.self_control || 4 },
+                        { name: 'Peer Relationship', val: behavioral?.peer_relationship || 4 }
+                      ];
+
+                  return displayList.map((item, idx) => (
+                    <div key={idx} className="m-behavior-row">
+                      <span>{item.name}</span>
+                      <strong>{item.val}</strong>
+                    </div>
+                  ));
+                })()}
               </div>
 
               <div className="m-behavior-col">
                 <div className="m-behavior-header">Practical & Physical Skills</div>
-                {[
-                  { name: 'Sports & Games', val: behavioral?.sports || 4 },
-                  { name: 'Craft & Manual Skills', val: behavioral?.manual_skills || 3 },
-                  { name: 'Verbal Fluency', val: behavioral?.verbal_fluency || 4 },
-                  { name: 'Musical Skills', val: behavioral?.musical_skills || 3 },
-                  { name: 'Handwriting & Neatness', val: 4 }
-                ].map((item, idx) => (
-                  <div key={idx} className="m-behavior-row">
-                    <span>{item.name}</span>
-                    <strong>{item.val}</strong>
-                  </div>
-                ))}
+                {(() => {
+                  const psychomotorSkills = Array.isArray(behavioral)
+                    ? behavioral.filter(b => (b.category || '').toLowerCase() === 'psychomotor')
+                    : [];
+
+                  const displayList = psychomotorSkills.length > 0
+                    ? psychomotorSkills.map(b => ({ name: b.name, val: b.rating || 4 }))
+                    : [
+                        { name: 'Sports & Games', val: behavioral?.sports || 4 },
+                        { name: 'Craft & Manual Skills', val: behavioral?.manual_skills || 3 },
+                        { name: 'Verbal Fluency', val: behavioral?.verbal_fluency || 4 },
+                        { name: 'Musical Skills', val: behavioral?.musical_skills || 3 },
+                        { name: 'Handwriting & Neatness', val: 4 }
+                      ];
+
+                  return displayList.map((item, idx) => (
+                    <div key={idx} className="m-behavior-row">
+                      <span>{item.name}</span>
+                      <strong>{item.val}</strong>
+                    </div>
+                  ));
+                })()}
               </div>
 
               <div className="m-behavior-key">
@@ -349,7 +373,14 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
                   ? 'Satisfactory academic results and good conduct throughout the term.'
                   : 'Needs additional study dedication and academic focus.'}
               </div>
-              <div className="m-sign-box">Sign: <span>{student.form_master_name || 'Form Teacher'}</span></div>
+              <div className="m-sign-box" style={{ minWidth: '160px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
+                {student.form_master_signature ? (
+                  <img src={student.form_master_signature} alt="Form Teacher Signature" style={{ height: '38px', objectFit: 'contain', marginBottom: '2px', backgroundColor: '#fff', borderBottom: '1px solid #64748b' }} />
+                ) : (
+                  <div style={{ height: '24px', borderBottom: '1px dashed #cbd5e1', width: '100%', marginBottom: '2px' }}></div>
+                )}
+                <span>Sign: <strong>{student.form_master_name || 'Form Teacher'}</strong></span>
+              </div>
             </div>
 
             <div className="m-remark-row">
@@ -359,7 +390,14 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
                   ? 'Good performance. Keep up the hard work in the coming session.'
                   : 'Fair result. Parent guidance is recommended.'}
               </div>
-              <div className="m-sign-box">Sign: <span>{settings?.principal_name || 'Principal Stamp (JMA)'}</span></div>
+              <div className="m-sign-box" style={{ minWidth: '160px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
+                {settings?.principal_signature ? (
+                  <img src={settings.principal_signature} alt="Principal Signature" style={{ height: '38px', objectFit: 'contain', marginBottom: '2px', backgroundColor: '#fff', borderBottom: '1px solid #64748b' }} />
+                ) : (
+                  <div style={{ height: '24px', borderBottom: '1px dashed #cbd5e1', width: '100%', marginBottom: '2px' }}></div>
+                )}
+                <span>Sign: <strong>{settings?.principal_name || 'Principal Stamp (JMA)'}</strong></span>
+              </div>
             </div>
           </div>
 

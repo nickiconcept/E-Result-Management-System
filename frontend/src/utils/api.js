@@ -293,6 +293,17 @@ const api = {
     return handleResponse(res);
   },
 
+  // Result Upload Progress Trackers
+  getTeacherResultProgress: async () => {
+    const res = await fetch(`${API_BASE}/teacher/result-progress`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+
+  getAdminResultProgress: async () => {
+    const res = await fetch(`${API_BASE}/admin/result-progress`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+
   // Fees / Finance
   getStudentFees: async (studentId) => {
     const res = await fetch(`${API_BASE}/fees/student/${studentId}`, { headers: getHeaders() });
@@ -454,11 +465,20 @@ const api = {
     return handleResponse(res);
   },
 
-  addFeeStructure: async (title, amount, tier) => {
+  addFeeStructure: async (title, amount, tier, category = 'School Fees') => {
     const res = await fetch(`${API_BASE}/fees/structures`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ title, amount, tier })
+      body: JSON.stringify({ title, amount, tier, category })
+    });
+    return handleResponse(res);
+  },
+
+  updateFeeStructure: async (id, title, amount, tier, category = 'School Fees') => {
+    const res = await fetch(`${API_BASE}/fees/structures/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({ title, amount, tier, category })
     });
     return handleResponse(res);
   },

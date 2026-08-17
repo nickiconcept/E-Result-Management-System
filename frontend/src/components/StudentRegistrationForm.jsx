@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import api from '../utils/api';
+import { ArrowLeft, Edit2, Printer, X, User, Save, Upload } from 'lucide-react';
 
 export default function StudentRegistrationForm({ student, onClose, onUpdate }) {
   if (!student) return null;
@@ -48,21 +49,23 @@ export default function StudentRegistrationForm({ student, onClose, onUpdate }) 
   return (
     <div className="modal-overlay">
       <div className="modal-content glass-panel" style={{ maxWidth: '850px', backgroundColor: 'var(--bg-surface)' }}>
-        <button className="modal-close no-print" onClick={onClose}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <button className="modal-close no-print" onClick={onClose} style={{ display: 'flex', alignItems: 'center' }}>
+          <X size={20} />
         </button>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }} className="no-print">
-          <button className="btn btn-secondary" onClick={onClose} style={{ border: '1px solid var(--border-color)', padding: '8px 16px', fontSize: '0.85rem' }}>
-            ← Back to Student List
+          <button className="btn btn-secondary" onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-color)', padding: '8px 16px', fontSize: '0.85rem' }}>
+            <ArrowLeft size={16} />
+            <span>Back to Student Roster</span>
           </button>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn-secondary" onClick={() => setIsEditing(!isEditing)}>
-              {isEditing ? 'Cancel Edit' : 'Edit Profile'}
+            <button className="btn btn-secondary" onClick={() => setIsEditing(!isEditing)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Edit2 size={16} />
+              <span>{isEditing ? 'Cancel Edit' : 'Edit Profile'}</span>
             </button>
-            <button className="btn btn-primary" onClick={handlePrint}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '5px', verticalAlign: 'text-bottom' }}><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-              Print Form
+            <button className="btn btn-primary" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Printer size={16} />
+              <span>Print Form</span>
             </button>
           </div>
         </div>

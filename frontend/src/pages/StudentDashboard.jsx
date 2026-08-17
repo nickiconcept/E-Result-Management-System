@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import ReportCard from '../components/ReportCard';
+import { ArrowLeft, Award, CreditCard, FileText, ShieldCheck, Printer, CheckCircle, Lock, Unlock, Receipt, X } from 'lucide-react';
 
-export default function StudentDashboard({ user, settings, activeTab }) {
+export default function StudentDashboard({ user, settings, activeTab, subTab }) {
   const [activeSubTab, setActiveSubTab] = useState('overview');
 
   // Student statistics
@@ -41,7 +42,11 @@ export default function StudentDashboard({ user, settings, activeTab }) {
     } else if (activeTab === 'dashboard') {
       setActiveSubTab('overview');
     }
-  }, [activeTab]);
+
+    if (subTab) {
+      setActiveSubTab(subTab);
+    }
+  }, [activeTab, subTab]);
 
   const loadClassSubjects = async () => {
     try {
@@ -344,7 +349,12 @@ export default function StudentDashboard({ user, settings, activeTab }) {
                 <tbody>
                   {invoices.map((inv, idx) => (
                     <tr key={idx}>
-                      <td style={{ fontWeight: '600' }}>{inv.title}</td>
+                      <td style={{ fontWeight: '600' }}>
+                        <div>{inv.title}</div>
+                        <span className="badge" style={{ fontSize: '0.7rem', marginTop: '3px', backgroundColor: 'var(--bg-primary)', color: 'var(--primary)', border: '1px solid var(--border-color)' }}>
+                          {inv.category || 'School Fees'}
+                        </span>
+                      </td>
                       <td>₦{inv.amount_due.toLocaleString()}</td>
                       <td>₦{inv.amount_paid.toLocaleString()}</td>
                       <td>
@@ -518,15 +528,15 @@ export default function StudentDashboard({ user, settings, activeTab }) {
                 <table className="school-table" style={{ margin: 0 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '80px', textAlign: 'center' }}>Week</th>
-                      <th style={{ width: '35%' }}>Topic / Content</th>
-                      <th>Learning Objectives / Remarks</th>
+                      <th style={{ width: '70px', textAlign: 'center' }}>Week</th>
+                      <th style={{ width: '38%' }}>Title & Subtitle</th>
+                      <th>Content / Objectives</th>
                     </tr>
                   </thead>
                   <tbody>
                     {schemeWeeks.map((w, idx) => (
                       <tr key={idx}>
-                        <td style={{ textAlign: 'center' }}>
+                        <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '14px' }}>
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             width: '32px', height: '32px', borderRadius: '50%',
@@ -535,10 +545,21 @@ export default function StudentDashboard({ user, settings, activeTab }) {
                             fontWeight: '700', fontSize: '0.8rem'
                           }}>{w.week}</span>
                         </td>
-                        <td style={{ fontWeight: w.topic ? '500' : '400' }}>
-                          {w.topic || <em style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No topic defined yet</em>}
+                        <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                          {w.topic ? (
+                            <div>
+                              <div style={{ fontWeight: '700', fontSize: '0.92rem', color: 'var(--text-primary)' }}>{w.topic}</div>
+                              {w.subtitle && (
+                                <div style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '3px', fontWeight: '500' }}>
+                                  📌 {w.subtitle}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <em style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No topic defined yet</em>
+                          )}
                         </td>
-                        <td style={{ color: w.objectives ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: w.objectives ? '0.9rem' : '0.85rem' }}>
+                        <td style={{ color: w.objectives ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: '0.88rem', verticalAlign: 'top', whiteSpace: 'pre-line' }}>
                           {w.objectives || <em>—</em>}
                         </td>
                       </tr>
@@ -640,8 +661,13 @@ export default function StudentDashboard({ user, settings, activeTab }) {
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }} className="no-print">
-              <button className="btn btn-primary" onClick={printReceiptAction}>Print Slip</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }} className="no-print">
+              <button className="btn btn-secondary" onClick={() => setActiveReceipt(null)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <ArrowLeft size={16} /> Back to Fees
+              </button>
+              <button className="btn btn-primary" onClick={printReceiptAction} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Printer size={16} /> Print Slip
+              </button>
             </div>
           </div>
         </div>

@@ -9,7 +9,8 @@ const PORT = process.env.PORT || 5000;
 const JWT_SECRET = 'jere-model-academy-super-secret-key-2026';
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Catch body-parser SyntaxErrors to debug
 app.use((err, req, res, next) => {
@@ -172,6 +173,7 @@ app.post('/api/settings', authenticateToken, requireRole('admin'), async (req, r
     house_master_name,
     house_master_remark,
     principal_name,
+    principal_signature,
     next_term_fee,
     next_term_begins,
     next_term_ends,
@@ -204,6 +206,7 @@ app.post('/api/settings', authenticateToken, requireRole('admin'), async (req, r
         house_master_name = ?,
         house_master_remark = ?,
         principal_name = ?,
+        principal_signature = ?,
         next_term_fee = ?,
         next_term_begins = ?,
         next_term_ends = ?,
@@ -232,6 +235,7 @@ app.post('/api/settings', authenticateToken, requireRole('admin'), async (req, r
       house_master_name || '',
       house_master_remark || '',
       principal_name || '',
+      principal_signature || null,
       next_term_fee || '',
       next_term_begins || '',
       next_term_ends || '',
@@ -384,37 +388,67 @@ app.put('/api/users/update-student/:id', authenticateToken, requireRole('admin')
 });
 
 // Update Teacher Profile
-app.put('/api/users/update-teacher/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+app.put('/api/users/update-teacher/:id', authenticateToken, async (req, res) => {
   const { id } = req.params;
+
+  if (req.user.role !== 'admin' && req.user.id !== parseInt(id)) {
+    return res.status(403).json({ error: 'Access denied: You can only update your own profile' });
+  }
+
   const {
     full_name, surname, first_name, other_names,
     address, state_of_residence, lga_of_residence,
-    passport_photo, digital_signature
+    passport_photo, digital_signature, signature
   } = req.body;
+
+  const sig = digital_signature !== undefined ? digital_signature : signature;
 
   try {
     // 1. Update USERS table
-    await runQuery(
-      `UPDATE USERS SET full_name = ?, passport_photo = ? WHERE id = ?`,
-      [full_name || `${surname} ${first_name} ${other_names || ''}`.trim(), passport_photo || null, id]
-    );
+    const computedName = full_name || `${surname || ''} ${first_name || ''} ${other_names || ''}`.trim();
+    if (passport_photo !== undefined) {
+      await runQuery(
+        `UPDATE USERS SET full_name = ?, passport_photo = ? WHERE id = ?`,
+        [computedName || 'Teacher', passport_photo, id]
+      );
+    } else {
+      await runQuery(
+        `UPDATE USERS SET full_name = ? WHERE id = ?`,
+        [computedName || 'Teacher', id]
+      );
+    }
 
-    // 2. Update TEACHERS table
-    await runQuery(
-      `UPDATE TEACHERS 
-       SET surname = ?, first_name = ?, other_names = ?, 
-           address = ?, state_of_residence = ?, lga_of_residence = ?, 
-           digital_signature = ?
-       WHERE id = ?`,
-      [
-        surname || null, first_name || null, other_names || null,
-        address || null, state_of_residence || null, lga_of_residence || null,
-        digital_signature || null, id
-      ]
-    );
+    // 2. Check if row exists in TEACHERS table (upsert)
+    const teacherRow = await getQuery('SELECT id FROM TEACHERS WHERE id = ?', [id]);
+    if (!teacherRow) {
+      await runQuery(
+        `INSERT INTO TEACHERS (id, surname, first_name, other_names, address, state_of_residence, lga_of_residence, signature)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id,
+          surname || null, first_name || null, other_names || null,
+          address || null, state_of_residence || null, lga_of_residence || null,
+          sig || null
+        ]
+      );
+    } else {
+      await runQuery(
+        `UPDATE TEACHERS 
+         SET surname = ?, first_name = ?, other_names = ?, 
+             address = ?, state_of_residence = ?, lga_of_residence = ?, 
+             signature = ?
+         WHERE id = ?`,
+        [
+          surname || null, first_name || null, other_names || null,
+          address || null, state_of_residence || null, lga_of_residence || null,
+          sig || null, id
+        ]
+      );
+    }
 
     res.json({ message: 'Teacher updated successfully' });
   } catch (err) {
+    console.error('Error updating teacher profile:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -440,7 +474,8 @@ app.get('/api/teachers', authenticateToken, async (req, res) => {
   try {
     const teachers = await allQuery(`
       SELECT u.id, u.username, u.full_name, u.email, u.passport_photo, u.created_at, u.status,
-             t.surname, t.first_name, t.other_names, t.address, t.state_of_residence, t.lga_of_residence, t.signature 
+             t.surname, t.first_name, t.other_names, t.address, t.state_of_residence, t.lga_of_residence,
+             t.signature as digital_signature, t.signature 
       FROM USERS u
       LEFT JOIN TEACHERS t ON u.id = t.id
       WHERE u.role = 'teacher'
@@ -632,8 +667,9 @@ app.get('/api/skills', authenticateToken, async (req, res) => {
 // Add Skill (Admin)
 app.post('/api/skills', authenticateToken, requireRole('admin'), async (req, res) => {
   const { name, category } = req.body;
+  const cat = (category || 'affective').toLowerCase();
   try {
-    await runQuery('INSERT INTO BEHAVIORAL_SKILLS (name, category) VALUES (?, ?)', [name, category]);
+    await runQuery('INSERT INTO BEHAVIORAL_SKILLS (name, category) VALUES (?, ?)', [name, cat]);
     res.status(201).json({ message: 'Skill created successfully' });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -643,8 +679,9 @@ app.post('/api/skills', authenticateToken, requireRole('admin'), async (req, res
 // Update Skill (Admin)
 app.put('/api/skills/:id', authenticateToken, requireRole('admin'), async (req, res) => {
   const { name, category } = req.body;
+  const cat = (category || 'affective').toLowerCase();
   try {
-    await runQuery('UPDATE BEHAVIORAL_SKILLS SET name = ?, category = ? WHERE id = ?', [name, category, req.params.id]);
+    await runQuery('UPDATE BEHAVIORAL_SKILLS SET name = ?, category = ? WHERE id = ?', [name, cat, req.params.id]);
     res.json({ message: 'Skill updated successfully' });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -1137,11 +1174,13 @@ async function buildReportCardData(targetStudentId, reqTerm, reqYear) {
 
   // Complete Student Information Header
   const studentInfo = await getQuery(`
-    SELECT s.*, u.full_name, u.passport_photo, c.name as class_name, c.tier, fm.full_name as form_master_name
+    SELECT s.*, u.full_name, u.passport_photo, c.name as class_name, c.tier, 
+           fm.full_name as form_master_name, fmt.signature as form_master_signature
     FROM STUDENTS s
     JOIN USERS u ON s.id = u.id
     LEFT JOIN CLASSES c ON s.class_id = c.id
     LEFT JOIN USERS fm ON c.form_master_id = fm.id
+    LEFT JOIN TEACHERS fmt ON c.form_master_id = fmt.id
     WHERE s.id = ?
   `, [targetStudentId]);
 
@@ -1156,16 +1195,16 @@ async function buildReportCardData(targetStudentId, reqTerm, reqYear) {
     studentInfo.unpaid_balance = unpaidRow && unpaidRow.balance > 0 ? unpaidRow.balance : 0;
   }
 
-  // Fetch Attendance statistics for this term
+  // Fetch Attendance statistics recorded for this student
   const attendanceStats = await getQuery(`
     SELECT 
-      COUNT(CASE WHEN status = 'present' THEN 1 END) as present,
+      COUNT(CASE WHEN status IN ('present', 'late') THEN 1 END) as present,
       COUNT(CASE WHEN status = 'absent' THEN 1 END) as absent,
       COUNT(CASE WHEN status = 'late' THEN 1 END) as late,
       COUNT(*) as total
     FROM ATTENDANCE
-    WHERE student_id = ? AND date BETWEEN ? AND ?
-  `, [targetStudentId, `${reqYear.split('/')[0]}-09-01`, `${reqYear.split('/')[1]}-08-31`]); 
+    WHERE student_id = ?
+  `, [targetStudentId]); 
 
   // Calculate cumulative averages if it is the 3rd Term ( Nigerian standard )
   let reports = activeGrades;
@@ -1207,10 +1246,14 @@ async function buildReportCardData(targetStudentId, reqTerm, reqYear) {
   }
 
   const behavioral = await allQuery(`
-    SELECT bs.name, bs.category, sse.rating 
-    FROM STUDENT_SKILLS_EVALUATION sse
-    JOIN BEHAVIORAL_SKILLS bs ON sse.skill_id = bs.id
-    WHERE sse.student_id = ? AND sse.term = ? AND sse.academic_year = ?
+    SELECT bs.name, bs.category, COALESCE(sse.rating, 4) as rating 
+    FROM BEHAVIORAL_SKILLS bs
+    LEFT JOIN STUDENT_SKILLS_EVALUATION sse 
+      ON bs.id = sse.skill_id 
+     AND sse.student_id = ? 
+     AND sse.term = ? 
+     AND sse.academic_year = ?
+    ORDER BY bs.category, bs.name
   `, [targetStudentId, reqTerm, reqYear]);
 
   let position = null;
@@ -1382,6 +1425,173 @@ app.get(['/api/report-cards/bulk', '/api/report-card/bulk'], authenticateToken, 
   }
 });
 
+// ==========================================
+// RESULT UPLOAD PROGRESS TRACKING ENDPOINTS
+// ==========================================
+
+// 1. Teacher Result Upload Progress Endpoint
+app.get('/api/teacher/result-progress', authenticateToken, requireRole('teacher'), async (req, res) => {
+  try {
+    const settings = await getQuery('SELECT active_term, active_session FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1');
+    const term = settings ? settings.active_term : '3rd Term';
+    const year = settings ? settings.active_session : '2025/2026';
+
+    const assignments = await allQuery(`
+      SELECT cs.class_id, cs.subject_id, c.name as class_name, s.name as subject_name 
+      FROM CLASS_SUBJECTS cs
+      JOIN CLASSES c ON cs.class_id = c.id
+      JOIN SUBJECTS s ON cs.subject_id = s.id
+      WHERE cs.teacher_id = ?
+      ORDER BY c.name, s.name
+    `, [req.user.id]);
+
+    const details = [];
+    let completedCount = 0;
+    let inProgressCount = 0;
+    let pendingCount = 0;
+
+    for (const item of assignments) {
+      const studentCountRow = await getQuery('SELECT COUNT(*) as count FROM STUDENTS WHERE class_id = ?', [item.class_id]);
+      const totalStudents = studentCountRow ? studentCountRow.count : 0;
+
+      const uploadedRow = await getQuery(`
+        SELECT COUNT(DISTINCT student_id) as count 
+        FROM GRADES 
+        WHERE subject_id = ? AND term = ? AND academic_year = ? AND student_id IN (
+          SELECT id FROM STUDENTS WHERE class_id = ?
+        )
+      `, [item.subject_id, term, year, item.class_id]);
+      const uploadedCount = uploadedRow ? uploadedRow.count : 0;
+
+      let status = 'Pending';
+      if (totalStudents > 0 && uploadedCount >= totalStudents) {
+        status = 'Completed';
+        completedCount++;
+      } else if (uploadedCount > 0) {
+        status = 'In Progress';
+        inProgressCount++;
+      } else {
+        pendingCount++;
+      }
+
+      const pct = totalStudents > 0 ? Math.min(100, Math.round((uploadedCount / totalStudents) * 100)) : 0;
+
+      details.push({
+        class_id: item.class_id,
+        subject_id: item.subject_id,
+        class_name: item.class_name,
+        subject_name: item.subject_name,
+        total_students: totalStudents,
+        uploaded_count: uploadedCount,
+        percentage: pct,
+        status
+      });
+    }
+
+    const total = assignments.length;
+    const overallPct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+    res.json({
+      term,
+      academic_year: year,
+      summary: {
+        total,
+        completed: completedCount,
+        in_progress: inProgressCount,
+        pending: pendingCount,
+        percentage: overallPct
+      },
+      details
+    });
+  } catch (err) {
+    console.error('Error fetching teacher result progress:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 2. Admin Result Upload Progress Endpoint
+app.get('/api/admin/result-progress', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const settings = await getQuery('SELECT active_term, active_session FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1');
+    const term = settings ? settings.active_term : '3rd Term';
+    const year = settings ? settings.active_session : '2025/2026';
+
+    const allocations = await allQuery(`
+      SELECT cs.class_id, cs.subject_id, cs.teacher_id, 
+             c.name as class_name, s.name as subject_name, u.full_name as teacher_name
+      FROM CLASS_SUBJECTS cs
+      JOIN CLASSES c ON cs.class_id = c.id
+      JOIN SUBJECTS s ON cs.subject_id = s.id
+      LEFT JOIN USERS u ON cs.teacher_id = u.id
+      ORDER BY c.name, s.name
+    `);
+
+    const details = [];
+    let completedCount = 0;
+    let inProgressCount = 0;
+    let pendingCount = 0;
+
+    for (const item of allocations) {
+      const studentCountRow = await getQuery('SELECT COUNT(*) as count FROM STUDENTS WHERE class_id = ?', [item.class_id]);
+      const totalStudents = studentCountRow ? studentCountRow.count : 0;
+
+      const uploadedRow = await getQuery(`
+        SELECT COUNT(DISTINCT student_id) as count 
+        FROM GRADES 
+        WHERE subject_id = ? AND term = ? AND academic_year = ? AND student_id IN (
+          SELECT id FROM STUDENTS WHERE class_id = ?
+        )
+      `, [item.subject_id, term, year, item.class_id]);
+      const uploadedCount = uploadedRow ? uploadedRow.count : 0;
+
+      let status = 'Pending';
+      if (totalStudents > 0 && uploadedCount >= totalStudents) {
+        status = 'Completed';
+        completedCount++;
+      } else if (uploadedCount > 0) {
+        status = 'In Progress';
+        inProgressCount++;
+      } else {
+        pendingCount++;
+      }
+
+      const pct = totalStudents > 0 ? Math.min(100, Math.round((uploadedCount / totalStudents) * 100)) : 0;
+
+      details.push({
+        class_id: item.class_id,
+        subject_id: item.subject_id,
+        teacher_id: item.teacher_id,
+        class_name: item.class_name,
+        subject_name: item.subject_name,
+        teacher_name: item.teacher_name || 'Unassigned',
+        total_students: totalStudents,
+        uploaded_count: uploadedCount,
+        percentage: pct,
+        status
+      });
+    }
+
+    const total = allocations.length;
+    const overallPct = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+    res.json({
+      term,
+      academic_year: year,
+      summary: {
+        total,
+        completed: completedCount,
+        in_progress: inProgressCount,
+        pending: pendingCount,
+        percentage: overallPct
+      },
+      details
+    });
+  } catch (err) {
+    console.error('Error fetching admin result progress:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get Student Complete Academic Timeline (Past terms and grades recorded)
 app.get('/api/student/timeline/:studentId', authenticateToken, async (req, res) => {
   const { studentId } = req.params;
@@ -1465,7 +1675,7 @@ app.get('/api/schemes', authenticateToken, async (req, res) => {
 
 // Save or Update a scheme entry (Admin Only)
 app.post('/api/schemes', authenticateToken, requireRole('admin'), async (req, res) => {
-  const { class_id, subject_id, term, week, topic, objectives } = req.body;
+  const { class_id, subject_id, term, week, topic, subtitle, objectives } = req.body;
 
   if (!class_id || !subject_id || !term || !week || !topic) {
     return res.status(400).json({ error: 'Class ID, Subject ID, term, week, and topic are required' });
@@ -1473,13 +1683,14 @@ app.post('/api/schemes', authenticateToken, requireRole('admin'), async (req, re
 
   try {
     await runQuery(`
-      INSERT INTO SCHEME_OF_WORK (class_id, subject_id, term, week, topic, objectives, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO SCHEME_OF_WORK (class_id, subject_id, term, week, topic, subtitle, objectives, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(class_id, subject_id, term, week) DO UPDATE SET
         topic = excluded.topic,
+        subtitle = excluded.subtitle,
         objectives = excluded.objectives,
         created_by = excluded.created_by
-    `, [class_id, subject_id, term, week, topic, objectives || null, req.user.id]);
+    `, [class_id, subject_id, term, week, topic, subtitle || null, objectives || null, req.user.id]);
 
     res.json({ message: 'Scheme of work entry saved successfully' });
   } catch (err) {
@@ -1506,7 +1717,7 @@ app.delete('/api/schemes/:id', authenticateToken, requireRole('admin'), async (r
 
 // Add Invoice to specific class OR whole tier
 app.post('/api/fees/add', authenticateToken, requireRole('admin'), async (req, res) => {
-  const { title, amount, class_id, tier } = req.body;
+  const { title, category = 'School Fees', amount, class_id, tier } = req.body;
   const parsedAmount = parseFloat(amount);
 
   try {
@@ -1529,9 +1740,9 @@ app.post('/api/fees/add', authenticateToken, requireRole('admin'), async (req, r
 
     for (const sId of studentIds) {
       await runQuery(`
-        INSERT INTO FEE_INVOICES (student_id, title, amount_due, amount_paid, status)
-        VALUES (?, ?, ?, 0, 'unpaid')
-      `, [sId, title, parsedAmount]);
+        INSERT INTO FEE_INVOICES (student_id, title, category, amount_due, amount_paid, status)
+        VALUES (?, ?, ?, ?, 0, 'unpaid')
+      `, [sId, title, category || 'School Fees', parsedAmount]);
     }
 
     res.status(201).json({ message: `Invoice successfully created for ${studentIds.length} students.` });
@@ -1856,15 +2067,38 @@ app.get('/api/fees/structures', authenticateToken, async (req, res) => {
 
 // Create Fee Structure (Admin Only)
 app.post('/api/fees/structures', authenticateToken, requireRole('admin'), async (req, res) => {
-  const { title, amount, tier } = req.body;
+  const { title, category = 'School Fees', amount, tier } = req.body;
   if (!title || !amount || !tier) {
     return res.status(400).json({ error: 'Title, amount, and tier are required' });
   }
   try {
     await runQuery(`
-      INSERT INTO FEE_STRUCTURES (title, amount, tier) VALUES (?, ?, ?)
-    `, [title, parseFloat(amount), tier]);
+      INSERT INTO FEE_STRUCTURES (title, category, amount, tier) VALUES (?, ?, ?, ?)
+    `, [title, category || 'School Fees', parseFloat(amount), tier]);
     res.status(201).json({ message: 'Fee structure created successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update Fee Structure (Admin Only)
+app.put('/api/fees/structures/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { id } = req.params;
+  const { title, category = 'School Fees', amount, tier } = req.body;
+  if (!title || !amount || !tier) {
+    return res.status(400).json({ error: 'Title, amount, and tier are required' });
+  }
+  try {
+    const structure = await getQuery('SELECT id FROM FEE_STRUCTURES WHERE id = ?', [id]);
+    if (!structure) return res.status(404).json({ error: 'Fee structure not found' });
+
+    await runQuery(`
+      UPDATE FEE_STRUCTURES 
+      SET title = ?, category = ?, amount = ?, tier = ? 
+      WHERE id = ?
+    `, [title, category || 'School Fees', parseFloat(amount), tier, id]);
+
+    res.json({ message: 'Fee structure updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

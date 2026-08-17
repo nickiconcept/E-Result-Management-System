@@ -5,19 +5,60 @@ import TeacherProfileCard from '../components/TeacherProfileCard';
 import SignaturePad from '../components/SignaturePad';
 import BulkResultPrinter from '../components/BulkResultPrinter';
 import ClassBroadsheet from '../components/ClassBroadsheet';
+import {
+  ArrowLeft,
+  LayoutDashboard,
+  Users,
+  GraduationCap,
+  School,
+  BookOpen,
+  Book,
+  FileText,
+  CalendarCheck,
+  CheckSquare,
+  BarChart2,
+  FileSpreadsheet,
+  Printer,
+  Edit3,
+  Grid,
+  Key,
+  CreditCard,
+  Receipt,
+  Layers,
+  History,
+  AlertCircle,
+  Settings,
+  Sliders,
+  RotateCw,
+  Globe,
+  Award,
+  Sparkles,
+  TrendingUp,
+  Plus,
+  Search,
+  Eye,
+  Trash2,
+  Lock,
+  Unlock,
+  Download,
+  Save,
+  RefreshCw,
+  CheckCircle,
+  XCircle
+} from 'lucide-react';
 
 // 3D Column Chart Component
-function ThreeDColumnChart({ title, subtitle, data, height = 220 }) {
+function ThreeDColumnChart({ title, subtitle, data, height = 140 }) {
   if (!data || data.length === 0) return null;
   const maxValue = Math.max(...data.map(d => Number(d.value) || 0), 1);
 
   return (
-    <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div className="glass-panel" style={{ padding: '14px 18px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <div>
-        <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <h4 style={{ margin: 0, fontSize: '0.95rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span>📊</span> {title}
         </h4>
-        {subtitle && <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '4px 0 0 0' }}>{subtitle}</p>}
+        {subtitle && <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', margin: '2px 0 0 0' }}>{subtitle}</p>}
       </div>
 
       <div style={{ height: `${height}px`, display: 'flex', alignItems: 'flex-end', gap: '14px', padding: '25px 10px 10px 10px', borderBottom: '2px solid var(--border-color)', position: 'relative', overflowX: 'auto', minWidth: '100%' }}>
@@ -209,7 +250,7 @@ function ThreeDPieChart({ title, subtitle, data, size = 180 }) {
 }
 
 
-export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
+export default function AdminDashboard({ settings, fetchSettings, activeTab, subTab }) {
   const [activeSubTab, setActiveSubTab] = useState('overview');
   const [settingsSubTab, setSettingsSubTab] = useState('academic');
   const [resultsSubTab, setResultsSubTab] = useState('bulk');
@@ -255,7 +296,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const [classForm, setClassForm] = useState({ name: '', tier: 'jss' });
   const [subjectForm, setSubjectForm] = useState({ name: '', tier: 'jss', class_ids: [] });
   const [assignForm, setAssignForm] = useState({ class_ids: [], subject_id: '', teacher_id: '' });
-  const [feeForm, setFeeForm] = useState({ title: '', amount: '', class_id: '', tier: '' });
+  const [feeForm, setFeeForm] = useState({ title: '', category: 'School Fees', amount: '', class_id: '', tier: '' });
   const [payForm, setPayForm] = useState({ invoice_id: '', amount_paid: '', payment_method: 'Cash', student_name: '' });
   const [pinCount, setPinCount] = useState(20);
 
@@ -265,6 +306,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const [teacherSearch, setTeacherSearch] = useState('');
   const [feeSearch, setFeeSearch] = useState('');
   const [feeClassFilter, setFeeClassFilter] = useState('');
+  const [feeCategoryFilter, setFeeCategoryFilter] = useState('');
   const [pinSearch, setPinSearch] = useState('');
   
   // Promotion manager states
@@ -303,6 +345,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
     house_master_name: '',
     house_master_remark: '',
     principal_name: '',
+    principal_signature: '',
     next_term_fee: '',
     next_term_begins: '',
     next_term_ends: '',
@@ -333,7 +376,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   // Fees MVP reports and structure management states
   const [feeStructures, setFeeStructures] = useState([]);
   const [showFeeStructureModal, setShowFeeStructureModal] = useState(false);
-  const [newFeeStructureForm, setNewFeeStructureForm] = useState({ title: '', amount: '', tier: 'jss' });
+  const [editingFeeStructure, setEditingFeeStructure] = useState(null);
+  const [newFeeStructureForm, setNewFeeStructureForm] = useState({ title: '', category: 'School Fees', amount: '', tier: 'jss' });
   const [feesReport, setFeesReport] = useState([]);
   const [activeFeesSubTab, setActiveFeesSubTab] = useState('invoices'); // 'invoices' or 'structures' or 'report'
   const [selectedReceipt, setSelectedReceipt] = useState(null);
@@ -342,9 +386,22 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const [paymentReportSearch, setPaymentReportSearch] = useState('');
   const [paymentReportClassFilter, setPaymentReportClassFilter] = useState('');
   const [paymentReportStatusFilter, setPaymentReportStatusFilter] = useState('all');
+  const [paymentReportCategoryFilter, setPaymentReportCategoryFilter] = useState('');
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState(null);
   const [studentHistoryData, setStudentHistoryData] = useState({ invoices: [], receipts: [] });
   const [loadingStudentHistory, setLoadingStudentHistory] = useState(false);
+
+  // Admin Result Progress Tracker
+  const [adminResultProgress, setAdminResultProgress] = useState(null);
+
+  const loadAdminResultProgress = async () => {
+    try {
+      const data = await api.getAdminResultProgress();
+      setAdminResultProgress(data);
+    } catch (err) {
+      console.error('Failed to load admin result progress:', err);
+    }
+  };
 
   // Admin Broadsheet states
   const [adminBroadsheetClassId, setAdminBroadsheetClassId] = useState('');
@@ -441,6 +498,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
         house_master_name: settings.house_master_name || '',
         house_master_remark: settings.house_master_remark || '',
         principal_name: settings.principal_name || '',
+        principal_signature: settings.principal_signature || '',
         next_term_fee: settings.next_term_fee || '',
         next_term_begins: settings.next_term_begins || '',
         next_term_ends: settings.next_term_ends || '',
@@ -455,7 +513,15 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
     } else if (activeTab === 'dashboard') {
       setActiveSubTab('overview');
     }
-  }, [activeTab]);
+
+    if (subTab) {
+      if (activeTab === 'subjects') setSubjectsSubTab(subTab);
+      else if (activeTab === 'attendance') setActiveAdminAttendanceSubTab(subTab);
+      else if (activeTab === 'student-results') setResultsSubTab(subTab);
+      else if (activeTab === 'fees') setActiveFeesSubTab(subTab);
+      else if (activeTab === 'settings') setSettingsSubTab(subTab);
+    }
+  }, [activeTab, subTab]);
 
   useEffect(() => {
     if (activeSubTab === 'broadsheet') {
@@ -483,6 +549,19 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
     } catch (err) {
       setErrorMsg('Failed to load fee structures: ' + err.message);
     }
+  };
+
+
+
+  const handleEditFeeStructureClick = (struct) => {
+    setEditingFeeStructure(struct);
+    setNewFeeStructureForm({
+      title: struct.title || '',
+      category: struct.category || 'School Fees',
+      amount: struct.amount || '',
+      tier: struct.tier || 'jss'
+    });
+    setShowFeeStructureModal(true);
   };
 
   const loadFeesReport = async () => {
@@ -553,6 +632,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       loadSessions();
       loadFeeStructures();
       loadFeesReport();
+      loadAdminResultProgress();
     } catch (err) {
       setErrorMsg('Failed to sync school database: ' + err.message);
     }
@@ -668,7 +748,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       setNotify('Fees invoice generated and posted successfully!');
       setShowFeeModal(false);
       loadAllData();
-      setFeeForm({ title: '', amount: '', class_id: '', tier: '' });
+      setFeeForm({ title: '', category: 'School Fees', amount: '', class_id: '', tier: '' });
     } catch (err) {
       setErrorMsg(err.message);
     }
@@ -858,9 +938,26 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
     setNotify('');
     setErrorMsg('');
     try {
-      await api.addFeeStructure(newFeeStructureForm.title, newFeeStructureForm.amount, newFeeStructureForm.tier);
-      setNotify('Tier Fee Structure added successfully!');
-      setNewFeeStructureForm({ title: '', amount: '', tier: 'jss' });
+      if (editingFeeStructure) {
+        await api.updateFeeStructure(
+          editingFeeStructure.id,
+          newFeeStructureForm.title,
+          newFeeStructureForm.amount,
+          newFeeStructureForm.tier,
+          newFeeStructureForm.category
+        );
+        setNotify('Fee Structure updated successfully!');
+      } else {
+        await api.addFeeStructure(
+          newFeeStructureForm.title,
+          newFeeStructureForm.amount,
+          newFeeStructureForm.tier,
+          newFeeStructureForm.category
+        );
+        setNotify('Tier Fee Structure added successfully!');
+      }
+      setEditingFeeStructure(null);
+      setNewFeeStructureForm({ title: '', category: 'School Fees', amount: '', tier: 'jss' });
       setShowFeeStructureModal(false);
       loadFeeStructures();
     } catch (err) {
@@ -955,7 +1052,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const [adminSchemeClass, setAdminSchemeClass] = useState('');
   const [adminSchemeSubject, setAdminSchemeSubject] = useState('');
   const [adminSchemeTerm, setAdminSchemeTerm] = useState('3rd Term');
-  const [adminSchemeWeeks, setAdminSchemeWeeks] = useState(Array.from({ length: 12 }, (_, i) => ({ week: i + 1, topic: '', objectives: '', id: null })));
+  const [adminSchemeWeeks, setAdminSchemeWeeks] = useState(Array.from({ length: 12 }, (_, i) => ({ week: i + 1, topic: '', subtitle: '', objectives: '', id: null })));
 
   // Admin Enter Marks States
   const [adminGradesClass, setAdminGradesClass] = useState('');
@@ -990,6 +1087,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
         return {
           week: wkNum,
           topic: entry ? entry.topic : '',
+          subtitle: entry ? entry.subtitle || '' : '',
           objectives: entry ? entry.objectives || '' : '',
           id: entry ? entry.id : null
         };
@@ -1013,7 +1111,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
     setNotify('');
     setErrorMsg('');
     if (!weekObj.topic) {
-      setErrorMsg(`Topic for Week ${weekObj.week} is required to save.`);
+      setErrorMsg(`Topic Title for Week ${weekObj.week} is required to save.`);
       return;
     }
     try {
@@ -1023,6 +1121,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
         term: adminSchemeTerm,
         week: weekObj.week,
         topic: weekObj.topic,
+        subtitle: weekObj.subtitle,
         objectives: weekObj.objectives
       });
       setNotify(`Successfully saved Week ${weekObj.week} Scheme of Work!`);
@@ -1035,6 +1134,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
   const handleDeleteAdminSchemeWeek = async (weekObj) => {
     if (!weekObj.id) {
       handleAdminSchemeFieldChange(weekObj.week, 'topic', '');
+      handleAdminSchemeFieldChange(weekObj.week, 'subtitle', '');
       handleAdminSchemeFieldChange(weekObj.week, 'objectives', '');
       return;
     }
@@ -1234,9 +1334,112 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
 
               <ThreeDPieChart
                 title="School Fees Collection Summary"
-                subtitle="Ratio of collected tuition fees versus pending outstanding balances"
+                subtitle="Ratio of collected school fees versus pending outstanding balances"
                 data={feeRevenuePieData}
               />
+            </div>
+
+            {/* ADMIN OVERALL SCHOOL RESULT UPLOAD PROGRESS */}
+            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.15rem' }}>
+                    <span>📈</span> School-Wide Result Upload Tracker
+                  </h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                    Overall subject score submission status for <strong>{adminResultProgress?.term || 'Current Term'} ({adminResultProgress?.academic_year || 'Session'})</strong>
+                  </p>
+                </div>
+
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '1.8rem', fontWeight: 'bold', color: adminResultProgress?.summary?.percentage === 100 ? '#10b981' : '#3b82f6' }}>
+                    {adminResultProgress?.summary?.percentage || 0}%
+                  </span>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>School Completion Rate</div>
+                </div>
+              </div>
+
+              {/* Overall Progress Bar */}
+              <div style={{ width: '100%', height: '12px', backgroundColor: 'var(--bg-secondary)', borderRadius: '6px', overflow: 'hidden', marginBottom: '20px' }}>
+                <div style={{ 
+                  width: `${adminResultProgress?.summary?.percentage || 0}%`, 
+                  height: '100%', 
+                  background: 'linear-gradient(90deg, #3b82f6 0%, #10b981 100%)', 
+                  borderRadius: '6px', 
+                  transition: 'width 0.5s ease' 
+                }} />
+              </div>
+
+              {/* Summary Cards Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '14px', marginBottom: '24px' }}>
+                <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 600 }}>TOTAL ALLOCATIONS</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1d4ed8' }}>{adminResultProgress?.summary?.total || 0}</div>
+                </div>
+                <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>COMPLETED</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#047857' }}>{adminResultProgress?.summary?.completed || 0}</div>
+                </div>
+                <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: 600 }}>IN PROGRESS</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#b45309' }}>{adminResultProgress?.summary?.in_progress || 0}</div>
+                </div>
+                <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#dc2626', fontWeight: 600 }}>PENDING / REMAINING</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#b91c1c' }}>{adminResultProgress?.summary?.pending || 0}</div>
+                </div>
+              </div>
+
+              {/* Detailed Roster Table */}
+              {adminResultProgress?.details && adminResultProgress.details.length > 0 && (
+                <div style={{ overflowX: 'auto', maxHeight: '350px' }}>
+                  <table className="school-table" style={{ width: '100%', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr>
+                        <th>Class Arm</th>
+                        <th>Subject</th>
+                        <th>Assigned Teacher</th>
+                        <th>Uploaded / Total</th>
+                        <th>Progress</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adminResultProgress.details.map((item, idx) => (
+                        <tr key={idx}>
+                          <td><strong>{item.class_name}</strong></td>
+                          <td>{item.subject_name}</td>
+                          <td>🧑‍🏫 {item.teacher_name}</td>
+                          <td>
+                            <strong>{item.uploaded_count}</strong> / {item.total_students}
+                          </td>
+                          <td style={{ width: '150px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ flex: 1, height: '8px', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ 
+                                  width: `${item.percentage}%`, 
+                                  height: '100%', 
+                                  backgroundColor: item.status === 'Completed' ? '#10b981' : item.status === 'In Progress' ? '#f59e0b' : '#ef4444' 
+                                }} />
+                              </div>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{item.percentage}%</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="badge" style={{
+                              backgroundColor: item.status === 'Completed' ? '#dcfce7' : item.status === 'In Progress' ? '#fef3c7' : '#fee2e2',
+                              color: item.status === 'Completed' ? '#15803d' : item.status === 'In Progress' ? '#b45309' : '#b91c1c',
+                              border: `1px solid ${item.status === 'Completed' ? '#86efac' : item.status === 'In Progress' ? '#fde68a' : '#fca5a5'}`
+                            }}>
+                              {item.status === 'Completed' ? '✓ Uploaded' : item.status === 'In Progress' ? '⏳ Partial' : '❌ Pending'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -1710,16 +1913,16 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                 <table className="school-table" style={{ margin: 0 }}>
                   <thead>
                     <tr>
-                      <th style={{ width: '80px', textAlign: 'center' }}>Week</th>
-                      <th style={{ width: '35%' }}>Topic / Content</th>
-                      <th>Learning Objectives / Remarks</th>
-                      <th style={{ width: '130px', textAlign: 'center' }} className="no-print">Actions</th>
+                      <th style={{ width: '70px', textAlign: 'center' }}>Week</th>
+                      <th style={{ width: '38%' }}>Title & Subtitle</th>
+                      <th>Content / Objectives (Text Area)</th>
+                      <th style={{ width: '120px', textAlign: 'center' }} className="no-print">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {adminSchemeWeeks.map((w, idx) => (
                       <tr key={idx} style={{ backgroundColor: w.topic ? 'transparent' : 'rgba(var(--danger-rgb, 255,59,48), 0.03)' }}>
-                        <td style={{ textAlign: 'center' }}>
+                        <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '16px' }}>
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                             width: '32px', height: '32px', borderRadius: '50%',
@@ -1728,27 +1931,44 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                             fontWeight: '700', fontSize: '0.8rem'
                           }}>{w.week}</span>
                         </td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <input
-                            type="text"
-                            className="form-control"
-                            style={{ fontSize: '0.88rem', padding: '8px 10px', margin: 0 }}
-                            placeholder="e.g. Introduction to Algebra"
-                            value={w.topic}
-                            onChange={(e) => handleAdminSchemeFieldChange(w.week, 'topic', e.target.value)}
-                          />
+                        <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div>
+                              <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '3px', display: 'block', letterSpacing: '0.03em' }}>Topic Title</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                style={{ fontSize: '0.88rem', padding: '8px 10px', margin: 0 }}
+                                placeholder="e.g. Introduction to Algebra"
+                                value={w.topic}
+                                onChange={(e) => handleAdminSchemeFieldChange(w.week, 'topic', e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '3px', display: 'block', letterSpacing: '0.03em' }}>Subtitle / Theme</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                style={{ fontSize: '0.82rem', padding: '7px 10px', margin: 0 }}
+                                placeholder="e.g. Linear Equations & Variables"
+                                value={w.subtitle || ''}
+                                onChange={(e) => handleAdminSchemeFieldChange(w.week, 'subtitle', e.target.value)}
+                              />
+                            </div>
+                          </div>
                         </td>
-                        <td style={{ padding: '10px 12px' }}>
-                          <input
-                            type="text"
+                        <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
+                          <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '3px', display: 'block', letterSpacing: '0.03em' }}>Detailed Content & Learning Objectives</label>
+                          <textarea
                             className="form-control"
-                            style={{ fontSize: '0.88rem', padding: '8px 10px', margin: 0 }}
-                            placeholder="e.g. Students will be able to..."
-                            value={w.objectives}
+                            rows={3}
+                            style={{ fontSize: '0.85rem', padding: '8px 10px', margin: 0, resize: 'vertical', width: '100%' }}
+                            placeholder="Enter detailed weekly lesson outline, objectives, activities, and teacher remarks..."
+                            value={w.objectives || ''}
                             onChange={(e) => handleAdminSchemeFieldChange(w.week, 'objectives', e.target.value)}
                           />
                         </td>
-                        <td style={{ textAlign: 'center', padding: '10px 12px' }} className="no-print">
+                        <td style={{ textAlign: 'center', padding: '12px 10px', verticalAlign: 'top', paddingTop: '32px' }} className="no-print">
                           <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                             <button
                               className="btn btn-primary"
@@ -1757,7 +1977,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                             >
                               Save
                             </button>
-                            {(w.id || w.topic || w.objectives) && (
+                            {(w.id || w.topic || w.subtitle || w.objectives) && (
                               <button
                                 className="btn btn-danger"
                                 style={{ padding: '6px 10px', fontSize: '0.8rem' }}
@@ -1794,6 +2014,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
           {/* Sub Navigation for Fees */}
           <div style={{ display: 'flex', gap: '15px', borderBottom: '1px solid var(--border-color)', marginBottom: '20px' }}>
             <button
+              type="button"
               onClick={() => setActiveFeesSubTab('invoices')}
               style={{
                 padding: '10px 15px',
@@ -1809,6 +2030,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               Billing & Invoices
             </button>
             <button
+              type="button"
               onClick={() => setActiveFeesSubTab('structures')}
               style={{
                 padding: '10px 15px',
@@ -1824,6 +2046,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               Fee Structures
             </button>
             <button
+              type="button"
               onClick={() => setActiveFeesSubTab('report')}
               style={{
                 padding: '10px 15px',
@@ -1836,157 +2059,222 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                 fontSize: '0.95rem'
               }}
             >
-              Paid Fees Report
+              Payment Records
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveFeesSubTab('summary')}
+              style={{
+                padding: '10px 15px',
+                background: 'none',
+                border: 'none',
+                borderBottom: activeFeesSubTab === 'summary' ? '2.5px solid var(--primary)' : 'none',
+                color: activeFeesSubTab === 'summary' ? 'var(--primary)' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '0.95rem'
+              }}
+            >
+              Payment Summary
             </button>
           </div>
 
-          {activeFeesSubTab === 'invoices' && (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-                <div>
-                  <h3>Student Invoices Ledger</h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Select any unpaid/partial invoice to log parent payment.</p>
+          {/* SUBTAB 1: BILLING & INVOICES (UNIQUE STUDENT ROSTER) */}
+          {activeFeesSubTab === 'invoices' && (() => {
+            // Aggregate invoices by student so each student appears ONLY ONCE
+            const studentMap = {};
+
+            // Seed with all registered students
+            students.forEach(s => {
+              const cName = s.class_name || (classes.find(c => c.id === s.class_id)?.name) || 'Unassigned';
+              studentMap[s.id] = {
+                student_id: s.id,
+                full_name: s.full_name,
+                admission_number: s.admission_number,
+                class_id: s.class_id,
+                class_name: cName,
+                total_billed: 0,
+                total_paid: 0,
+                invoices_count: 0,
+                parent_phone: s.parent_phone,
+                passport_photo: s.passport_photo
+              };
+            });
+
+            // Aggregate invoice totals
+            feesReport.forEach(inv => {
+              if (studentMap[inv.student_id]) {
+                studentMap[inv.student_id].total_billed += (inv.amount_due || 0);
+                studentMap[inv.student_id].total_paid += (inv.amount_paid || 0);
+                studentMap[inv.student_id].invoices_count += 1;
+              } else {
+                studentMap[inv.student_id] = {
+                  student_id: inv.student_id,
+                  full_name: inv.full_name,
+                  admission_number: inv.admission_number,
+                  class_id: null,
+                  class_name: inv.class_name || 'Unassigned',
+                  total_billed: inv.amount_due || 0,
+                  total_paid: inv.amount_paid || 0,
+                  invoices_count: 1
+                };
+              }
+            });
+
+            const uniqueStudentList = Object.values(studentMap).filter(st => {
+              const matchesSearch = (st.full_name || '').toLowerCase().includes(feeSearch.toLowerCase()) ||
+                                    (st.admission_number || '').toLowerCase().includes(feeSearch.toLowerCase());
+              const matchesClass = feeClassFilter === '' || st.class_name === classes.find(c => c.id === parseInt(feeClassFilter))?.name;
+              return matchesSearch && matchesClass;
+            });
+
+            return (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
+                  <div>
+                    <h3 style={{ margin: 0 }}>Student Invoices Ledger</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                      Click any student to view payment records, log parent payments, or print official receipts.
+                    </p>
+                  </div>
+                  <button className="btn btn-primary" onClick={() => setShowFeeModal(true)}>+ Bill Students</button>
                 </div>
-                <button className="btn btn-primary" onClick={() => setShowFeeModal(true)}>+ Bill Students</button>
-              </div>
 
-              {/* Search & Filter Controls */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                <input
-                  type="text"
-                  className="form-control"
-                  style={{ flex: 1, minWidth: '200px', padding: '10px' }}
-                  placeholder="Search student by name..."
-                  value={feeSearch}
-                  onChange={(e) => setFeeSearch(e.target.value)}
-                />
-                <select
-                  className="form-control"
-                  style={{ width: '200px', padding: '10px' }}
-                  value={feeClassFilter}
-                  onChange={(e) => setFeeClassFilter(e.target.value)}
-                >
-                  <option value="">All Classes</option>
-                  {classes.map((cls, idx) => (
-                    <option key={idx} value={cls.id}>{cls.name}</option>
-                  ))}
-                </select>
-              </div>
+                {/* Search & Filter Controls */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
+                  <input
+                    type="text"
+                    className="form-control"
+                    style={{ flex: 1, minWidth: '220px', padding: '10px' }}
+                    placeholder="Search student by name or admission number..."
+                    value={feeSearch}
+                    onChange={(e) => setFeeSearch(e.target.value)}
+                  />
+                  <select
+                    className="form-control"
+                    style={{ width: '200px', padding: '10px' }}
+                    value={feeClassFilter}
+                    onChange={(e) => setFeeClassFilter(e.target.value)}
+                  >
+                    <option value="">All Class Streams</option>
+                    {classes.map((cls, idx) => (
+                      <option key={idx} value={cls.id}>{cls.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="table-container">
-                <table className="school-table">
-                  <thead>
-                    <tr>
-                      <th>Student Name</th>
-                      <th>Class</th>
-                      <th>Fee Title</th>
-                      <th>Amount Due</th>
-                      <th>Amount Paid</th>
-                      <th>Balance Owed</th>
-                      <th>Status</th>
-                      <th style={{ textAlign: 'right' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {feesReport.filter(inv => {
-                      const matchesSearch = inv.full_name.toLowerCase().includes(feeSearch.toLowerCase());
-                      const matchesClass = feeClassFilter === '' || inv.class_name === classes.find(c => c.id === parseInt(feeClassFilter))?.name;
-                      return matchesSearch && matchesClass;
-                    }).length === 0 ? (
+                <div className="table-container" style={{ margin: 0 }}>
+                  <table className="school-table" style={{ margin: 0, fontSize: '0.85rem' }}>
+                    <thead>
                       <tr>
-                        <td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No outstanding invoices found.</td>
+                        <th>Student Details</th>
+                        <th>Class</th>
+                        <th style={{ textAlign: 'right' }}>Total Fees</th>
+                        <th style={{ textAlign: 'right' }}>Paid</th>
+                        <th style={{ textAlign: 'right' }}>Debt</th>
+                        <th style={{ textAlign: 'center' }}>Status</th>
                       </tr>
-                    ) : (
-                      feesReport.filter(inv => {
-                        const matchesSearch = inv.full_name.toLowerCase().includes(feeSearch.toLowerCase());
-                        const matchesClass = feeClassFilter === '' || inv.class_name === classes.find(c => c.id === parseInt(feeClassFilter))?.name;
-                        return matchesSearch && matchesClass;
-                      }).map((inv, idx) => (
-                        <tr key={idx}>
-                          <td style={{ fontWeight: '600' }}>{inv.full_name} (<code>{inv.admission_number}</code>)</td>
-                          <td>{inv.class_name || 'Unassigned'}</td>
-                          <td>{inv.title}</td>
-                          <td style={{ fontWeight: 'bold' }}>₦{inv.amount_due.toLocaleString()}</td>
-                          <td style={{ color: 'var(--success)', fontWeight: 'bold' }}>₦{inv.amount_paid.toLocaleString()}</td>
-                          <td style={{ color: 'var(--danger)', fontWeight: 'bold' }}>₦{(inv.amount_due - inv.amount_paid).toLocaleString()}</td>
-                          <td>
-                            <span className={`badge ${inv.status === 'paid' ? 'badge-success' : inv.status === 'partial' ? 'badge-warning' : 'badge-danger'}`}>
-                              {inv.status}
-                            </span>
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            {inv.status !== 'paid' && (
-                              <button
-                                className="btn btn-primary"
-                                style={{ padding: '6px 12px', fontSize: '0.8rem', marginRight: '8px' }}
-                                onClick={() => {
-                                  setPayForm({
-                                    invoice_id: inv.id,
-                                    amount_paid: inv.amount_due - inv.amount_paid,
-                                    payment_method: 'Cash',
-                                    student_name: inv.full_name
-                                  });
-                                  setShowPayModal(true);
-                                }}
-                              >
-                                Log Payment
-                              </button>
-                            )}
-                            <button
-                              className="btn btn-secondary"
-                              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                              onClick={() => setSelectedReceipt(inv)}
-                            >
-                              Print
-                            </button>
+                    </thead>
+                    <tbody>
+                      {uniqueStudentList.length === 0 ? (
+                        <tr>
+                          <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '30px' }}>
+                            No student billing records found.
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+                      ) : (
+                        uniqueStudentList.map((st, idx) => {
+                          const balance = Math.max(0, st.total_billed - st.total_paid);
+                          let status = 'unpaid';
+                          if (st.total_billed === 0) status = 'none';
+                          else if (st.total_paid >= st.total_billed) status = 'paid';
+                          else if (st.total_paid > 0) status = 'partial';
 
+                          return (
+                            <tr key={idx} style={{ cursor: 'pointer' }} onClick={() => handleOpenStudentPaymentHistory(st.student_id, st)}>
+                              <td style={{ fontWeight: '600' }}>
+                                <div style={{ color: 'var(--primary)', fontWeight: '700' }}>{st.full_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                  ID: <code style={{ fontSize: '0.72rem' }}>{st.admission_number}</code>
+                                </div>
+                              </td>
+                              <td>{st.class_name}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 'bold' }}>₦{st.total_billed.toLocaleString()}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 'bold' }}>₦{st.total_paid.toLocaleString()}</td>
+                              <td style={{ textAlign: 'right', color: balance > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
+                                ₦{balance.toLocaleString()}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                <span className={`badge ${status === 'paid' ? 'badge-success' : status === 'partial' ? 'badge-warning' : status === 'unpaid' ? 'badge-danger' : 'badge-secondary'}`}>
+                                  {status === 'paid' ? 'Fully Paid' : status === 'partial' ? 'Partial' : status === 'unpaid' ? 'Unpaid' : 'No Invoices'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            );
+          })()}
+
+          {/* SUBTAB 2: FEE STRUCTURES */}
           {activeFeesSubTab === 'structures' && (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div>
-                  <h3>Tuition Fee Structures</h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Define default termly school fees billed per education levels.</p>
+                  <h3 style={{ margin: 0 }}>School Fee Structures</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Define default termly school fees billed per education levels.</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => setShowFeeStructureModal(true)}>+ Add Structure</button>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={() => {
+                    setEditingFeeStructure(null);
+                    setNewFeeStructureForm({ title: '', category: 'School Fees', amount: '', tier: 'jss' });
+                    setShowFeeStructureModal(true);
+                  }}
+                >
+                  + Add Structure
+                </button>
               </div>
 
-              <div className="table-container">
-                <table className="school-table">
+              <div className="table-container" style={{ margin: 0 }}>
+                <table className="school-table" style={{ margin: 0, fontSize: '0.85rem' }}>
                   <thead>
                     <tr>
                       <th>Fee Title</th>
-                      <th>Billed Amount</th>
-                      <th>Applicable Tier Level</th>
-                      <th style={{ textAlign: 'right' }}>Action</th>
+                      <th>Total Fees</th>
+                      <th>Class Tier</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {feeStructures.length === 0 ? (
                       <tr>
-                        <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No structures configured yet.</td>
+                        <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '30px' }}>No structures configured yet.</td>
                       </tr>
                     ) : (
                       feeStructures.map((struct, idx) => (
                         <tr key={idx}>
                           <td style={{ fontWeight: '600' }}>{struct.title}</td>
                           <td style={{ fontWeight: 'bold', color: 'var(--primary)' }}>₦{struct.amount.toLocaleString()}</td>
-                          <td style={{ textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: 'bold' }}>{struct.tier}</td>
+                          <td style={{ textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 'bold' }}>{struct.tier}</td>
                           <td style={{ textAlign: 'right' }}>
                             <button
+                              className="btn btn-secondary"
+                              style={{ padding: '5px 10px', fontSize: '0.75rem', marginRight: '6px' }}
+                              onClick={() => handleEditFeeStructureClick(struct)}
+                            >
+                              ✏️ Edit
+                            </button>
+                            <button
                               className="btn btn-danger"
-                              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                              style={{ padding: '5px 10px', fontSize: '0.75rem' }}
                               onClick={() => handleDeleteFeeStructure(struct.id)}
                             >
-                              Delete
+                              🗑️ Delete
                             </button>
                           </td>
                         </tr>
@@ -1998,31 +2286,30 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
             </>
           )}
 
+          {/* SUBTAB 3: PAYMENT RECORDS (FORMERLY PAID FEES REPORT) */}
           {activeFeesSubTab === 'report' && (() => {
             const filteredList = feesReport.filter(inv => {
-              const matchesSearch = inv.full_name.toLowerCase().includes(paymentReportSearch.toLowerCase()) ||
-                                    inv.admission_number.toLowerCase().includes(paymentReportSearch.toLowerCase()) ||
-                                    inv.title.toLowerCase().includes(paymentReportSearch.toLowerCase());
+              const matchesSearch = (inv.full_name || '').toLowerCase().includes(paymentReportSearch.toLowerCase()) ||
+                                    (inv.admission_number || '').toLowerCase().includes(paymentReportSearch.toLowerCase()) ||
+                                    (inv.title || '').toLowerCase().includes(paymentReportSearch.toLowerCase());
               const matchesClass = paymentReportClassFilter === '' || inv.class_name === classes.find(c => c.id === parseInt(paymentReportClassFilter))?.name;
               const matchesStatus = paymentReportStatusFilter === 'all' || inv.status === paymentReportStatusFilter;
-              return matchesSearch && matchesClass && matchesStatus;
+              const matchesCategory = paymentReportCategoryFilter === '' || (inv.category || 'School Fees') === paymentReportCategoryFilter;
+              return matchesSearch && matchesClass && matchesStatus && matchesCategory;
             });
 
             const totalBilled = filteredList.reduce((sum, item) => sum + (item.amount_due || 0), 0);
             const totalPaid = filteredList.reduce((sum, item) => sum + (item.amount_paid || 0), 0);
             const totalRemaining = Math.max(0, totalBilled - totalPaid);
-            const paidCount = filteredList.filter(i => i.status === 'paid').length;
-            const partialCount = filteredList.filter(i => i.status === 'partial').length;
-            const unpaidCount = filteredList.filter(i => i.status === 'unpaid').length;
 
-            // Chart 1 Data: Payment Status Share
-            const paymentStatusPieData = [
-              { label: 'Fully Paid', value: paidCount, color: 'var(--success)' },
-              { label: 'Partial Payment', value: partialCount, color: 'var(--warning)' },
-              { label: 'Unpaid', value: unpaidCount, color: 'var(--danger)' }
+            // Chart 1 Data: 3D Summary Chart (Total Fees vs Paid vs Debt)
+            const financialSummary3DData = [
+              { label: 'Total Fees', value: totalBilled, color: '#3b82f6', colorTop: '#60a5fa' },
+              { label: 'Paid', value: totalPaid, color: '#10b981', colorTop: '#34d399' },
+              { label: 'Debt', value: totalRemaining, color: '#ef4444', colorTop: '#f87171' }
             ];
 
-            // Chart 2 Data: Revenue Collection per Class Arm
+            // Chart 2 Data: Revenue Collection per Class Stream
             const classRevenueMap = {};
             filteredList.forEach(item => {
               const cName = item.class_name || 'Unassigned';
@@ -2052,9 +2339,9 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                 {/* Header & Actions */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
                   <div>
-                    <h3 style={{ margin: 0 }}>Student Payment Audit Report</h3>
+                    <h3 style={{ margin: 0 }}>Student Payment Records Audit</h3>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-                      Click any student's name to view their complete payment history log and print receipt slips.
+                      Financial records analytics and student termly payment status ledger.
                     </p>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }} className="no-print">
@@ -2067,78 +2354,20 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                   </div>
                 </div>
 
-                {/* Top KPI Cards (Total Billed removed as requested) */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '15px' }}>
-                  <div className="glass-panel" style={{ padding: '16px 20px', backgroundColor: 'var(--bg-primary)', borderLeft: '4px solid var(--success)' }}>
-                    <div style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Amount Paid
-                    </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--success)', marginTop: '4px' }}>
-                      ₦{totalPaid.toLocaleString()}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: '600', marginTop: '2px' }}>
-                      ✓ {paidCount} Fully Paid Invoices
-                    </div>
-                  </div>
-
-                  <div className="glass-panel" style={{ padding: '16px 20px', backgroundColor: 'var(--bg-primary)', borderLeft: '4px solid var(--danger)' }}>
-                    <div style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Amount Remaining
-                    </div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--danger)', marginTop: '4px' }}>
-                      ₦{totalRemaining.toLocaleString()}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--danger)', fontWeight: '600', marginTop: '2px' }}>
-                      ⚠️ {unpaidCount + partialCount} Pending Balances
-                    </div>
-                  </div>
-
-                  <div className="glass-panel" style={{ padding: '16px 20px', backgroundColor: 'var(--bg-primary)', borderLeft: '4px solid var(--secondary)' }}>
-                    <div style={{ fontSize: '0.78rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      Collection Efficiency
-                    </div>
-                    <div style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)', marginTop: '6px' }}>
-                      {totalBilled > 0 ? `${((totalPaid / totalBilled) * 100).toFixed(1)}% Collected` : '0%'}
-                    </div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      {partialCount} partial payments
-                    </div>
-                  </div>
-                </div>
-
-                {/* 3D Charts Row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
-                  <ThreeDPieChart
-                    title="Payment Status Distribution"
-                    subtitle="Breakdown of fully paid, partial, and unpaid student fee records"
-                    data={paymentStatusPieData}
-                  />
-
-                  <ThreeDColumnChart
-                    title="Revenue Collected by Class Stream"
-                    subtitle="Total amount paid in Naira per class arm"
-                    data={classRevenueColumnData.length > 0 ? classRevenueColumnData : [
-                      { label: 'JSS 1', value: 250000, color: '#38ef7d', colorTop: '#a8ff78' },
-                      { label: 'JSS 2', value: 180000, color: '#0072ff', colorTop: '#00c6ff' },
-                      { label: 'JSS 3', value: 310000, color: '#E100FF', colorTop: '#ff8a00' },
-                      { label: 'SSS 1', value: 210000, color: '#ff9900', colorTop: '#ffdb58' }
-                    ]}
-                  />
-                </div>
-
-                {/* Filters */}
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }} className="no-print">
+                {/* Status Filter Buttons & Controls */}
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }} className="no-print">
                   <input
                     type="text"
                     className="form-control"
-                    style={{ flex: '1 1 200px', padding: '10px' }}
+                    style={{ flex: '1 1 200px', padding: '9px 12px', fontSize: '0.85rem' }}
                     placeholder="Search student, admission no, or fee..."
                     value={paymentReportSearch}
                     onChange={(e) => setPaymentReportSearch(e.target.value)}
                   />
+
                   <select
                     className="form-control"
-                    style={{ width: '180px', padding: '10px' }}
+                    style={{ width: '150px', padding: '9px 12px', fontSize: '0.85rem' }}
                     value={paymentReportClassFilter}
                     onChange={(e) => setPaymentReportClassFilter(e.target.value)}
                   >
@@ -2147,30 +2376,72 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                       <option key={idx} value={cls.id}>{cls.name}</option>
                     ))}
                   </select>
-                  <select
-                    className="form-control"
-                    style={{ width: '180px', padding: '10px' }}
-                    value={paymentReportStatusFilter}
-                    onChange={(e) => setPaymentReportStatusFilter(e.target.value)}
-                  >
-                    <option value="all">All Statuses</option>
-                    <option value="paid">Fully Paid</option>
-                    <option value="partial">Partial Payment</option>
-                    <option value="unpaid">Unpaid</option>
-                  </select>
+
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      type="button"
+                      className={`btn ${paymentReportStatusFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+                      onClick={() => setPaymentReportStatusFilter('all')}
+                    >
+                      All Records
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${paymentReportStatusFilter === 'paid' ? 'btn-success' : 'btn-secondary'}`}
+                      style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+                      onClick={() => setPaymentReportStatusFilter('paid')}
+                    >
+                      Fully Paid
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${paymentReportStatusFilter === 'partial' ? 'btn-warning' : 'btn-secondary'}`}
+                      style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+                      onClick={() => setPaymentReportStatusFilter('partial')}
+                    >
+                      Partial Payment
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${paymentReportStatusFilter === 'unpaid' ? 'btn-danger' : 'btn-secondary'}`}
+                      style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+                      onClick={() => setPaymentReportStatusFilter('unpaid')}
+                    >
+                      Unpaid (Zero Paid)
+                    </button>
+                  </div>
                 </div>
 
-                {/* Report Table (Total Billed & View History action button removed as requested) */}
+                {/* Printable Official Document Header */}
+                <div className="only-print" style={{ marginBottom: '16px', textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '12px' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.4rem', textTransform: 'uppercase', color: '#000' }}>
+                    {settingsForm?.landing_school_name || 'Jere Model Academy'}
+                  </h2>
+                  <h4 style={{ margin: '4px 0', fontSize: '1rem', color: '#444' }}>
+                    STUDENT PAYMENT COLLECTIONS AUDIT REPORT
+                  </h4>
+                  <div style={{ fontSize: '0.82rem', color: '#333' }}>
+                    Academic Session: <strong>{settings?.active_session || '2025/2026'}</strong> | Term: <strong>{settings?.active_term || '3rd Term'}</strong> | Date: <strong>{new Date().toLocaleDateString()}</strong>
+                  </div>
+                  {paymentReportStatusFilter !== 'all' && (
+                    <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginTop: '4px', color: '#000' }}>
+                      Status Filter: {paymentReportStatusFilter.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+
+                {/* Streamlined Payment Records Table */}
                 <div className="table-container" style={{ margin: 0 }}>
-                  <table className="school-table" style={{ margin: 0 }}>
+                  <table className="school-table" style={{ margin: 0, fontSize: '0.82rem' }}>
                     <thead>
                       <tr>
-                        <th>Student Name</th>
-                        <th>Admission ID</th>
-                        <th>Class Arm</th>
-                        <th>Fee Item</th>
-                        <th style={{ textAlign: 'right' }}>Amount Paid</th>
-                        <th style={{ textAlign: 'right' }}>Amount Remaining</th>
+                        <th>Student Details</th>
+                        <th>Class</th>
+                        <th>Fee Title</th>
+                        <th style={{ textAlign: 'right' }}>Total Fees</th>
+                        <th style={{ textAlign: 'right' }}>Paid</th>
+                        <th style={{ textAlign: 'right' }}>Debt</th>
                         <th style={{ textAlign: 'center' }}>Status</th>
                       </tr>
                     </thead>
@@ -2183,7 +2454,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                         </tr>
                       ) : (
                         filteredList.map((inv, idx) => {
-                          const remaining = inv.amount_due - inv.amount_paid;
+                          const remaining = Math.max(0, inv.amount_due - inv.amount_paid);
                           return (
                             <tr key={idx}>
                               <td style={{ fontWeight: '600' }}>
@@ -2197,24 +2468,35 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                                     fontWeight: '700',
                                     cursor: 'pointer',
                                     padding: 0,
-                                    fontSize: '0.92rem',
-                                    textAlign: 'left'
+                                    fontSize: '0.85rem',
+                                    textAlign: 'left',
+                                    display: 'block'
                                   }}
-                                  title="Click to view payment history & receipts"
+                                  title="Click to view complete payment profile & receipts"
                                 >
-                                  {inv.full_name} 💳
+                                  {inv.full_name}
                                 </button>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                  ID: <code style={{ fontSize: '0.7rem' }}>{inv.admission_number}</code>
+                                </div>
                               </td>
-                              <td><code>{inv.admission_number}</code></td>
                               <td>{inv.class_name || 'Unassigned'}</td>
-                              <td>{inv.title}</td>
+                              <td>
+                                <div style={{ fontWeight: '500' }}>{inv.title}</div>
+                                {inv.category && (
+                                  <span className="badge" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--primary)', border: '1px solid var(--border-color)', fontSize: '0.66rem', marginTop: '2px' }}>
+                                    {inv.category}
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ textAlign: 'right', fontWeight: 'bold' }}>₦{inv.amount_due.toLocaleString()}</td>
                               <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 'bold' }}>₦{inv.amount_paid.toLocaleString()}</td>
                               <td style={{ textAlign: 'right', color: remaining > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
                                 ₦{remaining.toLocaleString()}
                               </td>
                               <td style={{ textAlign: 'center' }}>
                                 <span className={`badge ${inv.status === 'paid' ? 'badge-success' : inv.status === 'partial' ? 'badge-warning' : 'badge-danger'}`}>
-                                  {inv.status}
+                                  {inv.status === 'paid' ? 'Fully Paid' : inv.status === 'partial' ? 'Partial' : 'Unpaid'}
                                 </span>
                               </td>
                             </tr>
@@ -2224,6 +2506,152 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            );
+          })()}
+
+          {/* SUBTAB 4: PAYMENT SUMMARY (MVP TERM FINANCIAL BREAKDOWN) */}
+          {activeFeesSubTab === 'summary' && (() => {
+            const totalBilled = feesReport.reduce((sum, item) => sum + (item.amount_due || 0), 0);
+            const totalPaid = feesReport.reduce((sum, item) => sum + (item.amount_paid || 0), 0);
+            const totalDebt = Math.max(0, totalBilled - totalPaid);
+            const collectionRate = totalBilled > 0 ? ((totalPaid / totalBilled) * 100).toFixed(1) : '0.0';
+
+            const classRevenueMap = {};
+            const classBilledMap = {};
+            const classStudentCountMap = {};
+
+            classes.forEach(c => {
+              classRevenueMap[c.name] = 0;
+              classBilledMap[c.name] = 0;
+              classStudentCountMap[c.name] = 0;
+            });
+
+            students.forEach(s => {
+              const cName = s.class_name || (classes.find(c => c.id === s.class_id)?.name) || 'Unassigned';
+              if (classStudentCountMap[cName] !== undefined) {
+                classStudentCountMap[cName] += 1;
+              } else {
+                classStudentCountMap[cName] = 1;
+              }
+            });
+
+            feesReport.forEach(item => {
+              const cName = item.class_name || 'Unassigned';
+              if (classRevenueMap[cName] === undefined) classRevenueMap[cName] = 0;
+              if (classBilledMap[cName] === undefined) classBilledMap[cName] = 0;
+              classRevenueMap[cName] += (item.amount_paid || 0);
+              classBilledMap[cName] += (item.amount_due || 0);
+            });
+
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* Header & Actions */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+                  <div>
+                    <h3 style={{ margin: 0 }}>School Fees Payment Summary</h3>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                      Term: <strong>{settings?.active_term || '3rd Term'}</strong> ({settings?.active_session || '2025/2026'}) | Executive MVP breakdown of school fee collections & outstanding debt balances.
+                    </p>
+                  </div>
+                  <button className="btn btn-primary no-print" style={{ fontSize: '0.82rem', padding: '8px 14px' }} onClick={() => window.print()}>
+                    🖨️ Print Summary
+                  </button>
+                </div>
+
+                {/* Printable Official Header */}
+                <div className="only-print" style={{ marginBottom: '16px', textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '12px' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.4rem', textTransform: 'uppercase', color: '#000' }}>
+                    {settingsForm?.landing_school_name || 'Jere Model Academy'}
+                  </h2>
+                  <h4 style={{ margin: '4px 0', fontSize: '1rem', color: '#444' }}>
+                    EXECUTIVE TERM FINANCIAL PAYMENT SUMMARY REPORT
+                  </h4>
+                  <div style={{ fontSize: '0.82rem', color: '#333' }}>
+                    Academic Session: <strong>{settings?.active_session || '2025/2026'}</strong> | Term: <strong>{settings?.active_term || '3rd Term'}</strong> | Date: <strong>{new Date().toLocaleDateString()}</strong>
+                  </div>
+                </div>
+
+                {/* 4 Executive Financial Metric Cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-surface)', borderLeft: '4px solid #3b82f6', boxShadow: 'var(--shadow-sm)' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Fees Billed</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#2563eb', marginTop: '4px' }}>
+                      ₦{totalBilled.toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-surface)', borderLeft: '4px solid #10b981', boxShadow: 'var(--shadow-sm)' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Revenue Paid</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#059669', marginTop: '4px' }}>
+                      ₦{totalPaid.toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-surface)', borderLeft: '4px solid #ef4444', boxShadow: 'var(--shadow-sm)' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Outstanding Debt</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#dc2626', marginTop: '4px' }}>
+                      ₦{totalDebt.toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-surface)', borderLeft: '4px solid #8b5cf6', boxShadow: 'var(--shadow-sm)' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Collection Rate</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#7c3aed', marginTop: '4px' }}>
+                      {collectionRate}%
+                    </div>
+                  </div>
+                </div>
+
+                {/* Class Stream Financial Summary Table */}
+                <div>
+                  <h4 style={{ fontSize: '1rem', margin: '0 0 10px 0', color: 'var(--text-primary)' }}>📊 Class Stream Financial Breakdown</h4>
+                  <div className="table-container" style={{ margin: 0 }}>
+                    <table className="school-table" style={{ margin: 0, fontSize: '0.82rem' }}>
+                      <thead>
+                        <tr>
+                          <th>Class</th>
+                          <th style={{ textAlign: 'center' }}>Students</th>
+                          <th style={{ textAlign: 'right' }}>Total Fees</th>
+                          <th style={{ textAlign: 'right' }}>Paid</th>
+                          <th style={{ textAlign: 'right' }}>Debt</th>
+                          <th style={{ textAlign: 'center' }}>Collection Rate</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.keys(classRevenueMap).length === 0 ? (
+                          <tr>
+                            <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '20px' }}>No class financial summary data available.</td>
+                          </tr>
+                        ) : (
+                          Object.keys(classRevenueMap).map((cName, idx) => {
+                            const billed = classBilledMap[cName] || 0;
+                            const paid = classRevenueMap[cName] || 0;
+                            const debt = Math.max(0, billed - paid);
+                            const count = classStudentCountMap[cName] || 0;
+                            const rate = billed > 0 ? ((paid / billed) * 100).toFixed(1) : (paid > 0 ? '100.0' : '0.0');
+
+                            return (
+                              <tr key={idx}>
+                                <td style={{ fontWeight: '700' }}>{cName}</td>
+                                <td style={{ textAlign: 'center' }}>{count}</td>
+                                <td style={{ textAlign: 'right', fontWeight: 'bold' }}>₦{billed.toLocaleString()}</td>
+                                <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 'bold' }}>₦{paid.toLocaleString()}</td>
+                                <td style={{ textAlign: 'right', color: debt > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>₦{debt.toLocaleString()}</td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <span className={`badge ${parseFloat(rate) >= 100 ? 'badge-success' : parseFloat(rate) > 0 ? 'badge-warning' : 'badge-danger'}`}>
+                                    {rate}%
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
               </div>
             );
           })()}
@@ -2764,10 +3192,10 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
             </button>
             <button
               type="button"
-              className={`settings-tab-btn ${settingsSubTab === 'reports' ? 'active' : ''}`}
+              className={`settings-tab-btn ${settingsSubTab === 'reports' || settingsSubTab === 'skills' ? 'active' : ''}`}
               onClick={() => setSettingsSubTab('reports')}
             >
-              <span>📜</span> Report Card Display
+              <span>📜</span> Report Card Display & Psychomotor Skills
             </button>
             <button
               type="button"
@@ -2775,13 +3203,6 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
               onClick={() => setSettingsSubTab('website')}
             >
               <span>🌐</span> Website & Contact Info
-            </button>
-            <button
-              type="button"
-              className={`settings-tab-btn ${settingsSubTab === 'skills' ? 'active' : ''}`}
-              onClick={() => setSettingsSubTab('skills')}
-            >
-              <span>🧠</span> Psychomotor Skills
             </button>
           </div>
 
@@ -2947,8 +3368,23 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                       <label>Principal / Headmaster Name</label>
                       <input type="text" className="form-control" value={settingsForm.principal_name} onChange={e => setSettingsForm({ ...settingsForm, principal_name: e.target.value })} placeholder="e.g. Principal Stamp (JMA)" />
                     </div>
+                    <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
+                      <label>Principal Digital Signature</label>
+                      {settingsForm.principal_signature ? (
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                          <img src={settingsForm.principal_signature} alt="Principal Signature" style={{ height: '60px', border: '1px solid var(--border-color)', borderRadius: '4px', background: '#fff', padding: '4px' }} />
+                          <button 
+                            type="button" 
+                            style={{ position: 'absolute', top: '-8px', right: '-8px', background: 'red', color: 'white', borderRadius: '50%', border: 'none', cursor: 'pointer', width: '20px', height: '20px', fontSize: '12px', lineHeight: '20px' }}
+                            onClick={() => setSettingsForm({ ...settingsForm, principal_signature: '' })}
+                          >✕</button>
+                        </div>
+                      ) : (
+                        <SignaturePad onSave={(dataUrl) => setSettingsForm({ ...settingsForm, principal_signature: dataUrl })} />
+                      )}
+                    </div>
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label>Tuition Fee for Next Term (₦)</label>
+                      <label>School Fee for Next Term (₦)</label>
                       <input type="text" className="form-control" value={settingsForm.next_term_fee} onChange={e => setSettingsForm({ ...settingsForm, next_term_fee: e.target.value })} placeholder="e.g. ₦45,000.00" />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
@@ -2966,127 +3402,83 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                   </div>
                 </div>
 
-                <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px' }}>Save Report Card Settings</button>
+                <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px', marginBottom: '32px' }}>Save Report Card Settings</button>
               </form>
-            </div>
-          )}
 
-          {/* Sub-Tab 3: Website Details */}
-          {settingsSubTab === 'website' && (
-            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>Website & School Information</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-                Update the school name, website homepage greeting, address, and public contact information.
-              </p>
-
-              <form onSubmit={handleUpdateSettings}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '20px' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Official School Name</label>
-                    <input type="text" className="form-control" value={settingsForm.landing_school_name} onChange={e => setSettingsForm({ ...settingsForm, landing_school_name: e.target.value })} />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>School Motto / Tagline</label>
-                    <input type="text" className="form-control" value={settingsForm.landing_tagline} onChange={e => setSettingsForm({ ...settingsForm, landing_tagline: e.target.value })} />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>Homepage Banner Title</label>
-                  <input type="text" className="form-control" value={settingsForm.landing_hero_title} onChange={e => setSettingsForm({ ...settingsForm, landing_hero_title: e.target.value })} />
-                </div>
-
-                <div className="form-group">
-                  <label>Homepage Welcome Message</label>
-                  <textarea className="form-control" style={{ minHeight: '80px', fontFamily: 'inherit' }} value={settingsForm.landing_hero_desc} onChange={e => setSettingsForm({ ...settingsForm, landing_hero_desc: e.target.value })} />
-                </div>
-
-                <div className="form-group">
-                  <label>School Physical Address</label>
-                  <input type="text" className="form-control" value={settingsForm.landing_address} onChange={e => setSettingsForm({ ...settingsForm, landing_address: e.target.value })} />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Contact Phone Number</label>
-                    <input type="text" className="form-control" value={settingsForm.contact_phone} onChange={e => setSettingsForm({ ...settingsForm, contact_phone: e.target.value })} />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Contact Email Address</label>
-                    <input type="email" className="form-control" value={settingsForm.contact_email} onChange={e => setSettingsForm({ ...settingsForm, contact_email: e.target.value })} />
-                  </div>
-                </div>
-
-                <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px' }}>Save Website Information</button>
-              </form>
-            </div>
-          )}
-
-          {/* Sub-Tab: Psychomotor Skills */}
-          {settingsSubTab === 'skills' && (
-            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>Affective & Psychomotor Skills</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-                Manage behavioral traits and skills evaluated by form masters for students' report cards.
-              </p>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
-                <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
-                  <h4 style={{ margin: '0 0 15px 0', fontSize: '1rem' }}>Add New Skill</h4>
-                  <form onSubmit={handleSkillCreate}>
-                    <div className="form-group">
-                      <label>Skill Name</label>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        placeholder="e.g. Punctuality" 
-                        required 
-                        value={skillForm.name}
-                        onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Category</label>
-                      <select 
-                        className="form-control" 
-                        value={skillForm.category}
-                        onChange={(e) => setSkillForm({ ...skillForm, category: e.target.value })}
-                      >
-                        <option value="AFFECTIVE">Affective Domain (Character)</option>
-                        <option value="PSYCHOMOTOR">Psychomotor Domain (Skills)</option>
-                      </select>
-                    </div>
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Add Skill</button>
-                  </form>
-                </div>
+              {/* Affective & Psychomotor Skills Configuration Section */}
+              <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: '24px' }}>
+                <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>🧠 Affective & Psychomotor Skills Configuration</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
+                  Manage behavioral traits and skills evaluated by form masters for students' report cards.
+                </p>
                 
-                <div>
-                  <h4 style={{ margin: '0 0 15px 0', fontSize: '1rem' }}>Existing Skills</h4>
-                  <div className="table-container" style={{ margin: 0, maxHeight: '400px', overflowY: 'auto' }}>
-                    <table className="school-table" style={{ margin: 0 }}>
-                      <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                        <tr>
-                          <th>Skill Name</th>
-                          <th>Category</th>
-                          <th style={{ textAlign: 'center' }}>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {skills.length === 0 ? (
-                          <tr><td colSpan="3" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No skills found.</td></tr>
-                        ) : (
-                          skills.map(s => (
-                            <tr key={s.id}>
-                              <td>{s.name}</td>
-                              <td><span className="badge" style={{ backgroundColor: s.category === 'AFFECTIVE' ? '#e0f2fe' : '#fef3c7', color: s.category === 'AFFECTIVE' ? '#075985' : '#92400e' }}>{s.category}</span></td>
-                              <td style={{ textAlign: 'center' }}>
-                                <button className="btn btn-danger" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => handleSkillDelete(s.id)}>Delete</button>
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+                  <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
+                    <h4 style={{ margin: '0 0 15px 0', fontSize: '1rem' }}>Add New Skill</h4>
+                    <form onSubmit={handleSkillCreate}>
+                      <div className="form-group">
+                        <label>Skill Name</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          placeholder="e.g. Punctuality" 
+                          required 
+                          value={skillForm.name}
+                          onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Category</label>
+                        <select 
+                          className="form-control" 
+                          value={skillForm.category}
+                          onChange={(e) => setSkillForm({ ...skillForm, category: e.target.value })}
+                        >
+                          <option value="affective">Affective Domain (Character)</option>
+                          <option value="psychomotor">Psychomotor Domain (Skills)</option>
+                        </select>
+                      </div>
+                      <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Add Skill</button>
+                    </form>
+                  </div>
+                  
+                  <div>
+                    <h4 style={{ margin: '0 0 15px 0', fontSize: '1rem' }}>Existing Skills</h4>
+                    <div className="table-container" style={{ margin: 0, maxHeight: '400px', overflowY: 'auto' }}>
+                      <table className="school-table" style={{ margin: 0 }}>
+                        <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                          <tr>
+                            <th>Skill Name</th>
+                            <th>Category</th>
+                            <th style={{ textAlign: 'center' }}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {skills.length === 0 ? (
+                            <tr><td colSpan="3" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No skills found.</td></tr>
+                          ) : (
+                            skills.map(s => (
+                              <tr key={s.id}>
+                                <td>{s.name}</td>
+                                <td>
+                                  <span className="badge" style={{
+                                    backgroundColor: (s.category || '').toLowerCase() === 'affective' ? '#e0f2fe' : '#fef3c7',
+                                    color: (s.category || '').toLowerCase() === 'affective' ? '#075985' : '#92400e',
+                                    textTransform: 'uppercase',
+                                    fontSize: '0.72rem'
+                                  }}>
+                                    {s.category}
+                                  </span>
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <button className="btn btn-danger" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => handleSkillDelete(s.id)}>Delete</button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3792,7 +4184,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
             <form onSubmit={handleFeeInvoiceCreate} style={{ marginTop: '20px' }}>
               <div className="form-group">
                 <label>Fee Description</label>
-                <input type="text" className="form-control" placeholder="e.g. Tuition Fee 3rd Term" required value={feeForm.title} onChange={(e) => setFeeForm({ ...feeForm, title: e.target.value })} />
+                <input type="text" className="form-control" placeholder="e.g. School Fee 3rd Term" required value={feeForm.title} onChange={(e) => setFeeForm({ ...feeForm, title: e.target.value })} />
+              </div>
+
+              <div className="form-group">
+                <label>Payment Category</label>
+                <select className="form-control" value={feeForm.category} onChange={(e) => setFeeForm({ ...feeForm, category: e.target.value })}>
+                  <option value="School Fees">School Fees</option>
+                  <option value="Exams Fees">Exams Fees</option>
+                  <option value="Lesson Fees">Lesson Fees</option>
+                  <option value="Other Fees">Other Fees</option>
+                </select>
               </div>
 
               <div className="form-group">
@@ -3841,9 +4243,12 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
             <h3>Record Fee Payment</h3>
             
             <form onSubmit={handleLogPayment} style={{ marginTop: '20px' }}>
-              <p style={{ marginBottom: '15px' }}>
-                Record payment for student: <strong>{payForm.student_name}</strong>
-              </p>
+              <div style={{ padding: '10px 14px', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)', marginBottom: '15px', fontSize: '0.85rem' }}>
+                <div>Student Name: <strong>{payForm.student_name}</strong></div>
+                <div style={{ color: 'var(--primary)', marginTop: '4px' }}>
+                  Target Academic Term: <strong>{settings?.active_term || '3rd Term'}</strong> ({settings?.active_session || '2025/2026'})
+                </div>
+              </div>
               
               <div className="form-group">
                 <label>Amount Paid (₦)</label>
@@ -3983,20 +4388,20 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
       )}
 
       {/* =======================================================
-          MODAL: ADD FEE STRUCTURE
+          MODAL: ADD / EDIT FEE STRUCTURE
           ======================================================= */}
       {showFeeStructureModal && (
         <div className="modal-overlay">
           <div className="modal-content glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
-            <button className="modal-close" onClick={() => setShowFeeStructureModal(false)}>✕</button>
-            <h3>Add Fee Structure</h3>
+            <button className="modal-close" onClick={() => { setShowFeeStructureModal(false); setEditingFeeStructure(null); }}>✕</button>
+            <h3>{editingFeeStructure ? '✏️ Edit Fee Structure' : '➕ Add Fee Structure'}</h3>
             <form onSubmit={handleCreateFeeStructure} style={{ marginTop: '20px' }}>
               <div className="form-group">
                 <label>Fee Title / Description</label>
                 <input 
                   type="text" 
                   className="form-control" 
-                  placeholder="e.g. Nursery 2 Tuition Fee" 
+                  placeholder="e.g. Nursery 2 School Fee" 
                   required 
                   value={newFeeStructureForm.title} 
                   onChange={(e) => setNewFeeStructureForm({ ...newFeeStructureForm, title: e.target.value })} 
@@ -4026,7 +4431,9 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                   <option value="sss">Senior Secondary (SSS)</option>
                 </select>
               </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Add Structure</button>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
+                {editingFeeStructure ? 'Save Changes' : 'Add Structure'}
+              </button>
             </form>
           </div>
         </div>
@@ -4037,26 +4444,31 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
           ======================================================= */}
       {selectedStudentForHistory && (
         <div className="modal-overlay">
-          <div className="modal-content glass-panel" style={{ maxWidth: '850px', backgroundColor: 'var(--bg-surface)' }}>
+          <div className="modal-content glass-panel" style={{ maxWidth: '850px', backgroundColor: 'var(--bg-surface)', padding: '20px' }}>
             <button className="modal-close no-print" onClick={() => setSelectedStudentForHistory(null)}>✕</button>
 
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', marginBottom: '20px' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>
-                💳
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Payment History — {selectedStudentForHistory.full_name}</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '3px 0 0 0' }}>
-                  Admission ID: <code>{selectedStudentForHistory.admission_number}</code> | Class: <strong>{selectedStudentForHistory.class_name || 'Unassigned'}</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', marginBottom: '16px' }}>
+              {selectedStudentForHistory.passport_photo ? (
+                <img src={selectedStudentForHistory.passport_photo} alt="Student Avatar" style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary)' }} />
+              ) : (
+                <div style={{ width: '46px', height: '46px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem' }}>
+                  💳
+                </div>
+              )}
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Student Payment Ledger — {selectedStudentForHistory.full_name}</h3>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '3px 0 0 0' }}>
+                  Term: <strong>{settings?.active_term || '3rd Term'}</strong> ({settings?.active_session || '2025/2026'}) | Admission ID: <code>{selectedStudentForHistory.admission_number}</code> | Class: <strong>{selectedStudentForHistory.class_name || 'Unassigned'}</strong>
+                  {selectedStudentForHistory.parent_phone && <span> | Parent Contact: 📞 <strong>{selectedStudentForHistory.parent_phone}</strong></span>}
                 </p>
               </div>
             </div>
 
             {loadingStudentHistory ? (
-              <p style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Loading student payment ledger...</p>
+              <p style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading student payment ledger...</p>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', fontSize: '0.82rem' }}>
                 
                 {/* Mini Financial Tally */}
                 {(() => {
@@ -4068,22 +4480,22 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
 
                   return (
                     <>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
-                        <div style={{ padding: '14px', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--primary-light)', borderLeft: '4px solid var(--primary)' }}>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Billed</div>
-                          <div style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--primary)', marginTop: '4px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+                        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', backgroundColor: 'rgba(59, 130, 246, 0.08)', borderLeft: '4px solid #3b82f6' }}>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Fees</div>
+                          <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#2563eb', marginTop: '2px' }}>
                             ₦{totalBilled.toLocaleString()}
                           </div>
                         </div>
-                        <div style={{ padding: '14px', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--success-light)', borderLeft: '4px solid var(--success)' }}>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Paid</div>
-                          <div style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--success)', marginTop: '4px' }}>
+                        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', backgroundColor: 'rgba(16, 185, 129, 0.08)', borderLeft: '4px solid #10b981' }}>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Paid</div>
+                          <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#059669', marginTop: '2px' }}>
                             ₦{totalPaid.toLocaleString()}
                           </div>
                         </div>
-                        <div style={{ padding: '14px', borderRadius: 'var(--radius-sm)', backgroundColor: 'var(--danger-light)', borderLeft: '4px solid var(--danger)' }}>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Balance Owed</div>
-                          <div style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--danger)', marginTop: '4px' }}>
+                        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', backgroundColor: 'rgba(239, 68, 68, 0.08)', borderLeft: '4px solid #ef4444' }}>
+                          <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Debt</div>
+                          <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#dc2626', marginTop: '2px' }}>
                             ₦{balanceOwed.toLocaleString()}
                           </div>
                         </div>
@@ -4091,35 +4503,41 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
 
                       {/* Section 1: Invoices Breakdown */}
                       <div>
-                        <h4 style={{ fontSize: '0.95rem', marginBottom: '10px', color: 'var(--text-primary)' }}>📜 Fee Invoices Billed</h4>
-                        <div className="table-container" style={{ margin: 0 }}>
-                          <table className="school-table" style={{ margin: 0 }}>
+                        <h4 style={{ fontSize: '0.9rem', margin: '0 0 8px 0', color: 'var(--text-primary)' }}>📜 Fee Invoices Billed</h4>
+                        <div className="table-container" style={{ margin: 0, maxHeight: '200px', overflowY: 'auto' }}>
+                          <table className="school-table" style={{ margin: 0, fontSize: '0.8rem' }}>
                             <thead>
                               <tr>
                                 <th>Fee Title</th>
-                                <th style={{ textAlign: 'right' }}>Billed</th>
+                                <th>Term & Session</th>
+                                <th style={{ textAlign: 'right' }}>Total Fees</th>
                                 <th style={{ textAlign: 'right' }}>Paid</th>
-                                <th style={{ textAlign: 'right' }}>Remaining</th>
+                                <th style={{ textAlign: 'right' }}>Debt</th>
                                 <th style={{ textAlign: 'center' }}>Status</th>
                                 <th style={{ textAlign: 'center' }} className="no-print">Action</th>
                               </tr>
                             </thead>
                             <tbody>
                               {invs.length === 0 ? (
-                                <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No invoices issued yet.</td></tr>
+                                <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '15px' }}>No invoices issued yet.</td></tr>
                               ) : (
                                 invs.map((inv, idx) => {
                                   const rem = inv.amount_due - inv.amount_paid;
                                   return (
                                     <tr key={idx}>
                                       <td style={{ fontWeight: '600' }}>{inv.title}</td>
+                                      <td>
+                                        <span className="badge" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.68rem' }}>
+                                          {inv.term || settings?.active_term || '3rd Term'} ({inv.session || settings?.active_session || '2025/2026'})
+                                        </span>
+                                      </td>
                                       <td style={{ textAlign: 'right', fontWeight: '600' }}>₦{inv.amount_due.toLocaleString()}</td>
                                       <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 'bold' }}>₦{inv.amount_paid.toLocaleString()}</td>
                                       <td style={{ textAlign: 'right', color: rem > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
                                         ₦{rem.toLocaleString()}
                                       </td>
                                       <td style={{ textAlign: 'center' }}>
-                                        <span className={`badge ${inv.status === 'paid' ? 'badge-success' : inv.status === 'partial' ? 'badge-warning' : 'badge-danger'}`}>
+                                        <span className={`badge ${inv.status === 'paid' ? 'badge-success' : inv.status === 'partial' ? 'badge-warning' : 'badge-danger'}`} style={{ fontSize: '0.68rem' }}>
                                           {inv.status}
                                         </span>
                                       </td>
@@ -4127,7 +4545,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                                         {inv.status !== 'paid' && (
                                           <button
                                             className="btn btn-primary"
-                                            style={{ padding: '5px 12px', fontSize: '0.78rem' }}
+                                            style={{ padding: '4px 10px', fontSize: '0.74rem' }}
                                             onClick={() => {
                                               setSelectedStudentForHistory(null);
                                               setPayForm({
@@ -4139,7 +4557,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                                               setShowPayModal(true);
                                             }}
                                           >
-                                            Log Payment
+                                            Record Payment
                                           </button>
                                         )}
                                       </td>
@@ -4154,23 +4572,22 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
 
                       {/* Section 2: Payment Receipts History */}
                       <div>
-                        <h4 style={{ fontSize: '0.95rem', marginBottom: '10px', color: 'var(--text-primary)' }}>🧾 Payment Receipts History</h4>
-                        <div className="table-container" style={{ margin: 0 }}>
-                          <table className="school-table" style={{ margin: 0 }}>
+                        <h4 style={{ fontSize: '0.9rem', margin: '0 0 8px 0', color: 'var(--text-primary)' }}>🧾 Payment Receipts History</h4>
+                        <div className="table-container" style={{ margin: 0, maxHeight: '200px', overflowY: 'auto' }}>
+                          <table className="school-table" style={{ margin: 0, fontSize: '0.8rem' }}>
                             <thead>
                               <tr>
                                 <th>Receipt #</th>
                                 <th>Date</th>
                                 <th>Fee Item</th>
                                 <th style={{ textAlign: 'right' }}>Amount Paid</th>
-                                <th>Method</th>
                                 <th>Logged By</th>
-                                <th style={{ textAlign: 'center' }} className="no-print">Print Slip</th>
+                                <th style={{ textAlign: 'center' }} className="no-print">Action</th>
                               </tr>
                             </thead>
                             <tbody>
                               {recs.length === 0 ? (
-                                <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No payment receipts recorded yet.</td></tr>
+                                <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '15px' }}>No payment receipts recorded yet.</td></tr>
                               ) : (
                                 recs.map((rec, idx) => (
                                   <tr key={idx}>
@@ -4178,12 +4595,11 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                                     <td>{rec.payment_date}</td>
                                     <td style={{ fontWeight: '500' }}>{rec.title}</td>
                                     <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 'bold' }}>₦{rec.amount_paid.toLocaleString()}</td>
-                                    <td><span className="badge" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>{rec.payment_method}</span></td>
-                                    <td style={{ fontSize: '0.85rem' }}>{rec.logged_by_name || 'Staff'}</td>
+                                    <td style={{ fontSize: '0.78rem' }}>{rec.logged_by_name || 'Staff'}</td>
                                     <td style={{ textAlign: 'center' }} className="no-print">
                                       <button
                                         className="btn btn-secondary"
-                                        style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+                                        style={{ padding: '4px 10px', fontSize: '0.74rem' }}
                                         onClick={() => {
                                           setSelectedReceipt({
                                             ...rec,
@@ -4238,7 +4654,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab }) {
                 <div><strong>ADMISSION NO:</strong> {selectedReceipt.admission_number || selectedStudentForHistory?.admission_number || 'N/A'}</div>
                 <div><strong>CLASS ARM:</strong> {selectedReceipt.class_name || selectedStudentForHistory?.class_name || 'N/A'}</div>
                 <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
-                <div><strong>FEE DESCRIPTION:</strong> {selectedReceipt.title || 'Tuition / School Fee'}</div>
+                <div><strong>FEE DESCRIPTION:</strong> {selectedReceipt.title || 'School Fee'}</div>
                 {selectedReceipt.amount_due && (
                   <div><strong>TOTAL BILLED:</strong> ₦{Number(selectedReceipt.amount_due).toLocaleString()}</div>
                 )}

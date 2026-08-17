@@ -1,35 +1,161 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import {
+  LayoutDashboard,
+  Users,
+  GraduationCap,
+  School,
+  BookOpen,
+  Book,
+  FileText,
+  CalendarCheck,
+  CheckSquare,
+  BarChart2,
+  FileSpreadsheet,
+  Printer,
+  Edit3,
+  Grid,
+  Key,
+  CreditCard,
+  Receipt,
+  Layers,
+  History,
+  AlertCircle,
+  Settings,
+  Sliders,
+  RotateCw,
+  Globe,
+  Award,
+  Sparkles,
+  TrendingUp,
+  ShieldCheck,
+  ChevronDown,
+  ChevronRight,
+  X
+} from 'lucide-react';
 
-export default function Sidebar({ role, activeTab, setActiveTab, onLogout, user, isOpen, onClose, settings }) {
+export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout, user, isOpen, onClose, settings }) {
+  // Keep track of expanded sub-menus
+  const [openMenus, setOpenMenus] = useState({});
+
   const navItems = {
     admin: [
-      { id: 'dashboard', label: 'Overview', color: '#0072ff' },
-      { id: 'students', label: 'Students', color: '#38ef7d' },
-      { id: 'teachers', label: 'Teachers', color: '#E100FF' },
-      { id: 'classes', label: 'Classes', color: '#2948ff' },
-      { id: 'subjects', label: 'Subjects', color: '#00dbde' },
-      { id: 'attendance', label: 'Attendance', color: '#825a2c' },
-      { id: 'student-results', label: 'Student Results', color: '#ff3366' },
-      { id: 'fees', label: 'School Fees', color: '#f2c94c' },
-      { id: 'settings', label: 'Settings', color: '#ff4b2b' }
+      { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+      { id: 'students', label: 'Students', icon: Users },
+      { id: 'teachers', label: 'Teachers', icon: GraduationCap },
+      { id: 'classes', label: 'Classes', icon: School },
+      {
+        id: 'subjects',
+        label: 'Subjects',
+        icon: BookOpen,
+        subItems: [
+          { id: 'list', label: 'All Subjects', icon: Book },
+          { id: 'schemes', label: 'Scheme of Work', icon: FileText }
+        ]
+      },
+      {
+        id: 'attendance',
+        label: 'Attendance',
+        icon: CalendarCheck,
+        subItems: [
+          { id: 'mark', label: 'Mark Attendance', icon: CheckSquare },
+          { id: 'report', label: 'Attendance Report', icon: BarChart2 }
+        ]
+      },
+      {
+        id: 'student-results',
+        label: 'Student Results',
+        icon: FileSpreadsheet,
+        subItems: [
+          { id: 'bulk', label: 'Print Bulk Results', icon: Printer },
+          { id: 'single', label: 'Single Result View', icon: FileText },
+          { id: 'enter-marks', label: 'Enter Marks', icon: Edit3 },
+          { id: 'broadsheet', label: 'Class Broadsheet', icon: Grid },
+          { id: 'pins', label: 'Scratch Cards / PINs', icon: Key }
+        ]
+      },
+      {
+        id: 'fees',
+        label: 'School Fees',
+        icon: CreditCard,
+        subItems: [
+          { id: 'invoices', label: 'Invoices & Billing', icon: Receipt },
+          { id: 'structures', label: 'Fee Structures', icon: Layers },
+          { id: 'report', label: 'Payment Records', icon: History },
+          { id: 'summary', label: 'Debtors Summary', icon: AlertCircle }
+        ]
+      },
+      {
+        id: 'settings',
+        label: 'Settings',
+        icon: Settings,
+        subItems: [
+          { id: 'academic', label: 'Academic Settings', icon: Sliders },
+          { id: 'sessions', label: 'Session Rollover', icon: RotateCw },
+          { id: 'landing', label: 'Portal Landing Settings', icon: Globe },
+          { id: 'grading', label: 'Grading System', icon: Award },
+          { id: 'skills', label: 'Behavioral Domains', icon: Sparkles },
+          { id: 'promotions', label: 'Student Promotions', icon: TrendingUp }
+        ]
+      }
     ],
     teacher: [
-      { id: 'dashboard', label: 'Overview', color: '#0072ff' },
-      { id: 'grades', label: 'Enter Marks', color: '#00dbde' },
-      { id: 'attendance', label: 'Attendance', color: '#38ef7d' },
-      { id: 'broadsheet', label: 'Class Results', color: '#E100FF' },
-      { id: 'schemes', label: 'Scheme of Work', color: '#ff9900' }
+      { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+      { id: 'grades', label: 'Enter Marks', icon: Edit3 },
+      {
+        id: 'attendance',
+        label: 'Attendance',
+        icon: CalendarCheck,
+        subItems: [
+          { id: 'take', label: 'Take Attendance', icon: CheckSquare },
+          { id: 'report', label: 'Attendance Reports', icon: BarChart2 }
+        ]
+      },
+      { id: 'broadsheet', label: 'Class Results', icon: FileSpreadsheet },
+      { id: 'schemes', label: 'Scheme of Work', icon: FileText }
     ],
     student: [
-      { id: 'dashboard', label: 'Overview', color: '#0072ff' },
-      { id: 'results', label: 'My Results', color: '#38ef7d' },
-      { id: 'schemes', label: 'Scheme of Work', color: '#ff9900' },
-      { id: 'fees', label: 'Fees & Payments', color: '#f2c94c' },
-      { id: 'rules', label: 'School Rules', color: '#F9D423' }
+      { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+      { id: 'results', label: 'My Results', icon: Award },
+      { id: 'schemes', label: 'Scheme of Work', icon: FileText },
+      { id: 'fees', label: 'Fees & Payments', icon: CreditCard },
+      { id: 'rules', label: 'School Rules', icon: ShieldCheck }
     ]
   };
 
   const items = navItems[role] || [];
+
+  // Automatically expand menu if the active tab has subItems
+  useEffect(() => {
+    if (activeTab) {
+      setOpenMenus(prev => ({ ...prev, [activeTab]: true }));
+    }
+  }, [activeTab]);
+
+  const toggleMenu = (menuId) => {
+    setOpenMenus(prev => ({
+      ...prev,
+      [menuId]: !prev[menuId]
+    }));
+  };
+
+  const handleTabClick = (item, subItemId = null) => {
+    if (item.subItems && !subItemId) {
+      // Toggle collapse/expand on parent click
+      toggleMenu(item.id);
+      // Select first subItem by default if expanding
+      if (!openMenus[item.id] && item.subItems.length > 0) {
+        onSelectTab(item.id, item.subItems[0].id);
+      } else {
+        onSelectTab(item.id, subTab || item.subItems[0].id);
+      }
+    } else if (subItemId) {
+      onSelectTab(item.id, subItemId);
+    } else {
+      onSelectTab(item.id, null);
+    }
+
+    if (onClose) onClose(); // Close mobile drawer
+  };
 
   return (
     <aside className={`sidebar-container ${isOpen ? 'open' : ''}`} style={{
@@ -39,21 +165,40 @@ export default function Sidebar({ role, activeTab, setActiveTab, onLogout, user,
       flexDirection: 'column',
       borderRight: '1px solid var(--border-color)',
       backgroundColor: 'var(--bg-surface)',
-      transition: 'transform 0.3s ease'
+      transition: 'transform 0.3s ease',
+      zIndex: 90
     }}>
-      {/* Branding Header with Close button for mobile */}
+      {/* Branding Header */}
       <div style={{
-        padding: '24px',
+        padding: '20px 24px',
         borderBottom: '1px solid var(--border-color)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center'
       }}>
-        <div>
-          <h2 style={{ fontSize: '1.10rem', fontWeight: '800', color: 'var(--primary)', margin: 0, textTransform: 'uppercase' }}>
-            {settings?.landing_school_name || 'Jere Model Academy'}
-          </h2>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>PORTAL</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, var(--primary) 0%, #0072ff 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 12px rgba(0, 114, 255, 0.25)'
+          }}>
+            <School size={20} />
+          </div>
+          <div>
+            <h2 style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--primary)', margin: 0, letterSpacing: '0.5px' }}>
+              {settings?.landing_school_name || 'Jere Model Academy'}
+            </h2>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: '700', letterSpacing: '1px' }}>
+              ACADEMIC PORTAL
+            </span>
+          </div>
         </div>
         <button 
           onClick={onClose} 
@@ -61,65 +206,137 @@ export default function Sidebar({ role, activeTab, setActiveTab, onLogout, user,
           style={{
             background: 'none',
             border: 'none',
-            fontSize: '1.2rem',
             color: 'var(--text-primary)',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            padding: '4px',
+            display: 'flex',
+            alignItems: 'center'
           }}
         >
-          ✕
+          <X size={20} />
         </button>
       </div>
 
-      {/* Navigation list */}
-      <nav style={{ padding: '20px 10px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {items.map(item => (
-          <button
-            key={item.id}
-            onClick={() => {
-              setActiveTab(item.id);
-              if (onClose) onClose(); // Close drawer on mobile click
-            }}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              width: '100%',
-              padding: '12px 16px',
-              border: 'none',
-              borderRadius: 'var(--radius-sm)',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              fontWeight: activeTab === item.id ? '600' : '500',
-              backgroundColor: activeTab === item.id ? 'var(--primary-light)' : 'transparent',
-              color: activeTab === item.id ? 'var(--primary)' : 'var(--text-primary)',
-              textAlign: 'left',
-              gap: '12px',
-              transition: 'var(--transition)'
-            }}
-          >
-            {/* Minimalist modern colored indicator instead of emoji */}
-            <span style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              background: item.color,
-              display: 'inline-block',
-              flexShrink: 0
-            }}></span>
-            {item.label}
-          </button>
-        ))}
+      {/* Navigation List */}
+      <nav style={{
+        padding: '16px 12px',
+        flexGrow: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '4px',
+        overflowY: 'auto'
+      }}>
+        {items.map(item => {
+          const Icon = item.icon;
+          const hasSub = item.subItems && item.subItems.length > 0;
+          const isExpanded = !!openMenus[item.id];
+          const isParentActive = activeTab === item.id;
+
+          return (
+            <div key={item.id} style={{ display: 'flex', flexDirection: 'column' }}>
+              {/* Main Item Button */}
+              <button
+                onClick={() => handleTabClick(item)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                  padding: '10px 14px',
+                  border: 'none',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  fontSize: '0.88rem',
+                  fontWeight: isParentActive ? '600' : '500',
+                  backgroundColor: isParentActive ? 'var(--primary-light)' : 'transparent',
+                  color: isParentActive ? 'var(--primary)' : 'var(--text-primary)',
+                  textAlign: 'left',
+                  transition: 'var(--transition)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Icon size={18} style={{ color: isParentActive ? 'var(--primary)' : 'var(--text-secondary)' }} />
+                  <span>{item.label}</span>
+                </div>
+                {hasSub && (
+                  <div
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleMenu(item.id);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '2px',
+                      borderRadius: '4px',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  </div>
+                )}
+              </button>
+
+              {/* Sub-Items Collapsible Container */}
+              {hasSub && isExpanded && (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                  marginLeft: '20px',
+                  paddingLeft: '12px',
+                  borderLeft: '2px solid var(--border-color)',
+                  marginTop: '4px',
+                  marginBottom: '6px'
+                }}>
+                  {item.subItems.map(subItem => {
+                    const SubIcon = subItem.icon;
+                    const isSubActive = isParentActive && subTab === subItem.id;
+
+                    return (
+                      <button
+                        key={subItem.id}
+                        onClick={() => handleTabClick(item, subItem.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: 'none',
+                          borderRadius: 'var(--radius-sm)',
+                          cursor: 'pointer',
+                          fontSize: '0.83rem',
+                          fontWeight: isSubActive ? '600' : '400',
+                          backgroundColor: isSubActive ? 'rgba(0, 114, 255, 0.12)' : 'transparent',
+                          color: isSubActive ? 'var(--primary)' : 'var(--text-secondary)',
+                          textAlign: 'left',
+                          transition: 'var(--transition)'
+                        }}
+                      >
+                        <SubIcon size={15} style={{ color: isSubActive ? 'var(--primary)' : 'var(--text-muted)' }} />
+                        <span>{subItem.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Sidebar Footer */}
       <div style={{
-        padding: '20px',
+        padding: '16px 20px',
         borderTop: '1px solid var(--border-color)',
         textAlign: 'center',
         fontSize: '0.75rem',
         color: 'var(--text-muted)'
       }}>
-        {settings?.landing_school_name || 'Jere Model Academy'} Portal
+        {settings?.landing_school_name || 'Jere Model Academy'} Portal v1.0
       </div>
     </aside>
   );
 }
+

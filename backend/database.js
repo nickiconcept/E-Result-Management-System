@@ -112,7 +112,7 @@ async function initDB() {
     'landing_school_name', 'landing_tagline', 'landing_hero_title', 'landing_hero_desc', 'landing_address', 
     'result_show_position', 'result_show_average', 'contact_phone', 'contact_email', 
     'ca1_name', 'ca2_name', 'ca3_name', 'ca4_name', 'exam_name',
-    'games_master_name', 'games_master_remark', 'house_master_name', 'house_master_remark', 'principal_name',
+    'games_master_name', 'games_master_remark', 'house_master_name', 'house_master_remark', 'principal_name', 'principal_signature',
     'next_term_fee', 'next_term_begins', 'next_term_ends', 'last_term_debit'
   ];
   for (const col of checkCols) {
@@ -291,6 +291,11 @@ async function initDB() {
     );
   `);
 
+  // Migration check to ensure all categories are lowercase
+  try {
+    await runQuery(`UPDATE BEHAVIORAL_SKILLS SET category = LOWER(category) WHERE category != LOWER(category)`);
+  } catch (err) {}
+
   // Create STUDENT_SKILLS_EVALUATION Table
   await runQuery(`
     CREATE TABLE IF NOT EXISTS STUDENT_SKILLS_EVALUATION (
@@ -312,12 +317,18 @@ async function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       student_id INTEGER,
       title TEXT NOT NULL,
+      category TEXT DEFAULT 'School Fees',
       amount_due REAL NOT NULL,
       amount_paid REAL DEFAULT 0,
       status TEXT DEFAULT 'unpaid' CHECK(status IN ('unpaid', 'partial', 'paid')),
       FOREIGN KEY(student_id) REFERENCES STUDENTS(id) ON DELETE CASCADE
     );
   `);
+
+  // Migration check for category column in FEE_INVOICES
+  try {
+    await runQuery(`ALTER TABLE FEE_INVOICES ADD COLUMN category TEXT DEFAULT 'School Fees'`);
+  } catch (err) {}
 
   // Create FEE_RECEIPTS Table
   await runQuery(`
@@ -348,10 +359,16 @@ async function initDB() {
     CREATE TABLE IF NOT EXISTS FEE_STRUCTURES (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
+      category TEXT DEFAULT 'School Fees',
       amount REAL NOT NULL,
       tier TEXT NOT NULL CHECK(tier IN ('nursery', 'primary', 'jss', 'sss'))
     );
   `);
+
+  // Migration check for category column in FEE_STRUCTURES
+  try {
+    await runQuery(`ALTER TABLE FEE_STRUCTURES ADD COLUMN category TEXT DEFAULT 'School Fees'`);
+  } catch (err) {}
 
   // Create SCHEME_OF_WORK Table
   await runQuery(`
@@ -362,6 +379,7 @@ async function initDB() {
       term TEXT NOT NULL,
       week INTEGER NOT NULL,
       topic TEXT NOT NULL,
+      subtitle TEXT,
       objectives TEXT,
       created_by INTEGER,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -371,6 +389,11 @@ async function initDB() {
       UNIQUE(class_id, subject_id, term, week)
     );
   `);
+
+  // Migration check for subtitle column in SCHEME_OF_WORK
+  try {
+    await runQuery(`ALTER TABLE SCHEME_OF_WORK ADD COLUMN subtitle TEXT`);
+  } catch (err) {}
 
   // Migrate status column on USERS
   try {
@@ -423,10 +446,10 @@ async function initDB() {
   const feeStructCount = await getQuery('SELECT COUNT(*) as count FROM FEE_STRUCTURES');
   if (feeStructCount.count === 0) {
     console.log('Seeding initial fee structures...');
-    await runQuery(`INSERT INTO FEE_STRUCTURES (title, amount, tier) VALUES ('Nursery Tuition Fee', 35000, 'nursery')`);
-    await runQuery(`INSERT INTO FEE_STRUCTURES (title, amount, tier) VALUES ('Primary Tuition Fee', 40000, 'primary')`);
-    await runQuery(`INSERT INTO FEE_STRUCTURES (title, amount, tier) VALUES ('JSS Tuition Fee', 45000, 'jss')`);
-    await runQuery(`INSERT INTO FEE_STRUCTURES (title, amount, tier) VALUES ('SSS Tuition Fee', 50000, 'sss')`);
+    await runQuery(`INSERT INTO FEE_STRUCTURES (title, category, amount, tier) VALUES ('Nursery School Fee', 'School Fees', 35000, 'nursery')`);
+    await runQuery(`INSERT INTO FEE_STRUCTURES (title, category, amount, tier) VALUES ('Primary School Fee', 'School Fees', 40000, 'primary')`);
+    await runQuery(`INSERT INTO FEE_STRUCTURES (title, category, amount, tier) VALUES ('JSS School Fee', 'School Fees', 45000, 'jss')`);
+    await runQuery(`INSERT INTO FEE_STRUCTURES (title, category, amount, tier) VALUES ('SSS School Fee', 'School Fees', 50000, 'sss')`);
   }
 
   // 3. Seed Default Behavioral Skills

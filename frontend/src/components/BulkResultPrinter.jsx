@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import ReportCard from './ReportCard';
+import { ArrowLeft, Printer } from 'lucide-react';
 
 export default function BulkResultPrinter({ classes, sessions, currentTerm, currentSession, settings, onClose, onBack, isStandalonePage = false }) {
   const [selectedClassId, setSelectedClassId] = useState(classes && classes.length > 0 ? classes[0].id : '');
@@ -69,7 +70,7 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
           <div>
             <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span>🖨️</span> Print Results
+              <Printer size={20} /> Print Results
             </h3>
             <p style={{ margin: '4px 0 0 0', color: '#64748b', fontSize: '0.85rem' }}>
               Select a class arm to view and print all student report cards in one continuous batch.
@@ -79,9 +80,9 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
             <button
               className="btn btn-secondary"
               onClick={onBack}
-              style={{ border: '1px solid #cbd5e1', padding: '6px 14px', fontSize: '0.85rem' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid #cbd5e1', padding: '6px 14px', fontSize: '0.85rem' }}
             >
-              ✕ Close Result
+              <ArrowLeft size={16} /> Close Result
             </button>
           )}
         </div>

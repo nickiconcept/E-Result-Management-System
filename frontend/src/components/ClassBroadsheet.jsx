@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowLeft, Printer, Download } from 'lucide-react';
 
 export default function ClassBroadsheet({ data, className, term, session, settings, onBack }) {
   if (!data) return <p>Loading broadsheet data...</p>;
@@ -40,43 +41,59 @@ export default function ClassBroadsheet({ data, className, term, session, settin
     headers2.push('', '', '');
     csv += headers2.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + '\r\n';
 
-    // Student Data rows
-    rows.forEach(row => {
-      const line = [row.full_name, row.admission_number];
+    // Student rows
+    rows.forEach(r => {
+      const rowVals = [
+        String(r.full_name || '').replace(/"/g, '""'),
+        String(r.admission_number || '').replace(/"/g, '""')
+      ];
+
       subjects.forEach(sub => {
-        const g = row.grades ? row.grades[sub.id] : null;
-        if (g) {
-          line.push(g.ca1 || 0, g.ca2 || 0, g.ca3 || 0, g.ca4 || 0, g.exam_score || 0, g.total_score || 0, g.grade_letter || '-');
-        } else {
-          line.push(0, 0, 0, 0, 0, 0, '-');
-        }
+        const sg = (r.subject_grades || {})[sub.id] || {};
+        rowVals.push(
+          sg.ca1 !== undefined && sg.ca1 !== null ? sg.ca1 : '-',
+          sg.ca2 !== undefined && sg.ca2 !== null ? sg.ca2 : '-',
+          sg.ca3 !== undefined && sg.ca3 !== null ? sg.ca3 : '-',
+          sg.ca4 !== undefined && sg.ca4 !== null ? sg.ca4 : '-',
+          sg.exam !== undefined && sg.exam !== null ? sg.exam : '-',
+          sg.total_score !== undefined && sg.total_score !== null ? sg.total_score : '-',
+          sg.grade || '-'
+        );
       });
-      line.push(row.grandTotal || 0, (row.average || 0).toFixed(1), row.position || '-');
-      csv += line.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\r\n';
+
+      rowVals.push(
+        r.grand_total !== undefined ? r.grand_total : '-',
+        r.average !== undefined ? r.average : '-',
+        r.position !== undefined ? r.position : '-'
+      );
+
+      csv += rowVals.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',') + '\r\n';
     });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${(className || 'Class').replace(/\s+/g, '_')}_Results_${(term || 'Term').replace(/\s+/g, '_')}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Broadsheet_${String(className).replace(/\s+/g, '_')}_${String(term).replace(/\s+/g, '_')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
-    <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {onBack && (
-            <button className="btn btn-secondary no-print" onClick={onBack} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
-              ← Back to Overview
-            </button>
-          )}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {onBack && (
+        <div className="no-print">
+          <button className="btn btn-secondary" onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+            <ArrowLeft size={16} /> Back
+          </button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div>
-            <h2 style={{ fontSize: '1.4rem', margin: 0 }}>Class Broadsheet - {className}</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>{className} Master Broadsheet</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '2px 0 0 0' }}>
               Academic Period: {session} | {term}
             </p>
@@ -84,11 +101,10 @@ export default function ClassBroadsheet({ data, className, term, session, settin
         </div>
         <div style={{ display: 'flex', gap: '10px' }} className="no-print">
           <button className="btn btn-secondary" onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            📊 Export to Excel
+            <Download size={16} /> Export to Excel
           </button>
           <button className="btn btn-primary" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-            Print Broadsheet
+            <Printer size={16} /> Print Broadsheet
           </button>
         </div>
       </div>
