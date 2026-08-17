@@ -247,14 +247,15 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
                   cursor: 'pointer',
                   fontSize: '0.88rem',
                   fontWeight: isParentActive ? '600' : '500',
-                  backgroundColor: isParentActive ? 'var(--primary-light)' : 'transparent',
-                  color: isParentActive ? 'var(--primary)' : 'var(--text-primary)',
+                  backgroundColor: isParentActive ? 'var(--primary)' : 'transparent',
+                  color: isParentActive ? '#ffffff' : 'var(--text-primary)',
+                  boxShadow: isParentActive ? '0 4px 14px var(--primary-glow)' : 'none',
                   textAlign: 'left',
                   transition: 'var(--transition)'
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Icon size={18} style={{ color: isParentActive ? 'var(--primary)' : 'var(--text-secondary)' }} />
+                  <Icon size={18} style={{ color: isParentActive ? '#ffffff' : 'var(--text-secondary)' }} />
                   <span>{item.label}</span>
                 </div>
                 {hasSub && (
@@ -284,7 +285,7 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
                   gap: '2px',
                   marginLeft: '20px',
                   paddingLeft: '12px',
-                  borderLeft: '2px solid var(--border-color)',
+                  borderLeft: '2px solid var(--primary-light)',
                   marginTop: '4px',
                   marginBottom: '6px'
                 }}>
@@ -307,7 +308,7 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
                           cursor: 'pointer',
                           fontSize: '0.83rem',
                           fontWeight: isSubActive ? '600' : '400',
-                          backgroundColor: isSubActive ? 'rgba(0, 114, 255, 0.12)' : 'transparent',
+                          backgroundColor: isSubActive ? 'var(--primary-light)' : 'transparent',
                           color: isSubActive ? 'var(--primary)' : 'var(--text-secondary)',
                           textAlign: 'left',
                           transition: 'var(--transition)'
