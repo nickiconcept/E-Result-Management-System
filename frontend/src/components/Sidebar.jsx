@@ -90,11 +90,10 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
         icon: Settings,
         subItems: [
           { id: 'academic', label: 'Academic Settings', icon: Sliders },
-          { id: 'sessions', label: 'Session Rollover', icon: RotateCw },
-          { id: 'landing', label: 'Portal Landing Settings', icon: Globe },
-          { id: 'grading', label: 'Grading System', icon: Award },
+          { id: 'website', label: 'Portal Landing Settings', icon: Globe },
+          { id: 'reports', label: 'Grading & Reports', icon: Award },
           { id: 'skills', label: 'Behavioral Domains', icon: Sparkles },
-          { id: 'promotions', label: 'Student Promotions', icon: TrendingUp }
+          { id: 'promotion', label: 'Student Promotions', icon: TrendingUp }
         ]
       }
     ],

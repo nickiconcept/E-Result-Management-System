@@ -404,7 +404,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>📊</span> Result Upload Progress
+                  <BarChart2 size={20} style={{ color: 'var(--primary)' }} /> Result Upload Progress
                 </h3>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
                   Subject marks submission status for <strong>{resultProgress?.term || 'Current Term'} ({resultProgress?.academic_year || 'Session'})</strong>
@@ -1116,7 +1116,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                   style={{ fontSize: '0.82rem', padding: '7px 14px' }}
                   onClick={() => window.print()}
                 >
-                  🖨️ Print Scheme
+                  <Printer size={15} style={{ marginRight: '6px' }} /> Print Scheme
                 </button>
               )}
             </div>
@@ -1173,8 +1173,9 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                     width: '36px', height: '36px', borderRadius: '50%',
                     backgroundColor: 'var(--primary)', color: '#fff',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '1rem', fontWeight: 'bold', flexShrink: 0
-                  }}>📚</div>
+                  }}>
+                    <BookOpen size={18} />
+                  </div>
                   <div>
                     <div style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--primary)' }}>
                       {assignments.subjects[teacherSchemeAssignIdx]?.subject_name || 'Subject'}

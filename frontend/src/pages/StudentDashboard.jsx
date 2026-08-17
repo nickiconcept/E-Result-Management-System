@@ -310,9 +310,15 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
                     <div>
                       <h4 style={{ fontSize: '1.05rem' }}>{item.academic_year} - {item.term}</h4>
                       <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                        {isUnlocked
-                          ? `🔑 Unlocked - Views Used: ${pinBinding.usage_count} / 5`
-                          : '🔒 Enter PIN to view results'}
+                        {isUnlocked ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--success)' }}>
+                            <Key size={14} /> Unlocked - Views Used: {pinBinding.usage_count} / 5
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--danger)' }}>
+                            <Lock size={14} /> Enter PIN to view results
+                          </span>
+                        )}
                       </p>
                     </div>
 
@@ -580,7 +586,9 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
           <div className="modal-content glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
             <button className="modal-close" onClick={() => setShowPinModal(false)}>✕</button>
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <div style={{ fontSize: '2.5rem' }}>🔑</div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px', color: 'var(--primary)' }}>
+                <Key size={42} />
+              </div>
               <h3>Enter Result PIN</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                 Please enter your 10-character PIN for {selectedTermForRC.academic_year} ({selectedTermForRC.term}).

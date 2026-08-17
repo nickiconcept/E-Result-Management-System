@@ -519,7 +519,20 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       else if (activeTab === 'attendance') setActiveAdminAttendanceSubTab(subTab);
       else if (activeTab === 'student-results') setResultsSubTab(subTab);
       else if (activeTab === 'fees') setActiveFeesSubTab(subTab);
-      else if (activeTab === 'settings') setSettingsSubTab(subTab);
+      else if (activeTab === 'settings') {
+        if (subTab === 'promotions' || subTab === 'promotion') {
+          setActiveSubTab('promotions');
+          setSettingsSubTab('promotion');
+        } else if (subTab === 'landing' || subTab === 'website') {
+          setSettingsSubTab('website');
+        } else if (subTab === 'grading' || subTab === 'reports') {
+          setSettingsSubTab('reports');
+        } else if (subTab === 'sessions') {
+          setSettingsSubTab('academic');
+        } else {
+          setSettingsSubTab(subTab);
+        }
+      }
     }
   }, [activeTab, subTab]);
 
@@ -2672,14 +2685,14 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               className={`settings-tab-btn ${resultsSubTab === 'enter-marks' ? 'active' : ''}`}
               onClick={() => setResultsSubTab('enter-marks')}
             >
-              <span>✍️</span> Enter Marks
+              <Edit3 size={16} /> Enter Marks
             </button>
             <button
               type="button"
               className={`settings-tab-btn ${resultsSubTab === 'bulk' ? 'active' : ''}`}
               onClick={() => setResultsSubTab('bulk')}
             >
-              <span>🖨️</span> Bulk Print Cards
+              <Printer size={16} /> Bulk Print Cards
             </button>
             <button
               type="button"
@@ -2693,21 +2706,21 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 }
               }}
             >
-              <span>📊</span> Class Broadsheet
+              <Grid size={16} /> Class Broadsheet
             </button>
             <button
               type="button"
               className={`settings-tab-btn ${resultsSubTab === 'pins' ? 'active' : ''}`}
               onClick={() => setResultsSubTab('pins')}
             >
-              <span>🔑</span> Result PINs
+              <Key size={16} /> Result PINs
             </button>
             <button
               type="button"
               className={`settings-tab-btn ${resultsSubTab === 'promotions' ? 'active' : ''}`}
               onClick={() => setResultsSubTab('promotions')}
             >
-              <span>🎓</span> Promotions
+              <GraduationCap size={16} /> Promotions
             </button>
           </div>
 
@@ -3188,21 +3201,21 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               className={`settings-tab-btn ${settingsSubTab === 'academic' ? 'active' : ''}`}
               onClick={() => setSettingsSubTab('academic')}
             >
-              <span>📅</span> School Year & Term
+              <CalendarCheck size={16} /> School Year & Term
             </button>
             <button
               type="button"
               className={`settings-tab-btn ${settingsSubTab === 'reports' || settingsSubTab === 'skills' ? 'active' : ''}`}
               onClick={() => setSettingsSubTab('reports')}
             >
-              <span>📜</span> Report Card Display & Psychomotor Skills
+              <Award size={16} /> Report Card Display & Psychomotor Skills
             </button>
             <button
               type="button"
               className={`settings-tab-btn ${settingsSubTab === 'website' ? 'active' : ''}`}
               onClick={() => setSettingsSubTab('website')}
             >
-              <span>🌐</span> Website & Contact Info
+              <Globe size={16} /> Website & Contact Info
             </button>
           </div>
 
