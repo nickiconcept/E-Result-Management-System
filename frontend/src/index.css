@@ -16,11 +16,11 @@
   --text-secondary: hsl(var(--hue), 15%, 45%);
   --text-muted: hsl(var(--hue), 10%, 65%);
 
-  --primary: hsl(230, 75%, 58%);
-  --primary-hover: hsl(230, 75%, 50%);
-  --primary-light: hsl(230, 75%, 95%);
+  --primary: hsl(215, 70%, 22%);
+  --primary-hover: hsl(215, 70%, 16%);
+  --primary-light: hsl(215, 60%, 94%);
   
-  --secondary: hsl(260, 60%, 55%);
+  --secondary: hsl(199, 89%, 48%);
   --accent: hsl(190, 85%, 45%);
   
   --success: hsl(145, 63%, 42%);
@@ -53,9 +53,10 @@ body.dark {
   --text-secondary: hsl(var(--hue), 10%, 75%);
   --text-muted: hsl(var(--hue), 8%, 55%);
 
-  --primary: hsl(230, 85%, 65%);
-  --primary-hover: hsl(230, 85%, 72%);
-  --primary-light: rgba(99, 102, 241, 0.15);
+  --primary: hsl(215, 85%, 60%);
+  --primary-hover: hsl(215, 85%, 68%);
+  --primary-light: rgba(14, 165, 233, 0.15);
+  --secondary: hsl(199, 90%, 55%);
 
   --success-light: rgba(16, 185, 129, 0.15);
   --warning-light: rgba(245, 158, 11, 0.15);

@@ -181,7 +181,7 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
             width: '36px',
             height: '36px',
             borderRadius: '10px',
-            background: 'linear-gradient(135deg, var(--primary) 0%, #0072ff 100%)',
+            background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
