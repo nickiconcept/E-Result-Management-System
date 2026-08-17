@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import ReportCard from '../components/ReportCard';
+import Toast from '../components/Toast';
 import { ArrowLeft, Award, CreditCard, FileText, ShieldCheck, Printer, CheckCircle, Lock, Unlock, Receipt, X } from 'lucide-react';
 
 export default function StudentDashboard({ user, settings, activeTab, subTab }) {
@@ -174,19 +175,9 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
 
-      {/* Notifications */}
-      {notify && (
-        <div style={{ padding: '12px 18px', backgroundColor: 'var(--success-light)', color: 'var(--success)', borderRadius: 'var(--radius-sm)', fontWeight: 'bold' }} className="no-print">
-          Success: {notify}
-          <button style={{ float: 'right', background: 'none', border: 'none', color: 'var(--success)', cursor: 'pointer' }} onClick={() => setNotify('')}>✕</button>
-        </div>
-      )}
-      {errorMsg && (
-        <div style={{ padding: '12px 18px', backgroundColor: 'var(--danger-light)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', fontWeight: 'bold' }} className="no-print">
-          Warning: {errorMsg}
-          <button style={{ float: 'right', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }} onClick={() => setErrorMsg('')}>✕</button>
-        </div>
-      )}
+      {/* Toast Notifications */}
+      <Toast message={notify} type="success" onClose={() => setNotify('')} duration={4000} />
+      <Toast message={errorMsg} type="error" onClose={() => setErrorMsg('')} duration={5000} />
 
 
 

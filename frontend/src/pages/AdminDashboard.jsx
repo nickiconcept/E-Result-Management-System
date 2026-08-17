@@ -6,6 +6,7 @@ import SignaturePad from '../components/SignaturePad';
 import BulkResultPrinter from '../components/BulkResultPrinter';
 import ClassBroadsheet from '../components/ClassBroadsheet';
 import ReportCard from '../components/ReportCard';
+import Toast from '../components/Toast';
 import {
   ArrowLeft,
   LayoutDashboard,
@@ -1282,19 +1283,9 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-      {/* Dynamic Alerts */}
-      {notify && (
-        <div style={{ padding: '12px 18px', backgroundColor: 'var(--success-light)', color: 'var(--success)', borderRadius: 'var(--radius-sm)', fontWeight: 'bold' }}>
-          Success: {notify}
-          <button style={{ float: 'right', background: 'none', border: 'none', color: 'var(--success)', cursor: 'pointer' }} onClick={() => setNotify('')}>✕</button>
-        </div>
-      )}
-      {errorMsg && (
-        <div style={{ padding: '12px 18px', backgroundColor: 'var(--danger-light)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', fontWeight: 'bold' }}>
-          Warning: {errorMsg}
-          <button style={{ float: 'right', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer' }} onClick={() => setErrorMsg('')}>✕</button>
-        </div>
-      )}
+      {/* Toast Notifications */}
+      <Toast message={notify} type="success" onClose={() => setNotify('')} duration={4000} />
+      <Toast message={errorMsg} type="error" onClose={() => setErrorMsg('')} duration={5000} />
 
 
 
