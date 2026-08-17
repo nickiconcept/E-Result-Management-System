@@ -3955,7 +3955,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   />
                 </div>
 
-                <button className="btn btn-secondary" onClick={() => window.print()}>Print Report</button>
+                <button className="btn btn-secondary no-print" onClick={() => window.print()}>Print Report</button>
               </div>
 
               {!adminReportClassId ? (

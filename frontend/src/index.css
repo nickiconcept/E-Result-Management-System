@@ -739,6 +739,21 @@ table.school-table td {
     transform: none !important;
   }
 
+  /* Universal Print Container Un-clipping (Prevents Blank White Page Issue) */
+  .table-container,
+  .glass-panel,
+  .grade-table-container,
+  .school-table,
+  .grade-entry-table,
+  .modal-overlay,
+  .modal-content {
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+  }
+
   /* When printing inside a modal overlay (e.g. Report Card, Student Form, Receipt), hide background page */
   body:has(.modal-overlay) .main-content > *:not(.modal-overlay) {
     display: none !important;

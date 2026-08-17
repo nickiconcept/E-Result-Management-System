@@ -918,7 +918,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                       onChange={(e) => setAttendanceReportEndDate(e.target.value)}
                     />
                   </div>
-                  <button className="btn btn-secondary" onClick={() => window.print()}>Print Report</button>
+                  <button className="btn btn-secondary no-print" onClick={() => window.print()}>Print Report</button>
                 </div>
               </div>
 
@@ -1103,7 +1103,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
               </div>
               {teacherSchemeAssignIdx !== '' && (
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn-secondary no-print"
                   style={{ fontSize: '0.82rem', padding: '7px 14px' }}
                   onClick={() => window.print()}
                 >
