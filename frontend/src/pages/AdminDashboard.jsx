@@ -5,6 +5,7 @@ import TeacherProfileCard from '../components/TeacherProfileCard';
 import SignaturePad from '../components/SignaturePad';
 import BulkResultPrinter from '../components/BulkResultPrinter';
 import ClassBroadsheet from '../components/ClassBroadsheet';
+import ReportCard from '../components/ReportCard';
 import {
   ArrowLeft,
   LayoutDashboard,
@@ -255,6 +256,34 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [settingsSubTab, setSettingsSubTab] = useState('academic');
   const [resultsSubTab, setResultsSubTab] = useState('bulk');
   const [subjectsSubTab, setSubjectsSubTab] = useState('list');
+  
+  // Single Result View states
+  const [singleResultClassId, setSingleResultClassId] = useState('');
+  const [singleResultStudentId, setSingleResultStudentId] = useState('');
+  const [singleResultTerm, setSingleResultTerm] = useState(settings?.active_term || '3rd Term');
+  const [singleResultSession, setSingleResultSession] = useState(settings?.active_session || '');
+  const [singleReportCardData, setSingleReportCardData] = useState(null);
+  const [singleResultLoading, setSingleResultLoading] = useState(false);
+  const [singleResultError, setSingleResultError] = useState('');
+
+  const handleFetchSingleResult = async (e) => {
+    if (e) e.preventDefault();
+    if (!singleResultStudentId) return;
+    setSingleResultLoading(true);
+    setSingleResultError('');
+    try {
+      const data = await api.getReportCard(
+        singleResultStudentId,
+        singleResultTerm || settings?.active_term || '3rd Term',
+        singleResultSession || settings?.active_session || ''
+      );
+      setSingleReportCardData(data);
+    } catch (err) {
+      setSingleResultError(err.message || 'Failed to fetch student report card.');
+    } finally {
+      setSingleResultLoading(false);
+    }
+  };
   
   // Data lists
   const [students, setStudents] = useState([]);
@@ -2682,6 +2711,13 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           <div className="settings-tab-bar">
             <button
               type="button"
+              className={`settings-tab-btn ${resultsSubTab === 'single' ? 'active' : ''}`}
+              onClick={() => setResultsSubTab('single')}
+            >
+              <FileText size={16} /> Single Result View
+            </button>
+            <button
+              type="button"
               className={`settings-tab-btn ${resultsSubTab === 'enter-marks' ? 'active' : ''}`}
               onClick={() => setResultsSubTab('enter-marks')}
             >
@@ -2717,12 +2753,108 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             </button>
             <button
               type="button"
-              className={`settings-tab-btn ${resultsSubTab === 'promotions' ? 'active' : ''}`}
+              className={`settings-tab-btn ${resultsSubTab === 'promotions' || resultsSubTab === 'promotion' ? 'active' : ''}`}
               onClick={() => setResultsSubTab('promotions')}
             >
               <GraduationCap size={16} /> Promotions
             </button>
           </div>
+
+          {/* Sub-Tab: Single Student Result View */}
+          {resultsSubTab === 'single' && (
+            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+              <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>Single Student Result Lookup</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
+                Select a class arm and student to generate and view their official terminal report card.
+              </p>
+
+              <form onSubmit={handleFetchSingleResult} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', alignItems: 'flex-end', marginBottom: '24px' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Select Class Arm</label>
+                  <select
+                    className="form-control"
+                    value={singleResultClassId}
+                    onChange={(e) => {
+                      setSingleResultClassId(e.target.value);
+                      setSingleResultStudentId('');
+                    }}
+                  >
+                    <option value="">-- Choose Class --</option>
+                    {classes.map((c, idx) => (
+                      <option key={idx} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Select Student</label>
+                  <select
+                    className="form-control"
+                    value={singleResultStudentId}
+                    onChange={(e) => setSingleResultStudentId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select Student --</option>
+                    {students
+                      .filter(s => !singleResultClassId || String(s.class_id) === String(singleResultClassId))
+                      .map((st, idx) => (
+                        <option key={idx} value={st.id}>{st.full_name} ({st.admission_number || 'No ADM'})</option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Term</label>
+                  <select
+                    className="form-control"
+                    value={singleResultTerm}
+                    onChange={(e) => setSingleResultTerm(e.target.value)}
+                  >
+                    <option value="1st Term">1st Term</option>
+                    <option value="2nd Term">2nd Term</option>
+                    <option value="3rd Term">3rd Term</option>
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>School Year</label>
+                  <select
+                    className="form-control"
+                    value={singleResultSession}
+                    onChange={(e) => setSingleResultSession(e.target.value)}
+                  >
+                    {sessions.map((s, idx) => (
+                      <option key={idx} value={s.session_name}>{s.session_name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <button type="submit" className="btn btn-primary" style={{ padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
+                  <Search size={16} /> View Report Card
+                </button>
+              </form>
+
+              {singleResultError && (
+                <div className="alert alert-danger" style={{ marginBottom: '20px' }}>{singleResultError}</div>
+              )}
+
+              {singleResultLoading ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--primary)' }}>
+                  <h4>Loading Report Card...</h4>
+                </div>
+              ) : singleReportCardData ? (
+                <ReportCard
+                  data={singleReportCardData}
+                  settings={settings}
+                  onClose={() => setSingleReportCardData(null)}
+                />
+              ) : (
+                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)', borderTop: '1px dashed var(--border-color)' }}>
+                  <p>Select a student above and click <strong>View Report Card</strong> to inspect their terminal results.</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Sub-Tab 1: Bulk Print Cards */}
           {resultsSubTab === 'bulk' && (
@@ -3498,8 +3630,75 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             </div>
           )}
 
+          {/* Sub-Tab 3: Website & Contact Info */}
+          {(settingsSubTab === 'website' || settingsSubTab === 'landing') && (
+            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+              <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>Portal Landing Page & Contact Settings</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
+                Customize the school name, taglines, hero banner text, and official contact address displayed on the landing page and receipts.
+              </p>
+
+              <form onSubmit={handleUpdateSettings}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+                  <div className="form-group">
+                    <label>School Name</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.landing_school_name || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, landing_school_name: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>School Subtitle / Tagline</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.landing_tagline || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, landing_tagline: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label>Hero Title (Landing Page Banner)</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.landing_hero_title || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, landing_hero_title: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label>Hero Description</label>
+                    <textarea
+                      className="form-control"
+                      rows="3"
+                      value={settingsForm.landing_hero_desc || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, landing_hero_desc: e.target.value })}
+                    ></textarea>
+                  </div>
+
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label>Official School Address</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={settingsForm.landing_address || ''}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, landing_address: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px' }}>Save Landing Page Settings</button>
+              </form>
+            </div>
+          )}
+
           {/* Sub-Tab 4: Move Students Up */}
-          {settingsSubTab === 'promotion' && (
+          {(settingsSubTab === 'promotion' || settingsSubTab === 'promotions') && (
             <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
               <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>Move Students to Next Class</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
