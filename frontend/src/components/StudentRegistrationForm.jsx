@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import api from '../utils/api';
-import { ArrowLeft, Edit2, Printer, X, User, Save, Upload } from 'lucide-react';
+import { ArrowLeft, Edit2, X, User, Save, Upload, Download } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 export default function StudentRegistrationForm({ student, onClose, onUpdate }) {
   if (!student) return null;
@@ -22,8 +23,24 @@ export default function StudentRegistrationForm({ student, onClose, onUpdate }) 
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const formRef = React.useRef(null);
+
+  const handleExportPDF = () => {
+    const element = formRef.current;
+    if (!element) return;
+    // Temporarily make the hidden print form visible for capture
+    const prevDisplay = element.style.display;
+    element.style.display = 'block';
+    const opt = {
+      margin:       0.3,
+      filename:     `${student?.admission_number || 'student'}_profile.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save().then(() => {
+      element.style.display = prevDisplay;
+    });
   };
 
   const handleSave = async (e) => {
@@ -53,19 +70,22 @@ export default function StudentRegistrationForm({ student, onClose, onUpdate }) 
           <X size={20} />
         </button>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }} className="no-print">
-          <button className="btn btn-secondary" onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border-color)', padding: '8px 16px', fontSize: '0.85rem' }}>
-            <ArrowLeft size={16} />
-            <span>Back to Student Roster</span>
-          </button>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn-secondary" onClick={() => setIsEditing(!isEditing)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }} className="no-print">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <button className="btn btn-secondary" onClick={onClose} style={{ display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+              <ArrowLeft size={16} />
+              <span>Back</span>
+            </button>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Student Profile</h3>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', paddingRight: '40px' }}>
+            <button className="btn btn-secondary" onClick={() => setIsEditing(!isEditing)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
               <Edit2 size={16} />
               <span>{isEditing ? 'Cancel Edit' : 'Edit Profile'}</span>
             </button>
-            <button className="btn btn-primary" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Printer size={16} />
-              <span>Print Form</span>
+            <button className="btn btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.3)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+              <Download size={16} />
+              <span>Download PDF</span>
             </button>
           </div>
         </div>
@@ -200,7 +220,7 @@ export default function StudentRegistrationForm({ student, onClose, onUpdate }) 
         </div>
 
         {/* PRINTABLE AREA (Only visible during print) */}
-        <div className="physical-form-container print-area">
+        <div className="physical-form-container print-area" ref={formRef}>
           <style>{`
             @media screen {
               .print-area { display: none !important; }

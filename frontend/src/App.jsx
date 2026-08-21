@@ -9,8 +9,14 @@ import api from './utils/api';
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [subTab, setSubTab] = useState(null);
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = localStorage.getItem('jma_active_tab');
+    return (saved && saved !== 'undefined' && saved !== 'null') ? saved : 'dashboard';
+  });
+  const [subTab, setSubTab] = useState(() => {
+    const saved = localStorage.getItem('jma_active_subtab');
+    return (saved && saved !== 'undefined' && saved !== 'null') ? saved : null;
+  });
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
@@ -24,6 +30,12 @@ export default function App() {
   const handleSelectTab = (tabId, subTabId = null) => {
     setActiveTab(tabId);
     setSubTab(subTabId);
+    localStorage.setItem('jma_active_tab', tabId);
+    if (subTabId) {
+      localStorage.setItem('jma_active_subtab', subTabId);
+    } else {
+      localStorage.removeItem('jma_active_subtab');
+    }
   };
 
   const fetchSettings = async () => {
@@ -76,6 +88,8 @@ export default function App() {
     setUser(loggedInUser);
     setActiveTab('dashboard'); // Default landing page
     setSubTab(null);
+    localStorage.removeItem('jma_active_tab');
+    localStorage.removeItem('jma_active_subtab');
   };
 
   const handleLogout = () => {
@@ -83,6 +97,8 @@ export default function App() {
     setUser(null);
     setActiveTab('dashboard');
     setSubTab(null);
+    localStorage.removeItem('jma_active_tab');
+    localStorage.removeItem('jma_active_subtab');
   };
 
   if (loading || !settings) {
@@ -94,11 +110,57 @@ export default function App() {
         alignItems: 'center',
         justifyContent: 'center',
         background: 'var(--bg-primary)',
-        color: 'var(--text-primary)'
+        color: 'var(--text-primary)',
+        gap: '20px',
       }}>
-        <div style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '20px', color: 'var(--primary)' }}>JMA</div>
-        <h3>Syncing Jere Model Academy Portal...</h3>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '6px' }}>Synchronizing local database schemas</p>
+        {/* Pulsing logo badge */}
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{
+            position: 'absolute',
+            width: '90px',
+            height: '90px',
+            borderRadius: '50%',
+            border: '2px solid rgba(14,165,233,0.4)',
+            animation: 'pulseRing 1.8s ease infinite',
+          }} />
+          <div style={{
+            width: '68px',
+            height: '68px',
+            borderRadius: '18px',
+            background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 10px 32px var(--primary-glow)',
+            color: '#fff',
+            fontSize: '1.35rem',
+            fontWeight: '900',
+            fontFamily: 'var(--font-heading)',
+            letterSpacing: '-0.02em',
+          }}>
+            JMA
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'center' }}>
+          <h3 style={{ fontSize: '1.15rem', fontWeight: '700', margin: '0 0 6px 0', color: 'var(--text-primary)' }}>
+            Jere Model Academy Portal
+          </h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', margin: 0 }}>
+            Synchronizing portal data...
+          </p>
+        </div>
+
+        {/* Shimmer progress bar */}
+        <div style={{
+          width: '220px',
+          height: '4px',
+          borderRadius: '99px',
+          overflow: 'hidden',
+          background: 'var(--bg-secondary)',
+        }}>
+          <div className="skeleton" style={{ width: '100%', height: '100%', borderRadius: '99px' }} />
+        </div>
       </div>
     );
   }
@@ -128,6 +190,7 @@ export default function App() {
           fetchSettings={fetchSettings}
           activeTab={activeTab}
           subTab={subTab}
+          onSelectTab={handleSelectTab}
         />
       )}
       {user.role === 'teacher' && (
@@ -136,6 +199,7 @@ export default function App() {
           settings={settings}
           activeTab={activeTab}
           subTab={subTab}
+          onSelectTab={handleSelectTab}
         />
       )}
       {user.role === 'student' && (
@@ -144,6 +208,7 @@ export default function App() {
           settings={settings}
           activeTab={activeTab}
           subTab={subTab}
+          onSelectTab={handleSelectTab}
         />
       )}
     </DashboardLayout>

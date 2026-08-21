@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import html2pdf from 'html2pdf.js';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import api from '../utils/api';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
 import TeacherProfileCard from '../components/TeacherProfileCard';
@@ -7,6 +9,7 @@ import BulkResultPrinter from '../components/BulkResultPrinter';
 import ClassBroadsheet from '../components/ClassBroadsheet';
 import ReportCard from '../components/ReportCard';
 import Toast from '../components/Toast';
+import StatCard from '../components/StatCard';
 import {
   ArrowLeft,
   LayoutDashboard,
@@ -20,7 +23,6 @@ import {
   CheckSquare,
   BarChart2,
   FileSpreadsheet,
-  Printer,
   Edit3,
   Grid,
   Key,
@@ -46,13 +48,18 @@ import {
   Save,
   RefreshCw,
   CheckCircle,
-  XCircle
+  XCircle,
+  UserPlus,
+  User,
+  Clock,
+  CheckCircle2,
+  Hourglass,
+  UploadCloud
 } from 'lucide-react';
 
-// 3D Column Chart Component
-function ThreeDColumnChart({ title, subtitle, data, height = 140 }) {
+// Modern Bar Chart Component
+function ModernBarChart({ title, subtitle, data, height = 240 }) {
   if (!data || data.length === 0) return null;
-  const maxValue = Math.max(...data.map(d => Number(d.value) || 0), 1);
 
   return (
     <div className="glass-panel" style={{ padding: '14px 18px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -62,103 +69,29 @@ function ThreeDColumnChart({ title, subtitle, data, height = 140 }) {
         </h4>
         {subtitle && <p style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', margin: '2px 0 0 0' }}>{subtitle}</p>}
       </div>
-
-      <div style={{ height: `${height}px`, display: 'flex', alignItems: 'flex-end', gap: '14px', padding: '25px 10px 10px 10px', borderBottom: '2px solid var(--border-color)', position: 'relative', overflowX: 'auto', minWidth: '100%' }}>
-        {/* Horizontal Gridlines */}
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', opacity: 0.12 }}>
-          <div style={{ borderTop: '1px dashed currentColor', width: '100%' }}></div>
-          <div style={{ borderTop: '1px dashed currentColor', width: '100%' }}></div>
-          <div style={{ borderTop: '1px dashed currentColor', width: '100%' }}></div>
-        </div>
-
-        {data.map((item, idx) => {
-          const val = Number(item.value) || 0;
-          const pct = Math.max(10, Math.round((val / maxValue) * 100));
-          const barColor = item.color || `hsl(${(idx * 65) % 360}, 80%, 55%)`;
-          const topColor = item.colorTop || `hsl(${(idx * 65) % 360}, 90%, 75%)`;
-
-          return (
-            <div key={idx} style={{ flex: '1 0 44px', minWidth: '44px', display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'flex-end', position: 'relative' }}>
-              {/* Floating Value Badge */}
-              <div style={{
-                fontSize: '0.75rem',
-                fontWeight: '800',
-                marginBottom: '8px',
-                color: barColor,
-                background: 'var(--bg-primary)',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                border: '1px solid var(--border-color)',
-                boxShadow: 'var(--shadow-sm)',
-                whiteSpace: 'nowrap'
-              }}>
-                {val >= 1000 ? `₦${(val / 1000).toFixed(0)}k` : val}
-              </div>
-
-              {/* 3D Column Column Bar */}
-              <div style={{
-                width: '65%',
-                maxWidth: '46px',
-                height: `${pct}%`,
-                position: 'relative',
-                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.15))'
-              }}>
-                {/* 3D Top Cap */}
-                <div style={{
-                  position: 'absolute',
-                  top: '-7px',
-                  left: 0,
-                  right: 0,
-                  height: '14px',
-                  backgroundColor: topColor,
-                  borderRadius: '50%',
-                  transform: 'scaleY(0.45)',
-                  zIndex: 2,
-                  boxShadow: '0 -1px 3px rgba(255,255,255,0.7)'
-                }}></div>
-
-                {/* 3D Main Column Shaft */}
-                <div style={{
-                  width: '100%',
-                  height: '100%',
-                  background: `linear-gradient(180deg, ${barColor} 0%, ${barColor}dd 100%)`,
-                  borderRadius: '4px 4px 0 0',
-                  boxShadow: 'inset -4px 0 8px rgba(0,0,0,0.3), inset 3px 0 6px rgba(255,255,255,0.3)'
-                }}></div>
-              </div>
-
-              {/* X-axis Label */}
-              <div style={{
-                marginTop: '12px',
-                fontSize: '0.78rem',
-                fontWeight: '700',
-                color: 'var(--text-secondary)',
-                textAlign: 'center',
-                whiteSpace: 'nowrap',
-                textOverflow: 'ellipsis',
-                overflow: 'hidden',
-                maxWidth: '100%'
-              }}>
-                {item.label}
-              </div>
-            </div>
-          );
-        })}
+      <div style={{ width: '100%', height: height }}>
+        <ResponsiveContainer>
+          <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-color)" />
+            <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} />
+            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-secondary)' }} />
+            <RechartsTooltip cursor={{ fill: 'var(--bg-secondary)', opacity: 0.4 }} contentStyle={{ backgroundColor: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
+            <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color || 'var(--primary)'} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
 }
 
-// 3D Pie / Donut Chart Component
-function ThreeDPieChart({ title, subtitle, data, size = 180 }) {
+// Modern Pie Chart Component
+function ModernPieChart({ title, subtitle, data, size = 220 }) {
   if (!data || data.length === 0) return null;
   const total = data.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
-
-  let accumulatedAngle = 0;
-  const strokeWidth = 26;
-  const radius = 58;
-  const circumference = 2 * Math.PI * radius;
 
   return (
     <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -170,35 +103,25 @@ function ThreeDPieChart({ title, subtitle, data, size = 180 }) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', flexWrap: 'wrap', gap: '20px', padding: '10px 0' }}>
-        {/* SVG Donut Ring */}
-        <div style={{ position: 'relative', width: `${size}px`, height: `${size}px`, filter: 'drop-shadow(0px 8px 16px rgba(0,0,0,0.18))' }}>
-          <svg viewBox="0 0 160 160" width={size} height={size} style={{ transform: 'rotate(-90deg)', transformOrigin: 'center' }}>
-            {data.map((item, idx) => {
-              const val = Number(item.value) || 0;
-              const fraction = total > 0 ? (val / total) : 0;
-              const strokeLength = fraction * circumference;
-              const spaceLength = circumference - strokeLength;
-              const strokeOffset = accumulatedAngle * circumference;
-              accumulatedAngle += fraction;
-              const color = item.color || `hsl(${(idx * 110) % 360}, 85%, 55%)`;
-
-              return (
-                <circle
-                  key={idx}
-                  cx="80"
-                  cy="80"
-                  r={radius}
-                  fill="transparent"
-                  stroke={color}
-                  strokeWidth={strokeWidth}
-                  strokeDasharray={`${strokeLength} ${spaceLength}`}
-                  strokeDashoffset={-strokeOffset}
-                  style={{ transition: 'stroke-dasharray 0.6s ease' }}
-                />
-              );
-            })}
-          </svg>
-
+        <div style={{ width: size, height: size, position: 'relative' }}>
+          <ResponsiveContainer>
+            <PieChart>
+              <Pie
+                data={data}
+                innerRadius={size / 2 - 30}
+                outerRadius={size / 2 - 10}
+                paddingAngle={5}
+                dataKey="value"
+                nameKey="label"
+                stroke="none"
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color || `hsl(${(index * 110) % 360}, 85%, 55%)`} />
+                ))}
+              </Pie>
+              <RechartsTooltip contentStyle={{ backgroundColor: 'var(--bg-surface)', borderRadius: '8px', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} />
+            </PieChart>
+          </ResponsiveContainer>
           {/* Center Badge */}
           <div style={{
             position: 'absolute',
@@ -210,11 +133,7 @@ function ThreeDPieChart({ title, subtitle, data, size = 180 }) {
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            width: '88px',
-            height: '88px',
-            borderRadius: '50%',
-            backgroundColor: 'var(--bg-surface)',
-            boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.15)'
+            pointerEvents: 'none'
           }}>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase' }}>Total</div>
             <div style={{ fontSize: '1rem', fontWeight: '800', color: 'var(--text-primary)' }}>
@@ -236,11 +155,11 @@ function ThreeDPieChart({ title, subtitle, data, size = 180 }) {
                   <span style={{ width: '12px', height: '12px', borderRadius: '4px', backgroundColor: color, display: 'inline-block' }}></span>
                   <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{item.label}</span>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontWeight: '800', color: 'var(--text-primary)' }}>{pct}%</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block' }}>
-                    {val >= 1000 ? `₦${val.toLocaleString()}` : val}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>
+                    {val >= 1000 ? `₦${(val / 1000).toFixed(0)}k` : val}
                   </span>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', width: '40px', textAlign: 'right' }}>{pct}%</span>
                 </div>
               </div>
             );
@@ -252,11 +171,52 @@ function ThreeDPieChart({ title, subtitle, data, size = 180 }) {
 }
 
 
-export default function AdminDashboard({ settings, fetchSettings, activeTab, subTab }) {
+export default function AdminDashboard({ settings, fetchSettings, activeTab, subTab, onSelectTab }) {
   const [activeSubTab, setActiveSubTab] = useState('overview');
   const [settingsSubTab, setSettingsSubTab] = useState('academic');
   const [resultsSubTab, setResultsSubTab] = useState('bulk');
   const [subjectsSubTab, setSubjectsSubTab] = useState('list');
+
+  // PDF export refs
+  const schemeRef = useRef(null);
+  const paymentReportRef = useRef(null);
+  const feeSummaryRef = useRef(null);
+  const receiptSlipRef = useRef(null);
+  const attendanceReportRefAdmin = useRef(null);
+  const scoresheetRefAdmin = useRef(null);
+  const bulkScoresheetRefAdmin = useRef(null);
+
+  const exportPDF = (ref, filename, orientation = 'portrait') => {
+    const element = ref.current;
+    if (!element) return;
+    
+    // If the main element is hidden, temporarily show it so html2canvas can capture it
+    const originalDisplay = element.style.display;
+    if (originalDisplay === 'none') {
+      element.style.display = 'block';
+    }
+
+    // Add class to remove max-height and overflow restrictions for full capture
+    element.classList.add('pdf-exporting');
+
+    // Temporarily show .only-print elements inside the container
+    const printHeaders = element.querySelectorAll('.only-print');
+    printHeaders.forEach(el => el.style.display = 'block');
+
+    html2pdf().set({
+      margin:      0.3,
+      filename,
+      image:       { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF:       { unit: 'in', format: 'a4', orientation }
+    }).from(element).save().then(() => {
+      printHeaders.forEach(el => el.style.display = 'none');
+      element.classList.remove('pdf-exporting');
+      if (originalDisplay === 'none') {
+        element.style.display = 'none';
+      }
+    });
+  };
   
   // Single Result View states
   const [singleResultClassId, setSingleResultClassId] = useState('');
@@ -356,6 +316,10 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
     active_session: '',
     active_term: '',
     result_entry_open: 1,
+    allow_past_attendance: 0,
+    allow_fm_register_student: 0,
+    allow_fm_edit_student: 0,
+    max_ca_count: 4,
     landing_school_name: '',
     landing_tagline: '',
     landing_hero_title: '',
@@ -423,6 +387,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
   // Admin Result Progress Tracker
   const [adminResultProgress, setAdminResultProgress] = useState(null);
+  const [adminProgressFilter, setAdminProgressFilter] = useState('all');
+  const [adminProgressSearch, setAdminProgressSearch] = useState('');
 
   const loadAdminResultProgress = async () => {
     try {
@@ -532,7 +498,11 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
         next_term_fee: settings.next_term_fee || '',
         next_term_begins: settings.next_term_begins || '',
         next_term_ends: settings.next_term_ends || '',
-        last_term_debit: settings.last_term_debit || ''
+        last_term_debit: settings.last_term_debit || '',
+        allow_past_attendance: settings.allow_past_attendance || 0,
+        allow_fm_register_student: settings.allow_fm_register_student || 0,
+        allow_fm_edit_student: settings.allow_fm_edit_student || 0,
+        max_ca_count: settings.max_ca_count || 4
       });
     }
   }, [settings]);
@@ -550,10 +520,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       else if (activeTab === 'student-results') setResultsSubTab(subTab);
       else if (activeTab === 'fees') setActiveFeesSubTab(subTab);
       else if (activeTab === 'settings') {
-        if (subTab === 'promotions' || subTab === 'promotion') {
-          setActiveSubTab('promotions');
-          setSettingsSubTab('promotion');
-        } else if (subTab === 'landing' || subTab === 'website') {
+        if (subTab === 'landing' || subTab === 'website') {
           setSettingsSubTab('website');
         } else if (subTab === 'grading' || subTab === 'reports') {
           setSettingsSubTab('reports');
@@ -822,6 +789,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
   const handleLogPayment = async (e) => {
     e.preventDefault();
+    const invoice = studentHistoryData?.invoices?.find(inv => inv.id === payForm.invoice_id);
+    if (invoice) {
+      if (invoice.status === 'Paid' || Number(invoice.amount_paid) >= Number(invoice.amount_due)) {
+        setErrorMsg('This invoice has already been fully paid.');
+        return;
+      }
+      if (Number(invoice.amount_paid) + Number(payForm.amount_paid) > Number(invoice.amount_due)) {
+        setErrorMsg(`Payment exceeds the balance. Remaining balance is ₦${Number(invoice.amount_due) - Number(invoice.amount_paid)}`);
+        return;
+      }
+    }
     try {
       const res = await api.logFeePayment({
         invoice_id: payForm.invoice_id,
@@ -861,6 +839,10 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
     e.preventDefault();
     if (!promoSource || !promoTarget) {
       setErrorMsg('Select both current and target class streams.');
+      return;
+    }
+    if (promoSource === promoTarget) {
+      setErrorMsg('Students cannot be promoted to the same class.');
       return;
     }
     if (selectedStudentIdsForPromo.length === 0) {
@@ -1101,6 +1083,10 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [adminGradesClass, setAdminGradesClass] = useState('');
   const [adminGradesSubject, setAdminGradesSubject] = useState('');
   const [adminStudentsGrades, setAdminStudentsGrades] = useState([]);
+  
+  // Admin Print Scoresheet states
+  const [adminScoresheetClass, setAdminScoresheetClass] = useState('');
+  const [adminScoresheetSubject, setAdminScoresheetSubject] = useState('');
   const [adminGradesSearch, setAdminGradesSearch] = useState('');
 
   useEffect(() => {
@@ -1323,36 +1309,37 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Quick Actions */}
+            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>⚡</span> Quick Actions
+              </h3>
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <button className="btn btn-primary" onClick={() => { onSelectTab('students'); setShowStudentModal(true); }}>
+                  <Plus size={16} /> Register Student
+                </button>
+                <button className="btn btn-success" onClick={() => { onSelectTab('teachers'); setShowTeacherModal(true); }} style={{ backgroundColor: 'var(--success)' }}>
+                  <Plus size={16} /> Add Teacher
+                </button>
+                <button className="btn btn-warning" onClick={() => onSelectTab('fees')} style={{ backgroundColor: 'var(--warning)', color: 'white' }}>
+                  <Receipt size={16} /> Record Payment
+                </button>
+                <button className="btn btn-secondary" onClick={() => onSelectTab('settings')}>
+                  <Settings size={16} /> Portal Settings
+                </button>
+              </div>
+            </div>
+
             <div className="stats-grid">
-              <div className="stat-card glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
-                <div className="stat-info">
-                  <h3>{students.length}</h3>
-                  <p>STUDENTS REGISTERED</p>
-                </div>
-              </div>
-              <div className="stat-card glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
-                <div className="stat-info">
-                  <h3>{teachers.length}</h3>
-                  <p>ACADEMIC TEACHERS</p>
-                </div>
-              </div>
-              <div className="stat-card glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
-                <div className="stat-info">
-                  <h3>{classes.length}</h3>
-                  <p>CLASS ARMS</p>
-                </div>
-              </div>
-              <div className="stat-card glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
-                <div className="stat-info">
-                  <h3>{subjects.length}</h3>
-                  <p>SUBJECTS OFFERED</p>
-                </div>
-              </div>
+              <StatCard label="STUDENTS REGISTERED" value={students.length} icon={<Users size={24} />} variant="primary" />
+              <StatCard label="ACADEMIC TEACHERS" value={teachers.length} icon={<GraduationCap size={24} />} variant="success" />
+              <StatCard label="CLASS ARMS" value={classes.length} icon={<School size={24} />} variant="warning" />
+              <StatCard label="SUBJECTS OFFERED" value={subjects.length} icon={<BookOpen size={24} />} variant="danger" />
             </div>
 
             {/* Visual 3D Analytics Charts Row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
-              <ThreeDColumnChart
+              <ModernBarChart
                 title="Student Class Arm Enrollment"
                 subtitle="Distribution of registered students across active class streams"
                 data={classEnrollmentData.length > 0 ? classEnrollmentData : [
@@ -1365,107 +1352,187 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 ]}
               />
 
-              <ThreeDPieChart
+              <ModernPieChart
                 title="School Fees Collection Summary"
                 subtitle="Ratio of collected school fees versus pending outstanding balances"
                 data={feeRevenuePieData}
               />
             </div>
 
-            {/* ADMIN OVERALL SCHOOL RESULT UPLOAD PROGRESS */}
-            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+            {/* ADMIN OVERALL SCHOOL RESULT UPLOAD PROGRESS - DONUT CHART */}
+            <div className="glass-panel" style={{ padding: '28px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.15rem' }}>
-                    <span>📈</span> School-Wide Result Upload Tracker
+                  <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.4rem' }}>
+                    <BarChart2 size={24} style={{ color: 'var(--primary)' }} /> School-Wide Result Upload Tracker
                   </h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-                    Overall subject score submission status for <strong>{adminResultProgress?.term || 'Current Term'} ({adminResultProgress?.academic_year || 'Session'})</strong>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '6px 0 0 0' }}>
+                    Marks submission overview for <strong>{adminResultProgress?.term || 'Current Term'} ({adminResultProgress?.academic_year || 'Session'})</strong>
                   </p>
                 </div>
-
-                <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '1.8rem', fontWeight: 'bold', color: adminResultProgress?.summary?.percentage === 100 ? '#10b981' : '#3b82f6' }}>
-                    {adminResultProgress?.summary?.percentage || 0}%
-                  </span>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>School Completion Rate</div>
-                </div>
               </div>
 
-              {/* Overall Progress Bar */}
-              <div style={{ width: '100%', height: '12px', backgroundColor: 'var(--bg-secondary)', borderRadius: '6px', overflow: 'hidden', marginBottom: '20px' }}>
-                <div style={{ 
-                  width: `${adminResultProgress?.summary?.percentage || 0}%`, 
-                  height: '100%', 
-                  background: 'linear-gradient(90deg, #3b82f6 0%, #10b981 100%)', 
-                  borderRadius: '6px', 
-                  transition: 'width 0.5s ease' 
-                }} />
-              </div>
+              {/* Donut + Counters Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) 2fr', gap: '30px', alignItems: 'center' }}>
+                {/* Donut Chart */}
+                <div style={{ height: '220px', position: 'relative' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Completed', value: adminResultProgress?.summary?.completed || 0, color: '#10b981' },
+                          { name: 'In Progress', value: adminResultProgress?.summary?.in_progress || 0, color: '#f59e0b' },
+                          { name: 'Pending', value: adminResultProgress?.summary?.pending || 0, color: '#ef4444' }
+                        ].filter(d => d.value > 0)}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={65}
+                        outerRadius={90}
+                        paddingAngle={5}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {[
+                          { name: 'Completed', value: adminResultProgress?.summary?.completed || 0, color: '#10b981' },
+                          { name: 'In Progress', value: adminResultProgress?.summary?.in_progress || 0, color: '#f59e0b' },
+                          { name: 'Pending', value: adminResultProgress?.summary?.pending || 0, color: '#ef4444' }
+                        ].filter(d => d.value > 0).map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                        itemStyle={{ fontWeight: 'bold' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  {/* Center Percentage */}
+                  <div style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    textAlign: 'center', pointerEvents: 'none'
+                  }}>
+                    <div style={{ fontSize: '2rem', fontWeight: '800', color: adminResultProgress?.summary?.percentage === 100 ? '#10b981' : 'var(--text-primary)', lineHeight: '1' }}>
+                      {adminResultProgress?.summary?.percentage || 0}%
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', marginTop: '4px' }}>Done</div>
+                  </div>
+                </div>
 
-              {/* Summary Cards Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '14px', marginBottom: '24px' }}>
-                <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                  <div style={{ fontSize: '0.72rem', color: '#2563eb', fontWeight: 600 }}>TOTAL ALLOCATIONS</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1d4ed8' }}>{adminResultProgress?.summary?.total || 0}</div>
-                </div>
-                <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                  <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600 }}>COMPLETED</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#047857' }}>{adminResultProgress?.summary?.completed || 0}</div>
-                </div>
-                <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                  <div style={{ fontSize: '0.72rem', color: '#d97706', fontWeight: 600 }}>IN PROGRESS</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#b45309' }}>{adminResultProgress?.summary?.in_progress || 0}</div>
-                </div>
-                <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                  <div style={{ fontSize: '0.72rem', color: '#dc2626', fontWeight: 600 }}>PENDING / REMAINING</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#b91c1c' }}>{adminResultProgress?.summary?.pending || 0}</div>
+                {/* Summary Counters */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                  <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#3b82f6', fontSize: '0.85rem', fontWeight: '600' }}><BookOpen size={16} /> Total Allocations</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#1e40af' }}>{adminResultProgress?.summary?.total || 0}</div>
+                  </div>
+                  <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.15)', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.85rem', fontWeight: '600' }}><CheckCircle2 size={16} /> Fully Uploaded</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#065f46' }}>{adminResultProgress?.summary?.completed || 0}</div>
+                  </div>
+                  <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.15)', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#f59e0b', fontSize: '0.85rem', fontWeight: '600' }}><Hourglass size={16} /> In Progress</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#92400e' }}>{adminResultProgress?.summary?.in_progress || 0}</div>
+                  </div>
+                  <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ef4444', fontSize: '0.85rem', fontWeight: '600' }}><Clock size={16} /> Pending Uploads</div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#991b1b' }}>{adminResultProgress?.summary?.pending || 0}</div>
+                  </div>
                 </div>
               </div>
 
               {/* Detailed Roster Table */}
               {adminResultProgress?.details && adminResultProgress.details.length > 0 && (
-                <div style={{ overflowX: 'auto', maxHeight: '350px' }}>
-                  <table className="school-table" style={{ width: '100%', fontSize: '0.85rem' }}>
-                    <thead>
+                <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                  {/* Filter Bar */}
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '14px', padding: '14px 14px 0' }}>
+                    <input
+                      type="text"
+                      placeholder="Search class, subject or teacher..."
+                      value={adminProgressSearch}
+                      onChange={(e) => setAdminProgressSearch(e.target.value)}
+                      className="form-control"
+                      style={{ flex: '1 1 200px', padding: '7px 12px', fontSize: '0.83rem' }}
+                    />
+                    {['all', 'Completed', 'In Progress', 'Pending'].map(f => (
+                      <button
+                        key={f}
+                        onClick={() => setAdminProgressFilter(f)}
+                        style={{
+                          padding: '6px 14px',
+                          fontSize: '0.8rem',
+                          borderRadius: '20px',
+                          border: `1px solid ${
+                            f === 'Completed' ? '#86efac' :
+                            f === 'In Progress' ? '#fde68a' :
+                            f === 'Pending' ? '#fca5a5' : 'var(--border-color)'
+                          }`,
+                          backgroundColor: adminProgressFilter === f
+                            ? (f === 'Completed' ? '#dcfce7' : f === 'In Progress' ? '#fef3c7' : f === 'Pending' ? '#fee2e2' : 'var(--primary)')
+                            : 'var(--bg-secondary)',
+                          color: adminProgressFilter === f
+                            ? (f === 'Completed' ? '#15803d' : f === 'In Progress' ? '#b45309' : f === 'Pending' ? '#b91c1c' : '#fff')
+                            : 'var(--text-secondary)',
+                          fontWeight: adminProgressFilter === f ? '700' : '500',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {f === 'all' ? 'All' : f}
+                      </button>
+                    ))}
+                  </div>
+                  <table className="school-table" style={{ width: '100%', fontSize: '0.9rem', margin: 0 }}>
+                    <thead style={{ backgroundColor: '#f8fafc' }}>
                       <tr>
-                        <th>Class Arm</th>
-                        <th>Subject</th>
-                        <th>Assigned Teacher</th>
-                        <th>Uploaded / Total</th>
-                        <th>Progress</th>
-                        <th>Status</th>
+                        <th style={{ padding: '14px' }}>Class Arm</th>
+                        <th style={{ padding: '14px' }}>Subject</th>
+                        <th style={{ padding: '14px' }}>Assigned Teacher</th>
+                        <th style={{ padding: '14px' }}>Progress</th>
+                        <th style={{ padding: '14px' }}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {adminResultProgress.details.map((item, idx) => (
-                        <tr key={idx}>
-                          <td><strong>{item.class_name}</strong></td>
-                          <td>{item.subject_name}</td>
-                          <td>🧑‍🏫 {item.teacher_name}</td>
-                          <td>
-                            <strong>{item.uploaded_count}</strong> / {item.total_students}
-                          </td>
-                          <td style={{ width: '150px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <div style={{ flex: 1, height: '8px', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px', overflow: 'hidden' }}>
-                                <div style={{ 
-                                  width: `${item.percentage}%`, 
-                                  height: '100%', 
-                                  backgroundColor: item.status === 'Completed' ? '#10b981' : item.status === 'In Progress' ? '#f59e0b' : '#ef4444' 
-                                }} />
-                              </div>
-                              <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>{item.percentage}%</span>
+                      {adminResultProgress.details
+                        .filter(item =>
+                          (adminProgressFilter === 'all' || item.status === adminProgressFilter) &&
+                          (adminProgressSearch === '' ||
+                            item.class_name.toLowerCase().includes(adminProgressSearch.toLowerCase()) ||
+                            item.subject_name.toLowerCase().includes(adminProgressSearch.toLowerCase()) ||
+                            (item.teacher_name || '').toLowerCase().includes(adminProgressSearch.toLowerCase())
+                          )
+                        )
+                        .map((item, idx) => (
+                        <tr key={idx} style={{ transition: 'background-color 0.2s', borderBottom: '1px solid var(--border-color)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.01)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                          <td style={{ padding: '14px' }}><strong>{item.class_name}</strong></td>
+                          <td style={{ padding: '14px' }}>{item.subject_name}</td>
+                          <td style={{ padding: '14px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <User size={14} style={{ color: 'var(--text-secondary)' }} />
+                              {item.teacher_name}
                             </div>
                           </td>
-                          <td>
-                            <span className="badge" style={{
-                              backgroundColor: item.status === 'Completed' ? '#dcfce7' : item.status === 'In Progress' ? '#fef3c7' : '#fee2e2',
-                              color: item.status === 'Completed' ? '#15803d' : item.status === 'In Progress' ? '#b45309' : '#b91c1c',
-                              border: `1px solid ${item.status === 'Completed' ? '#86efac' : item.status === 'In Progress' ? '#fde68a' : '#fca5a5'}`
+                          <td style={{ padding: '14px', width: '220px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{ flex: 1, height: '8px', backgroundColor: 'var(--bg-secondary)', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{
+                                  width: `${item.percentage}%`,
+                                  height: '100%',
+                                  backgroundColor: item.status === 'Completed' ? '#10b981' : item.status === 'In Progress' ? '#f59e0b' : '#ef4444'
+                                }} />
+                              </div>
+                              <span style={{ fontSize: '0.8rem', fontWeight: '700', minWidth: '40px', color: 'var(--text-secondary)' }}>
+                                {item.uploaded_count}/{item.total_students}
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '14px' }}>
+                            <div style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '6px 12px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '600',
+                              backgroundColor: item.status === 'Completed' ? 'rgba(16, 185, 129, 0.1)' : item.status === 'In Progress' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                              color: item.status === 'Completed' ? '#10b981' : item.status === 'In Progress' ? '#d97706' : '#ef4444'
                             }}>
-                              {item.status === 'Completed' ? '✓ Uploaded' : item.status === 'In Progress' ? '⏳ Partial' : '❌ Pending'}
-                            </span>
+                              {item.status === 'Completed' ? <CheckCircle2 size={14} /> : item.status === 'In Progress' ? <Hourglass size={14} /> : <Clock size={14} />}
+                              {item.status}
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1483,13 +1550,20 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           ======================================================= */}
       {activeSubTab === 'students' && (
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-            <div>
-              <h3>Student Roster</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Click any student's name to view and print their official registration profile.</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                <Users size={24} color="white" />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Student Roster</h3>
+                <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Click any student's name to view and print their official registration profile.</p>
+              </div>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-              <button className="btn btn-primary" onClick={() => setShowStudentModal(true)}>+ Register New Student</button>
+              <button className="btn btn-primary" onClick={() => setShowStudentModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+                <Plus size={16} /> Register New Student
+              </button>
             </div>
           </div>
 
@@ -1594,12 +1668,19 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           ======================================================= */}
       {activeSubTab === 'teachers' && (
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-            <div>
-              <h3>Teacher Registry</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Full record of registered school academic staff.</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                <Users size={24} color="white" />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Teacher Registry</h3>
+                <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Full record of registered school academic staff.</p>
+              </div>
             </div>
-            <button className="btn btn-primary" onClick={() => setShowTeacherModal(true)}>+ Register Teacher</button>
+            <button className="btn btn-primary" onClick={() => setShowTeacherModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+              <Plus size={16} /> Register Teacher
+            </button>
           </div>
 
           {/* Search Controls */}
@@ -1678,9 +1759,18 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           
           {/* Class List */}
           <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3>Class streams</h3>
-              <button className="btn btn-primary" style={{ padding: '8px 12px', fontSize: '0.85rem' }} onClick={() => setShowClassModal(true)}>+ Create Class</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                  <School size={24} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Class Streams</h3>
+                </div>
+              </div>
+              <button className="btn btn-primary" onClick={() => setShowClassModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+                <Plus size={16} /> Create Class
+              </button>
             </div>
             
             <div className="table-container">
@@ -1719,11 +1809,22 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
           {/* Subject Assignments */}
           <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3>Subject assignments</h3>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="btn btn-secondary" style={{ padding: '8px 12px', fontSize: '0.85rem' }} onClick={() => setShowSubjectModal(true)}>+ Seed Subject</button>
-                <button className="btn btn-primary" style={{ padding: '8px 12px', fontSize: '0.85rem' }} onClick={() => setShowAssignModal(true)}>Map Teacher</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                  <BookOpen size={24} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Subject Assignments</h3>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button className="btn btn-secondary" onClick={() => setShowSubjectModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+                  <Plus size={16} /> Seed Subject
+                </button>
+                <button className="btn btn-primary" onClick={() => setShowAssignModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.3)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+                  <Users size={16} /> Map Teacher
+                </button>
               </div>
             </div>
 
@@ -1762,32 +1863,23 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       {activeSubTab === 'subjects' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* Sub-Tab Navigation Bar */}
-          <div className="settings-tab-bar">
-            <button
-              type="button"
-              className={`settings-tab-btn ${subjectsSubTab === 'list' ? 'active' : ''}`}
-              onClick={() => setSubjectsSubTab('list')}
-            >
-              <span>📚</span> Subjects List
-            </button>
-            <button
-              type="button"
-              className={`settings-tab-btn ${subjectsSubTab === 'schemes' ? 'active' : ''}`}
-              onClick={() => setSubjectsSubTab('schemes')}
-            >
-              <span>📑</span> Scheme of Work
-            </button>
-          </div>
+          {/* Sub-Tab Navigation handled by Sidebar */}
 
           {subjectsSubTab === 'list' && (
             <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-                <div>
-                  <h3>Curriculum Subjects</h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>View, add, edit, or delete subjects in the school curriculum.</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                    <BookOpen size={24} color="white" />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Curriculum Subjects</h3>
+                    <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>View, add, edit, or delete subjects in the school curriculum.</p>
+                  </div>
                 </div>
-                <button className="btn btn-primary" onClick={() => { setSubjectForm({ name: '', tier: 'universal', class_ids: [] }); setShowSubjectModal(true); }}>+ Add Subject</button>
+                <button className="btn btn-primary" onClick={() => { setSubjectForm({ name: '', tier: 'universal', class_ids: [] }); setShowSubjectModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+                  <Plus size={16} /> Add Subject
+                </button>
               </div>
 
           <div className="table-container">
@@ -1810,19 +1902,21 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       <td style={{ fontWeight: '600' }}>{sub.name}</td>
                       <td style={{ textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--primary)' }}>{sub.tier}</td>
                       <td style={{ textAlign: 'right' }}>
-                        <button 
-                          className="btn btn-secondary" 
-                          style={{ padding: '6px 12px', fontSize: '0.8rem', marginRight: '8px' }} 
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', display: 'inline-flex', marginRight: '6px' }}
+                          title="Edit"
                           onClick={() => handleEditSubjectClick(sub)}
                         >
-                          Edit
+                          <Edit3 size={16} />
                         </button>
-                        <button 
-                          className="btn btn-danger" 
-                          style={{ padding: '6px 12px', fontSize: '0.8rem' }} 
+                        <button
+                          className="btn btn-danger btn-sm"
+                          style={{ padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', display: 'inline-flex' }}
+                          title="Delete"
                           onClick={() => handleDeleteSubject(sub.id)}
                         >
-                          Delete
+                          <Trash2 size={16} />
                         </button>
                       </td>
                     </tr>
@@ -1839,18 +1933,23 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
           {/* Filter Bar */}
           <div className="glass-panel" style={{ padding: '20px', backgroundColor: 'var(--bg-surface)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Scheme of Work Manager</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '4px 0 0 0' }}>Create and edit the weekly course outline for any class subject.</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-20px -20px 20px -20px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                  <Book size={24} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Scheme of Work Manager</h3>
+                  <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Create and edit the weekly course outline for any class subject.</p>
+                </div>
               </div>
               {adminSchemeClass && adminSchemeSubject && (
                 <button
                   className="btn btn-secondary"
-                  style={{ fontSize: '0.82rem', padding: '7px 14px' }}
-                  onClick={() => window.print()}
+                  style={{ fontSize: '0.82rem', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white' }}
+                  onClick={() => exportPDF(schemeRef, 'scheme_of_work.pdf', 'portrait')}
                 >
-                  🖨️ Print Scheme
+                  <Download size={16} /> Download PDF
                 </button>
               )}
             </div>
@@ -1942,7 +2041,12 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               </div>
 
               {/* Table */}
-              <div className="table-container" style={{ margin: 0, borderRadius: 0 }}>
+              <div className="table-container" style={{ margin: 0, borderRadius: 0 }} ref={schemeRef}>
+                <div className="only-print" style={{ display: 'none', textAlign: 'center', marginBottom: '15px' }}>
+                  <h2 style={{ fontSize: '1.4rem', margin: '0 0 5px 0' }}>{settingsForm?.landing_school_name || 'Jere Model Academy'}</h2>
+                  <h4 style={{ margin: '0 0 10px 0' }}>Scheme of Work: {classSubjects.find(cs => cs.class_id === parseInt(adminSchemeClass) && cs.subject_id === parseInt(adminSchemeSubject))?.subject_name || 'Subject'} ({classes.find(c => c.id === parseInt(adminSchemeClass))?.name || 'Class'})</h4>
+                  <p style={{ margin: '0', fontSize: '0.9rem' }}>Term: {adminSchemeTerm} | Session: {settings?.active_session || 'Current Session'}</p>
+                </div>
                 <table className="school-table" style={{ margin: 0 }}>
                   <thead>
                     <tr>
@@ -2013,11 +2117,11 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                             {(w.id || w.topic || w.subtitle || w.objectives) && (
                               <button
                                 className="btn btn-danger"
-                                style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                                style={{ padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                 onClick={() => handleDeleteAdminSchemeWeek(w)}
                                 title="Clear this week"
                               >
-                                ✕
+                                <Trash2 size={16} />
                               </button>
                             )}
                           </div>
@@ -2044,73 +2148,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       {activeSubTab === 'fees' && (
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
           
-          {/* Sub Navigation for Fees */}
-          <div style={{ display: 'flex', gap: '15px', borderBottom: '1px solid var(--border-color)', marginBottom: '20px' }}>
-            <button
-              type="button"
-              onClick={() => setActiveFeesSubTab('invoices')}
-              style={{
-                padding: '10px 15px',
-                background: 'none',
-                border: 'none',
-                borderBottom: activeFeesSubTab === 'invoices' ? '2.5px solid var(--primary)' : 'none',
-                color: activeFeesSubTab === 'invoices' ? 'var(--primary)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '0.95rem'
-              }}
-            >
-              Billing & Invoices
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveFeesSubTab('structures')}
-              style={{
-                padding: '10px 15px',
-                background: 'none',
-                border: 'none',
-                borderBottom: activeFeesSubTab === 'structures' ? '2.5px solid var(--primary)' : 'none',
-                color: activeFeesSubTab === 'structures' ? 'var(--primary)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '0.95rem'
-              }}
-            >
-              Fee Structures
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveFeesSubTab('report')}
-              style={{
-                padding: '10px 15px',
-                background: 'none',
-                border: 'none',
-                borderBottom: activeFeesSubTab === 'report' ? '2.5px solid var(--primary)' : 'none',
-                color: activeFeesSubTab === 'report' ? 'var(--primary)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '0.95rem'
-              }}
-            >
-              Payment Records
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveFeesSubTab('summary')}
-              style={{
-                padding: '10px 15px',
-                background: 'none',
-                border: 'none',
-                borderBottom: activeFeesSubTab === 'summary' ? '2.5px solid var(--primary)' : 'none',
-                color: activeFeesSubTab === 'summary' ? 'var(--primary)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '0.95rem'
-              }}
-            >
-              Payment Summary
-            </button>
-          </div>
+          {/* Sub Navigation handled by Sidebar */}
 
           {/* SUBTAB 1: BILLING & INVOICES (UNIQUE STUDENT ROSTER) */}
           {activeFeesSubTab === 'invoices' && (() => {
@@ -2163,14 +2201,21 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
             return (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-                  <div>
-                    <h3 style={{ margin: 0 }}>Student Invoices Ledger</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-                      Click any student to view payment records, log parent payments, or print official receipts.
-                    </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                      <Receipt size={24} color="white" />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Student Invoices Ledger</h3>
+                      <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                        Click any student to view payment records, log parent payments, or print official receipts.
+                      </p>
+                    </div>
                   </div>
-                  <button className="btn btn-primary" onClick={() => setShowFeeModal(true)}>+ Bill Students</button>
+                  <button className="btn btn-primary" onClick={() => setShowFeeModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+                    <Plus size={16} /> Bill Students
+                  </button>
                 </div>
 
                 {/* Search & Filter Controls */}
@@ -2256,10 +2301,15 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           {/* SUBTAB 2: FEE STRUCTURES */}
           {activeFeesSubTab === 'structures' && (
             <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div>
-                  <h3 style={{ margin: 0 }}>School Fee Structures</h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Define default termly school fees billed per education levels.</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                    <Layers size={24} color="white" />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>School Fee Structures</h3>
+                    <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Define default termly school fees billed per education levels.</p>
+                  </div>
                 </div>
                 <button 
                   className="btn btn-primary" 
@@ -2268,8 +2318,9 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     setNewFeeStructureForm({ title: '', category: 'School Fees', amount: '', tier: 'jss' });
                     setShowFeeStructureModal(true);
                   }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}
                 >
-                  + Add Structure
+                  <Plus size={16} /> Add Structure
                 </button>
               </div>
 
@@ -2296,18 +2347,20 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                           <td style={{ textTransform: 'uppercase', fontSize: '0.78rem', fontWeight: 'bold' }}>{struct.tier}</td>
                           <td style={{ textAlign: 'right' }}>
                             <button
-                              className="btn btn-secondary"
-                              style={{ padding: '5px 10px', fontSize: '0.75rem', marginRight: '6px' }}
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', display: 'inline-flex', marginRight: '6px' }}
+                              title="Edit"
                               onClick={() => handleEditFeeStructureClick(struct)}
                             >
-                              ✏️ Edit
+                              <Edit3 size={16} />
                             </button>
                             <button
-                              className="btn btn-danger"
-                              style={{ padding: '5px 10px', fontSize: '0.75rem' }}
+                              className="btn btn-danger btn-sm"
+                              style={{ padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', display: 'inline-flex' }}
+                              title="Delete"
                               onClick={() => handleDeleteFeeStructure(struct.id)}
                             >
-                              🗑️ Delete
+                              <Trash2 size={16} />
                             </button>
                           </td>
                         </tr>
@@ -2368,21 +2421,26 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             });
 
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} ref={paymentReportRef}>
                 {/* Header & Actions */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-                  <div>
-                    <h3 style={{ margin: 0 }}>Student Payment Records Audit</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-                      Financial records analytics and student termly payment status ledger.
-                    </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                    <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                      <CreditCard size={24} color="white" />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Student Payment Records Audit</h3>
+                      <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                        Financial records analytics and student termly payment status ledger.
+                      </p>
+                    </div>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }} className="no-print">
-                    <button className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '8px 14px' }} onClick={() => handleExportPaymentReportExcel(filteredList)}>
+                    <button className="btn btn-secondary" style={{ fontSize: '0.82rem', padding: '8px 14px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white' }} onClick={() => handleExportPaymentReportExcel(filteredList)}>
                       📊 Export to Excel
                     </button>
-                    <button className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '8px 14px' }} onClick={() => window.print()}>
-                      🖨️ Print Report
+                    <button className="btn btn-primary" style={{ fontSize: '0.82rem', padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.3)', backdropFilter: 'blur(5px)', color: 'white' }} onClick={() => exportPDF(paymentReportRef, 'payment_report.pdf', 'landscape')}>
+                      <Download size={16} /> Download PDF
                     </button>
                   </div>
                 </div>
@@ -2390,6 +2448,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 {/* Status Filter Buttons & Controls */}
                 <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }} className="no-print">
                   <input
+                    ref={(el) => { if (!paymentReportRef.current && el) paymentReportRef.current = el.closest('[data-payment-report]'); }}
                     type="text"
                     className="form-control"
                     style={{ flex: '1 1 200px', padding: '9px 12px', fontSize: '0.85rem' }}
@@ -2447,7 +2506,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 </div>
 
                 {/* Printable Official Document Header */}
-                <div className="only-print" style={{ marginBottom: '16px', textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '12px' }}>
+                <div className="only-print" style={{ display: 'none', marginBottom: '16px', textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '12px' }}>
                   <h2 style={{ margin: 0, fontSize: '1.4rem', textTransform: 'uppercase', color: '#000' }}>
                     {settingsForm?.landing_school_name || 'Jere Model Academy'}
                   </h2>
@@ -2578,22 +2637,27 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             });
 
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} ref={feeSummaryRef}>
                 {/* Header & Actions */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-                  <div>
-                    <h3 style={{ margin: 0 }}>School Fees Payment Summary</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-                      Term: <strong>{settings?.active_term || '3rd Term'}</strong> ({settings?.active_session || '2025/2026'}) | Executive MVP breakdown of school fee collections & outstanding debt balances.
-                    </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', borderRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                    <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                      <BarChart2 size={28} color="white" />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', letterSpacing: '0.5px' }}>School Fees Payment Summary</h3>
+                      <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                        Term: <strong>{settings?.active_term || '3rd Term'}</strong> ({settings?.active_session || '2025/2026'}) | Executive MVP breakdown of school fee collections & outstanding debt balances.
+                      </p>
+                    </div>
                   </div>
-                  <button className="btn btn-primary no-print" style={{ fontSize: '0.82rem', padding: '8px 14px' }} onClick={() => window.print()}>
-                    🖨️ Print Summary
+                  <button className="btn btn-primary no-print" style={{ fontSize: '0.85rem', padding: '10px 18px', display: 'flex', alignItems: 'center', gap: '8px', borderRadius: '20px', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', border: '1px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.15)' }} onClick={() => exportPDF(feeSummaryRef, 'fee_summary.pdf')}>
+                    <Download size={18} /> Download PDF
                   </button>
                 </div>
 
                 {/* Printable Official Header */}
-                <div className="only-print" style={{ marginBottom: '16px', textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '12px' }}>
+                <div className="only-print" style={{ display: 'none', marginBottom: '16px', textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '12px' }}>
                   <h2 style={{ margin: 0, fontSize: '1.4rem', textTransform: 'uppercase', color: '#000' }}>
                     {settingsForm?.landing_school_name || 'Jere Model Academy'}
                   </h2>
@@ -2606,49 +2670,53 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 </div>
 
                 {/* 4 Executive Financial Metric Cards */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-surface)', borderLeft: '4px solid #3b82f6', boxShadow: 'var(--shadow-sm)' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Fees Billed</div>
-                    <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#2563eb', marginTop: '4px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '18px' }}>
+                  <div style={{ padding: '18px 20px', borderRadius: 'var(--radius-md)', background: 'linear-gradient(to right bottom, #ffffff, #f8fafc)', border: '1px solid #e2e8f0', borderLeft: '5px solid #3b82f6', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', right: '-15px', top: '-15px', color: '#3b82f6', opacity: 0.08, transform: 'rotate(-15deg)' }}><Receipt size={90} /></div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Fees Billed</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e3a8a', marginTop: '6px' }}>
                       ₦{totalBilled.toLocaleString()}
                     </div>
                   </div>
 
-                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-surface)', borderLeft: '4px solid #10b981', boxShadow: 'var(--shadow-sm)' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Revenue Paid</div>
-                    <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#059669', marginTop: '4px' }}>
+                  <div style={{ padding: '18px 20px', borderRadius: 'var(--radius-md)', background: 'linear-gradient(to right bottom, #ffffff, #f8fafc)', border: '1px solid #e2e8f0', borderLeft: '5px solid #10b981', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', right: '-15px', top: '-15px', color: '#10b981', opacity: 0.08, transform: 'rotate(-15deg)' }}><CheckCircle size={90} /></div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Revenue Paid</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#065f46', marginTop: '6px' }}>
                       ₦{totalPaid.toLocaleString()}
                     </div>
                   </div>
 
-                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-surface)', borderLeft: '4px solid #ef4444', boxShadow: 'var(--shadow-sm)' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Outstanding Debt</div>
-                    <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#dc2626', marginTop: '4px' }}>
+                  <div style={{ padding: '18px 20px', borderRadius: 'var(--radius-md)', background: 'linear-gradient(to right bottom, #ffffff, #f8fafc)', border: '1px solid #e2e8f0', borderLeft: '5px solid #ef4444', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', right: '-15px', top: '-15px', color: '#ef4444', opacity: 0.08, transform: 'rotate(-15deg)' }}><AlertCircle size={90} /></div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Outstanding Debt</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#991b1b', marginTop: '6px' }}>
                       ₦{totalDebt.toLocaleString()}
                     </div>
                   </div>
 
-                  <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', backgroundColor: 'var(--bg-surface)', borderLeft: '4px solid #8b5cf6', boxShadow: 'var(--shadow-sm)' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Collection Rate</div>
-                    <div style={{ fontSize: '1.35rem', fontWeight: '800', color: '#7c3aed', marginTop: '4px' }}>
+                  <div style={{ padding: '18px 20px', borderRadius: 'var(--radius-md)', background: 'linear-gradient(to right bottom, #ffffff, #f8fafc)', border: '1px solid #e2e8f0', borderLeft: '5px solid #8b5cf6', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ position: 'absolute', right: '-15px', top: '-15px', color: '#8b5cf6', opacity: 0.08, transform: 'rotate(-15deg)' }}><TrendingUp size={90} /></div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Collection Rate</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#5b21b6', marginTop: '6px' }}>
                       {collectionRate}%
                     </div>
                   </div>
                 </div>
 
                 {/* Class Stream Financial Summary Table */}
-                <div>
-                  <h4 style={{ fontSize: '1rem', margin: '0 0 10px 0', color: 'var(--text-primary)' }}>📊 Class Stream Financial Breakdown</h4>
-                  <div className="table-container" style={{ margin: 0 }}>
-                    <table className="school-table" style={{ margin: 0, fontSize: '0.82rem' }}>
-                      <thead>
+                <div style={{ marginTop: '10px' }}>
+                  <h4 style={{ fontSize: '1.05rem', margin: '0 0 12px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}><BarChart2 size={20} color="var(--primary)" /> Class Stream Financial Breakdown</h4>
+                  <div className="table-container" style={{ margin: 0, borderRadius: 'var(--radius-md)', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', border: '1px solid var(--border-color)' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead style={{ backgroundColor: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-color)' }}>
                         <tr>
-                          <th>Class</th>
-                          <th style={{ textAlign: 'center' }}>Students</th>
-                          <th style={{ textAlign: 'right' }}>Total Fees</th>
-                          <th style={{ textAlign: 'right' }}>Paid</th>
-                          <th style={{ textAlign: 'right' }}>Debt</th>
-                          <th style={{ textAlign: 'center' }}>Collection Rate</th>
+                          <th style={{ padding: '14px 18px', textAlign: 'left', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Class</th>
+                          <th style={{ padding: '14px 18px', textAlign: 'center', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Students</th>
+                          <th style={{ padding: '14px 18px', textAlign: 'right', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Total Fees</th>
+                          <th style={{ padding: '14px 18px', textAlign: 'right', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Paid</th>
+                          <th style={{ padding: '14px 18px', textAlign: 'right', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Debt</th>
+                          <th style={{ padding: '14px 18px', textAlign: 'center', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Collection Rate</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2665,14 +2733,14 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                             const rate = billed > 0 ? ((paid / billed) * 100).toFixed(1) : (paid > 0 ? '100.0' : '0.0');
 
                             return (
-                              <tr key={idx}>
-                                <td style={{ fontWeight: '700' }}>{cName}</td>
-                                <td style={{ textAlign: 'center' }}>{count}</td>
-                                <td style={{ textAlign: 'right', fontWeight: 'bold' }}>₦{billed.toLocaleString()}</td>
-                                <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 'bold' }}>₦{paid.toLocaleString()}</td>
-                                <td style={{ textAlign: 'right', color: debt > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>₦{debt.toLocaleString()}</td>
-                                <td style={{ textAlign: 'center' }}>
-                                  <span className={`badge ${parseFloat(rate) >= 100 ? 'badge-success' : parseFloat(rate) > 0 ? 'badge-warning' : 'badge-danger'}`}>
+                              <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                <td style={{ padding: '14px 18px', fontWeight: '700', color: 'var(--text-primary)' }}>{cName}</td>
+                                <td style={{ padding: '14px 18px', textAlign: 'center', fontWeight: '600', color: 'var(--text-secondary)' }}>{count}</td>
+                                <td style={{ padding: '14px 18px', textAlign: 'right', fontWeight: '700', color: 'var(--text-primary)' }}>₦{billed.toLocaleString()}</td>
+                                <td style={{ padding: '14px 18px', textAlign: 'right', color: 'var(--success)', fontWeight: '700' }}>₦{paid.toLocaleString()}</td>
+                                <td style={{ padding: '14px 18px', textAlign: 'right', color: debt > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: '700' }}>₦{debt.toLocaleString()}</td>
+                                <td style={{ padding: '14px 18px', textAlign: 'center' }}>
+                                  <span className={`badge ${parseFloat(rate) >= 100 ? 'badge-success' : parseFloat(rate) > 0 ? 'badge-warning' : 'badge-danger'}`} style={{ fontSize: '0.7rem', padding: '5px 12px', borderRadius: '12px', letterSpacing: '0.5px' }}>
                                     {rate}%
                                   </span>
                                 </td>
@@ -2698,66 +2766,22 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       {activeSubTab === 'student-results' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* Sub-Tab Navigation Bar */}
-          <div className="settings-tab-bar">
-            <button
-              type="button"
-              className={`settings-tab-btn ${resultsSubTab === 'single' ? 'active' : ''}`}
-              onClick={() => setResultsSubTab('single')}
-            >
-              <FileText size={16} /> Single Result View
-            </button>
-            <button
-              type="button"
-              className={`settings-tab-btn ${resultsSubTab === 'enter-marks' ? 'active' : ''}`}
-              onClick={() => setResultsSubTab('enter-marks')}
-            >
-              <Edit3 size={16} /> Enter Marks
-            </button>
-            <button
-              type="button"
-              className={`settings-tab-btn ${resultsSubTab === 'bulk' ? 'active' : ''}`}
-              onClick={() => setResultsSubTab('bulk')}
-            >
-              <Printer size={16} /> Bulk Print Cards
-            </button>
-            <button
-              type="button"
-              className={`settings-tab-btn ${resultsSubTab === 'broadsheet' ? 'active' : ''}`}
-              onClick={() => {
-                setResultsSubTab('broadsheet');
-                const targetClassId = adminBroadsheetClassId || (classes && classes.length > 0 ? classes[0].id : '');
-                if (targetClassId) {
-                  if (!adminBroadsheetClassId) setAdminBroadsheetClassId(targetClassId);
-                  fetchAdminBroadsheet(targetClassId);
-                }
-              }}
-            >
-              <Grid size={16} /> Class Broadsheet
-            </button>
-            <button
-              type="button"
-              className={`settings-tab-btn ${resultsSubTab === 'pins' ? 'active' : ''}`}
-              onClick={() => setResultsSubTab('pins')}
-            >
-              <Key size={16} /> Result PINs
-            </button>
-            <button
-              type="button"
-              className={`settings-tab-btn ${resultsSubTab === 'promotions' || resultsSubTab === 'promotion' ? 'active' : ''}`}
-              onClick={() => setResultsSubTab('promotions')}
-            >
-              <GraduationCap size={16} /> Promotions
-            </button>
-          </div>
+          {/* Sub-Tab Navigation handled by Sidebar */}
 
           {/* Sub-Tab: Single Student Result View */}
           {resultsSubTab === 'single' && (
             <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>Single Student Result Lookup</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-                Select a class arm and student to generate and view their official terminal report card.
-              </p>
+              <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', display: 'flex', alignItems: 'center', gap: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                  <Search size={24} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Single Student Result Lookup</h3>
+                  <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                    Select a class arm and student to generate and view their official terminal report card.
+                  </p>
+                </div>
+              </div>
 
               <form onSubmit={handleFetchSingleResult} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', alignItems: 'flex-end', marginBottom: '24px' }}>
                 <div className="form-group" style={{ margin: 0 }}>
@@ -2863,13 +2887,18 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           {/* Sub-Tab 2: Class Broadsheet */}
           {resultsSubTab === 'broadsheet' && (
             <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-                <div>
-                  <h3>Class Results Broadsheet</h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Select a class arm to view master score broadsheet, export to Excel CSV, or print.</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                    <FileSpreadsheet size={24} color="white" />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Class Results Broadsheet</h3>
+                    <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Select a class arm to view master score broadsheet, export to Excel CSV, or print.</p>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Select Class:</label>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', padding: '10px 15px', borderRadius: 'var(--radius-md)', backdropFilter: 'blur(5px)' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'rgba(255,255,255,0.9)' }}>Select Class:</label>
                   <select
                     className="form-control"
                     style={{ width: '220px', padding: '10px' }}
@@ -2911,14 +2940,19 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           {/* Sub-Tab 3: Result PINs */}
           {resultsSubTab === 'pins' && (
             <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-                <div>
-                  <h3>Result Verification Tokens (PINs)</h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Alphanumeric tokens required by students to verify results. Max usage limit of 5 checks applies.</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                    <Key size={24} color="white" />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Result Verification Tokens (PINs)</h3>
+                    <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Alphanumeric tokens required by students to verify results. Max usage limit of 5 checks applies.</p>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap', backgroundColor: 'rgba(255,255,255,0.1)', padding: '12px 18px', borderRadius: 'var(--radius-md)', backdropFilter: 'blur(5px)' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)' }}>Count</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'rgba(255,255,255,0.9)' }}>Count</span>
                     <input
                       type="number"
                       className="form-control"
@@ -2982,21 +3016,26 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
           {resultsSubTab === 'enter-marks' && (
             <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '15px' }}>
-                <div>
-                  <h3>Enter Student Marks</h3>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Select a class and subject to enter or edit grades.</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                    <Edit3 size={24} color="white" />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Enter Student Marks</h3>
+                    <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Select a class and subject to enter or edit grades.</p>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', backgroundColor: 'rgba(255,255,255,0.1)', padding: '12px 18px', borderRadius: 'var(--radius-md)', backdropFilter: 'blur(5px)' }}>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Class</label>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255,255,255,0.9)' }}>Class</label>
                     <select className="form-control" value={adminGradesClass} onChange={(e) => setAdminGradesClass(e.target.value)}>
                       <option value="">Choose...</option>
                       {classes.map((cls, idx) => <option key={idx} value={cls.id}>{cls.name}</option>)}
                     </select>
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Subject</label>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255,255,255,0.9)' }}>Subject</label>
                     <select className="form-control" value={adminGradesSubject} onChange={(e) => setAdminGradesSubject(e.target.value)}>
                       <option value="">Choose...</option>
                       {classSubjects.filter(cs => cs.class_id === parseInt(adminGradesClass)).map((cs, idx) => (
@@ -3087,17 +3126,174 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             </div>
           )}
 
+          {resultsSubTab === 'blank-scoresheet' && (
+            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                    <FileText size={24} color="white" />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Print Scoresheet</h3>
+                    <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Select a class and subject to generate a printable scoresheet.</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', backgroundColor: 'rgba(255,255,255,0.1)', padding: '12px 18px', borderRadius: 'var(--radius-md)', backdropFilter: 'blur(5px)' }} className="no-print">
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255,255,255,0.9)' }}>Class</label>
+                    <select className="form-control" value={adminScoresheetClass} onChange={(e) => { setAdminScoresheetClass(e.target.value); setAdminScoresheetSubject(''); }}>
+                      <option value="">Choose...</option>
+                      {classes.map((cls, idx) => <option key={idx} value={cls.id}>{cls.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255,255,255,0.9)' }}>Subject (Optional)</label>
+                    <select className="form-control" value={adminScoresheetSubject} onChange={(e) => setAdminScoresheetSubject(e.target.value)} disabled={!adminScoresheetClass}>
+                      <option value="">Choose...</option>
+                      <option value="all">All Subjects</option>
+                      {classSubjects.filter(cs => cs.class_id === parseInt(adminScoresheetClass)).map((cs, idx) => (
+                        <option key={idx} value={cs.subject_id}>{cs.subject_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button className="btn btn-primary" onClick={() => {
+                    if (adminScoresheetSubject === 'all') {
+                      exportPDF(bulkScoresheetRefAdmin, 'all_subjects_blank_scoresheets.pdf', 'portrait');
+                    } else {
+                      exportPDF(scoresheetRefAdmin, 'blank_scoresheet.pdf', 'portrait');
+                    }
+                  }} disabled={!adminScoresheetClass} style={{ display: 'flex', alignItems: 'center', gap: '6px', height: '38px', marginTop: '18px' }}>
+                    <Download size={16} /> Download PDF
+                  </button>
+                </div>
+              </div>
+
+              {adminScoresheetClass ? (
+                <div className="table-container" ref={scoresheetRefAdmin}>
+                  <div className="only-print" style={{ display: 'none', textAlign: 'center', marginBottom: '15px' }}>
+                    <h2 style={{ fontSize: '1.4rem', margin: '0 0 5px 0' }}>{settingsForm?.landing_school_name || 'Jere Model Academy'}</h2>
+                    <h4 style={{ margin: '0 0 10px 0' }}>Print Scoresheet: {classes.find(c => c.id === parseInt(adminScoresheetClass))?.name || 'Class'} {adminScoresheetSubject ? `- ${classSubjects.find(cs => cs.subject_id === parseInt(adminScoresheetSubject))?.subject_name}` : ''}</h4>
+                    <p style={{ margin: '0', fontSize: '0.9rem' }}>Term: {settings?.active_term || 'Current Term'} | Session: {settings?.active_session || 'Current Session'}</p>
+                  </div>
+                  <table className="school-table blank-scoresheet-table" style={{ fontSize: '0.78rem' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: '40px' }}>S/N</th>
+                        <th style={{ width: '100px' }}>Adm No</th>
+                        <th>Student Name</th>
+                        <th style={{ width: '65px', textAlign: 'center', padding: '4px' }}>CA1</th>
+                        <th style={{ width: '65px', textAlign: 'center', padding: '4px' }}>CA2</th>
+                        <th style={{ width: '65px', textAlign: 'center', padding: '4px' }}>CA3</th>
+                        <th style={{ width: '65px', textAlign: 'center', padding: '4px' }}>CA4</th>
+                        <th style={{ width: '80px', textAlign: 'center', padding: '4px' }}>Total</th>
+                        <th style={{ width: '65px', textAlign: 'center', padding: '4px' }}>Exam</th>
+                        <th style={{ width: '80px', textAlign: 'center', padding: '4px' }}>G.Tot</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {students.filter(s => s.class_id === parseInt(adminScoresheetClass)).map((student, idx) => (
+                        <tr key={student.id}>
+                          <td>{idx + 1}</td>
+                          <td><code>{student.admission_number}</code></td>
+                          <td><strong>{student.full_name}</strong></td>
+                          <td style={{ padding: '6px' }}></td>
+                          <td style={{ padding: '6px' }}></td>
+                          <td style={{ padding: '6px' }}></td>
+                          <td style={{ padding: '6px' }}></td>
+                          <td style={{ padding: '6px' }}></td>
+                          <td style={{ padding: '6px' }}></td>
+                          <td style={{ padding: '6px' }}></td>
+                        </tr>
+                      ))}
+                      {students.filter(s => s.class_id === parseInt(adminScoresheetClass)).length === 0 && (
+                        <tr>
+                          <td colSpan="10" style={{ textAlign: 'center', padding: '20px' }}>No students found in this class.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>📝</div>
+                  <p>Please select a class to generate a print scoresheet.</p>
+                </div>
+              )}
+
+              {/* Hidden Bulk Printable Print Scoresheet */}
+              {adminScoresheetClass && (
+                <div ref={bulkScoresheetRefAdmin} style={{ display: 'none' }}>
+                  {classSubjects.filter(cs => cs.class_id === parseInt(adminScoresheetClass)).map((subject, subjIdx) => (
+                    <div key={subjIdx} style={{ pageBreakBefore: subjIdx > 0 ? 'always' : 'auto' }} className="bulk-single-card-page">
+                      <div className="only-print" style={{ display: 'none', textAlign: 'center', marginBottom: '15px', paddingTop: subjIdx > 0 ? '20px' : '0' }}>
+                        <h2 style={{ fontSize: '1.4rem', margin: '0 0 5px 0' }}>{settingsForm?.landing_school_name || 'Jere Model Academy'}</h2>
+                        <h4 style={{ margin: '0 0 10px 0' }}>Print Scoresheet: {classes.find(c => c.id === parseInt(adminScoresheetClass))?.name || 'Class'} - {subject.subject_name}</h4>
+                        <p style={{ margin: '0', fontSize: '0.9rem' }}>Term: {settings?.active_term || 'Current Term'} | Session: {settings?.active_session || 'Current Session'}</p>
+                      </div>
+                      <table className="school-table blank-scoresheet-table" style={{ fontSize: '0.78rem', width: '100%' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ width: '40px' }}>S/N</th>
+                            <th style={{ width: '100px' }}>Adm No</th>
+                            <th>Student Name</th>
+                            <th style={{ width: '65px', textAlign: 'center', padding: '4px' }}>CA1</th>
+                            <th style={{ width: '65px', textAlign: 'center', padding: '4px' }}>CA2</th>
+                            <th style={{ width: '65px', textAlign: 'center', padding: '4px' }}>CA3</th>
+                            <th style={{ width: '65px', textAlign: 'center', padding: '4px' }}>CA4</th>
+                            <th style={{ width: '80px', textAlign: 'center', padding: '4px' }}>Total</th>
+                            <th style={{ width: '65px', textAlign: 'center', padding: '4px' }}>Exam</th>
+                            <th style={{ width: '80px', textAlign: 'center', padding: '4px' }}>G.Tot</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {students.filter(s => s.class_id === parseInt(adminScoresheetClass)).map((student, idx) => (
+                            <tr key={student.id}>
+                              <td>{idx + 1}</td>
+                              <td><code>{student.admission_number}</code></td>
+                              <td><strong>{student.full_name}</strong></td>
+                              <td style={{ padding: '6px' }}></td>
+                              <td style={{ padding: '6px' }}></td>
+                              <td style={{ padding: '6px' }}></td>
+                              <td style={{ padding: '6px' }}></td>
+                              <td style={{ padding: '6px' }}></td>
+                              <td style={{ padding: '6px' }}></td>
+                              <td style={{ padding: '6px' }}></td>
+                            </tr>
+                          ))}
+                          {students.filter(s => s.class_id === parseInt(adminScoresheetClass)).length === 0 && (
+                            <tr>
+                              <td colSpan="10" style={{ textAlign: 'center', padding: '20px' }}>No students found in this class.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  ))}
+                  {classSubjects.filter(cs => cs.class_id === parseInt(adminScoresheetClass)).length === 0 && (
+                    <div style={{ padding: '20px', textAlign: 'center' }}>No subjects available for this class.</div>
+                  )}
+                </div>
+              )}
+
+            </div>
+          )}
+
       {resultsSubTab === 'promotions' && (
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.2rem' }}>🎓 Move Students to Next Class</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-                Select a class stream to view student checklist, check students to advance, and promote to their new class for session {settings?.active_session || ''}.
-              </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                <GraduationCap size={24} color="white" />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Move Students to Next Class</h3>
+                <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                  Select a class stream to view student checklist, check students to advance, and promote to their new class for session {settings?.active_session || ''}.
+                </p>
+              </div>
             </div>
-            <button className="btn btn-secondary" onClick={() => setActiveSubTab('overview')} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
-              ← Back to Overview
+            <button className="btn btn-secondary" onClick={() => setActiveSubTab('overview')} style={{ padding: '8px 16px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', borderRadius: '20px' }}>
+              <ArrowLeft size={16} /> Back to Dashboard
             </button>
           </div>
 
@@ -3317,45 +3513,32 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       {activeSubTab === 'settings' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
-          {/* Sub-Tab Navigation Bar */}
-          <div className="settings-tab-bar">
-            <button
-              type="button"
-              className={`settings-tab-btn ${settingsSubTab === 'academic' ? 'active' : ''}`}
-              onClick={() => setSettingsSubTab('academic')}
-            >
-              <CalendarCheck size={16} /> School Year & Term
-            </button>
-            <button
-              type="button"
-              className={`settings-tab-btn ${settingsSubTab === 'reports' || settingsSubTab === 'skills' ? 'active' : ''}`}
-              onClick={() => setSettingsSubTab('reports')}
-            >
-              <Award size={16} /> Report Card Display & Psychomotor Skills
-            </button>
-            <button
-              type="button"
-              className={`settings-tab-btn ${settingsSubTab === 'website' ? 'active' : ''}`}
-              onClick={() => setSettingsSubTab('website')}
-            >
-              <Globe size={16} /> Website & Contact Info
-            </button>
-          </div>
+          {/* Sub-Tab Navigation handled by Sidebar */}
 
           {/* Sub-Tab 1: School Year & Term */}
           {settingsSubTab === 'academic' && (
             <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>School Year & Term Setup</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-                Set the current school year, select the active term, and manage teacher grade entry permissions.
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                  <CalendarCheck size={24} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>School Year & Term Setup</h3>
+                  <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                    Set the current school year, select the active term, and manage teacher grade entry permissions.
+                  </p>
+                </div>
+              </div>
               
               <form onSubmit={handleUpdateSettings}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
                   
-                  <div className="form-group">
-                    <label>Current School Year</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <CalendarCheck size={18} style={{ color: 'var(--primary)' }} />
+                      Current School Year
+                    </label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
                       <select
                         className="form-control"
                         value={sessions.find(s => s.session_name === settingsForm.active_session)?.id || ''}
@@ -3367,7 +3550,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                             if (sess) setSettingsForm(prev => ({ ...prev, active_session: sess.session_name }));
                           }
                         }}
-                        style={{ flex: 1 }}
+                        style={{ flex: 1, backgroundColor: 'var(--bg-surface)' }}
                       >
                         <option value="">-- Choose School Year --</option>
                         {sessions.map((s, idx) => (
@@ -3378,22 +3561,26 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       </select>
                       <button 
                         type="button" 
-                        className="btn btn-primary" 
+                        className="btn btn-secondary" 
                         onClick={() => setShowSessionModal(true)}
-                        style={{ padding: '0 15px', fontWeight: 'bold' }}
+                        style={{ padding: '0 16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
                         title="Add New School Year"
                       >
-                        + New Year
+                        <span>+ New</span>
                       </button>
                     </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>Current School Term</label>
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <CalendarCheck size={18} style={{ color: 'var(--primary)' }} />
+                      Current School Term
+                    </label>
                     <select
                       className="form-control"
                       value={settingsForm.active_term}
                       onChange={(e) => setSettingsForm({ ...settingsForm, active_term: e.target.value })}
+                      style={{ backgroundColor: 'var(--bg-surface)' }}
                     >
                       <option value="1st Term">1st Term</option>
                       <option value="2nd Term">2nd Term</option>
@@ -3401,20 +3588,101 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     </select>
                   </div>
 
-                  <div className="form-group">
-                    <label>Allow Teachers to Enter Grades?</label>
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <Lock size={18} style={{ color: 'var(--primary)' }} />
+                      Allow Teachers to Upload Result
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.9rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={settingsForm.result_entry_open === 1} 
+                        onChange={(e) => setSettingsForm({ ...settingsForm, result_entry_open: e.target.checked ? 1 : 0 })}
+                        style={{ width: '18px', height: '18px', marginRight: '10px', accentColor: 'var(--primary)' }}
+                      />
+                      {settingsForm.result_entry_open === 1 ? 'Enabled' : 'Disabled'}
+                    </label>
+                  </div>
+                </div>
+
+                <h4 style={{ marginTop: '30px', marginBottom: '15px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Lock size={20} color="var(--primary)" />
+                  Permissions & Constraints
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <Clock size={18} style={{ color: 'var(--primary)' }} />
+                      Allow Form Masters to Take Past Attendance
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.9rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={settingsForm.allow_past_attendance === 1} 
+                        onChange={(e) => setSettingsForm({ ...settingsForm, allow_past_attendance: e.target.checked ? 1 : 0 })}
+                        style={{ width: '18px', height: '18px', marginRight: '10px', accentColor: 'var(--primary)' }}
+                      />
+                      {settingsForm.allow_past_attendance === 1 ? 'Enabled' : 'Disabled'}
+                    </label>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <UserPlus size={18} style={{ color: 'var(--primary)' }} />
+                      Allow Form Masters to Register Students
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.9rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={settingsForm.allow_fm_register_student === 1} 
+                        onChange={(e) => setSettingsForm({ ...settingsForm, allow_fm_register_student: e.target.checked ? 1 : 0 })}
+                        style={{ width: '18px', height: '18px', marginRight: '10px', accentColor: 'var(--primary)' }}
+                      />
+                      {settingsForm.allow_fm_register_student === 1 ? 'Enabled' : 'Disabled'}
+                    </label>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <Edit3 size={18} style={{ color: 'var(--primary)' }} />
+                      Allow Form Masters to Edit Student Info
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.9rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={settingsForm.allow_fm_edit_student === 1} 
+                        onChange={(e) => setSettingsForm({ ...settingsForm, allow_fm_edit_student: e.target.checked ? 1 : 0 })}
+                        style={{ width: '18px', height: '18px', marginRight: '10px', accentColor: 'var(--primary)' }}
+                      />
+                      {settingsForm.allow_fm_edit_student === 1 ? 'Enabled' : 'Disabled'}
+                    </label>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <BookOpen size={18} style={{ color: 'var(--primary)' }} />
+                      Number of CAs Allowed
+                    </label>
                     <select
                       className="form-control"
-                      value={String(settingsForm.result_entry_open)}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, result_entry_open: parseInt(e.target.value) })}
+                      value={String(settingsForm.max_ca_count || 4)}
+                      onChange={(e) => setSettingsForm({ ...settingsForm, max_ca_count: parseInt(e.target.value) })}
+                      style={{ backgroundColor: 'var(--bg-surface)' }}
                     >
-                      <option value="1">Yes — Open (Teachers can type and edit marks)</option>
-                      <option value="0">No — Locked (Marks entry is closed)</option>
+                      <option value="1">1 CA</option>
+                      <option value="2">2 CAs</option>
+                      <option value="3">3 CAs</option>
+                      <option value="4">4 CAs</option>
                     </select>
                   </div>
                 </div>
 
-                <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px' }}>Save School Year Settings</button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '12px 28px', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Save size={18} />
+                    Save Academic Settings
+                  </button>
+                </div>
               </form>
             </div>
           )}
@@ -3422,32 +3690,47 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           {/* Sub-Tab 2: Report Card Display */}
           {settingsSubTab === 'reports' && (
             <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>Report Card Display & Signature Settings</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-                Choose what information shows on student report cards and customize test column headers and official remarks.
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                  <FileText size={24} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Report Card Display & Signature Settings</h3>
+                  <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                    Choose what information shows on student report cards and customize test column headers and official remarks.
+                  </p>
+                </div>
+              </div>
 
               <form onSubmit={handleUpdateSettings}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
                   
-                  <div className="form-group">
-                    <label>Show Student Rank in Class?</label>
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <Award size={18} style={{ color: 'var(--primary)' }} />
+                      Show Student Rank in Class?
+                    </label>
                     <select
                       className="form-control"
                       value={String(settingsForm.result_show_position)}
                       onChange={(e) => setSettingsForm({ ...settingsForm, result_show_position: parseInt(e.target.value) })}
+                      style={{ backgroundColor: 'var(--bg-surface)' }}
                     >
                       <option value="1">Yes — Show student rank (e.g. 1st, 2nd, 3rd)</option>
                       <option value="0">No — Hide rank on report cards</option>
                     </select>
                   </div>
 
-                  <div className="form-group">
-                    <label>Show Class Average Score?</label>
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <BarChart2 size={18} style={{ color: 'var(--primary)' }} />
+                      Show Class Average Score?
+                    </label>
                     <select
                       className="form-control"
                       value={String(settingsForm.result_show_average)}
                       onChange={(e) => setSettingsForm({ ...settingsForm, result_show_average: parseInt(e.target.value) })}
+                      style={{ backgroundColor: 'var(--bg-surface)' }}
                     >
                       <option value="1">Yes — Show overall class average mark</option>
                       <option value="0">No — Hide class average mark</option>
@@ -3455,98 +3738,115 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '20px', marginBottom: '24px' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: 'var(--primary)' }}>Test & Exam Column Names</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '24px', marginBottom: '32px' }}>
+                  <h4 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Edit3 size={18} /> Test & Exam Column Names
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.8rem' }}>1st Test Column</label>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>1st Test Column</label>
                       <input type="text" className="form-control" value={settingsForm.ca1_name} onChange={e => setSettingsForm({ ...settingsForm, ca1_name: e.target.value })} placeholder="CA 1" />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.8rem' }}>2nd Test Column</label>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>2nd Test Column</label>
                       <input type="text" className="form-control" value={settingsForm.ca2_name} onChange={e => setSettingsForm({ ...settingsForm, ca2_name: e.target.value })} placeholder="CA 2" />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.8rem' }}>3rd Test Column</label>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>3rd Test Column</label>
                       <input type="text" className="form-control" value={settingsForm.ca3_name} onChange={e => setSettingsForm({ ...settingsForm, ca3_name: e.target.value })} placeholder="CA 3" />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.8rem' }}>4th Test Column</label>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>4th Test Column</label>
                       <input type="text" className="form-control" value={settingsForm.ca4_name} onChange={e => setSettingsForm({ ...settingsForm, ca4_name: e.target.value })} placeholder="CA 4" />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.8rem' }}>Final Exam Column</label>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Final Exam Column</label>
                       <input type="text" className="form-control" value={settingsForm.exam_name} onChange={e => setSettingsForm({ ...settingsForm, exam_name: e.target.value })} placeholder="Exam" />
                     </div>
                   </div>
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '20px', marginBottom: '24px' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', color: 'var(--primary)' }}>Official Signatures & Dates</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
+                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '24px', marginBottom: '32px' }}>
+                  <h4 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FileText size={18} /> Official Signatures & Dates
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                    <div className="form-group" style={{ margin: 0, padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)' }}>
                       <label>Sports Master / Coach Name</label>
                       <input type="text" className="form-control" value={settingsForm.games_master_name} onChange={e => setSettingsForm({ ...settingsForm, games_master_name: e.target.value })} placeholder="e.g. A. K. Bello" />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>Sports Master Note / Comment</label>
+                      <label style={{ marginTop: '12px' }}>Sports Master Note / Comment</label>
                       <input type="text" className="form-control" value={settingsForm.games_master_remark} onChange={e => setSettingsForm({ ...settingsForm, games_master_remark: e.target.value })} placeholder="e.g. Active in school sports." />
                     </div>
-                    <div className="form-group" style={{ margin: 0 }}>
+                    
+                    <div className="form-group" style={{ margin: 0, padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)' }}>
                       <label>House Master / Advisor Name</label>
                       <input type="text" className="form-control" value={settingsForm.house_master_name} onChange={e => setSettingsForm({ ...settingsForm, house_master_name: e.target.value })} placeholder="e.g. S. Ibrahim" />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>House Master Note / Comment</label>
+                      <label style={{ marginTop: '12px' }}>House Master Note / Comment</label>
                       <input type="text" className="form-control" value={settingsForm.house_master_remark} onChange={e => setSettingsForm({ ...settingsForm, house_master_remark: e.target.value })} placeholder="e.g. Disciplined student." />
                     </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>Principal / Headmaster Name</label>
-                      <input type="text" className="form-control" value={settingsForm.principal_name} onChange={e => setSettingsForm({ ...settingsForm, principal_name: e.target.value })} placeholder="e.g. Principal Stamp (JMA)" />
-                    </div>
-                    <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1' }}>
-                      <label>Principal Digital Signature</label>
-                      {settingsForm.principal_signature ? (
-                        <div style={{ position: 'relative', display: 'inline-block' }}>
-                          <img src={settingsForm.principal_signature} alt="Principal Signature" style={{ height: '60px', border: '1px solid var(--border-color)', borderRadius: '4px', background: '#fff', padding: '4px' }} />
-                          <button 
-                            type="button" 
-                            style={{ position: 'absolute', top: '-8px', right: '-8px', background: 'red', color: 'white', borderRadius: '50%', border: 'none', cursor: 'pointer', width: '20px', height: '20px', fontSize: '12px', lineHeight: '20px' }}
-                            onClick={() => setSettingsForm({ ...settingsForm, principal_signature: '' })}
-                          >✕</button>
+                    
+                    <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1', padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+                        <div>
+                          <label>Principal / Headmaster Name</label>
+                          <input type="text" className="form-control" value={settingsForm.principal_name} onChange={e => setSettingsForm({ ...settingsForm, principal_name: e.target.value })} placeholder="e.g. Principal Stamp (JMA)" style={{ marginBottom: '16px' }} />
+                          <label>School Fee for Next Term (₦)</label>
+                          <input type="text" className="form-control" value={settingsForm.next_term_fee} onChange={e => setSettingsForm({ ...settingsForm, next_term_fee: e.target.value })} placeholder="e.g. ₦45,000.00" />
                         </div>
-                      ) : (
-                        <SignaturePad onSave={(dataUrl) => setSettingsForm({ ...settingsForm, principal_signature: dataUrl })} />
-                      )}
+                        <div>
+                          <label>Principal Digital Signature</label>
+                          {settingsForm.principal_signature ? (
+                            <div style={{ position: 'relative', display: 'inline-block' }}>
+                              <img src={settingsForm.principal_signature} alt="Principal Signature" style={{ height: '60px', border: '1px solid var(--border-color)', borderRadius: '4px', background: '#fff', padding: '4px' }} />
+                              <button 
+                                type="button" 
+                                style={{ position: 'absolute', top: '-8px', right: '-8px', background: 'red', color: 'white', borderRadius: '50%', border: 'none', cursor: 'pointer', width: '20px', height: '20px', fontSize: '12px', lineHeight: '20px' }}
+                                onClick={() => setSettingsForm({ ...settingsForm, principal_signature: '' })}
+                              >✕</button>
+                            </div>
+                          ) : (
+                            <SignaturePad onSave={(dataUrl) => setSettingsForm({ ...settingsForm, principal_signature: dataUrl })} />
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>School Fee for Next Term (₦)</label>
-                      <input type="text" className="form-control" value={settingsForm.next_term_fee} onChange={e => setSettingsForm({ ...settingsForm, next_term_fee: e.target.value })} placeholder="e.g. ₦45,000.00" />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
+                    
+                    <div className="form-group" style={{ margin: 0, padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)' }}>
                       <label>Next Term Opening Date</label>
                       <input type="text" className="form-control" value={settingsForm.next_term_begins} onChange={e => setSettingsForm({ ...settingsForm, next_term_begins: e.target.value })} placeholder="e.g. 13/04/2026" />
                     </div>
-                    <div className="form-group" style={{ margin: 0 }}>
+                    <div className="form-group" style={{ margin: 0, padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)' }}>
                       <label>Next Term Closing Date</label>
                       <input type="text" className="form-control" value={settingsForm.next_term_ends} onChange={e => setSettingsForm({ ...settingsForm, next_term_ends: e.target.value })} placeholder="e.g. 24/07/2026" />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>Unpaid Balance Carryover (₦)</label>
-                      <input type="text" className="form-control" value={settingsForm.last_term_debit} onChange={e => setSettingsForm({ ...settingsForm, last_term_debit: e.target.value })} placeholder="e.g. ₦0.00" />
                     </div>
                   </div>
                 </div>
 
-                <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px', marginBottom: '32px' }}>Save Report Card Settings</button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '12px 28px', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Save size={18} />
+                    Save Report Card Settings
+                  </button>
+                </div>
               </form>
+            </div>
+          )}
 
-              {/* Affective & Psychomotor Skills Configuration Section */}
-              <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: '24px' }}>
-                <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>🧠 Affective & Psychomotor Skills Configuration</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-                  Manage behavioral traits and skills evaluated by form masters for students' report cards.
-                </p>
+          {/* Sub-Tab: Behavioral Domains (Skills) */}
+          {settingsSubTab === 'skills' && (
+            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                  <Sparkles size={24} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Affective & Psychomotor Skills Configuration</h3>
+                  <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                    Manage behavioral traits and skills evaluated by form masters for students' report cards.
+                  </p>
+                </div>
+              </div>
+              <div style={{ paddingTop: '24px' }}>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
                   <div style={{ padding: '20px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
@@ -3607,7 +3907,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                                   </span>
                                 </td>
                                 <td style={{ textAlign: 'center' }}>
-                                  <button className="btn btn-danger" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => handleSkillDelete(s.id)}>Delete</button>
+                                  <button className="btn btn-danger" title="Delete" style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => handleSkillDelete(s.id)}><Trash2 size={14} /></button>
                                 </td>
                               </tr>
                             ))
@@ -3624,66 +3924,98 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           {/* Sub-Tab 3: Website & Contact Info */}
           {(settingsSubTab === 'website' || settingsSubTab === 'landing') && (
             <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>Portal Landing Page & Contact Settings</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-                Customize the school name, taglines, hero banner text, and official contact address displayed on the landing page and receipts.
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                  <Globe size={24} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Portal Landing Page & Contact Settings</h3>
+                  <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                    Customize the school name, taglines, hero banner text, and official contact address displayed on the landing page and receipts.
+                  </p>
+                </div>
+              </div>
 
               <form onSubmit={handleUpdateSettings}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-                  <div className="form-group">
-                    <label>School Name</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <Globe size={18} style={{ color: 'var(--primary)' }} />
+                      School Name
+                    </label>
                     <input
                       type="text"
                       className="form-control"
                       value={settingsForm.landing_school_name || ''}
                       onChange={(e) => setSettingsForm({ ...settingsForm, landing_school_name: e.target.value })}
                       required
+                      style={{ backgroundColor: 'var(--bg-surface)' }}
                     />
                   </div>
 
-                  <div className="form-group">
-                    <label>School Subtitle / Tagline</label>
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <FileText size={18} style={{ color: 'var(--primary)' }} />
+                      School Subtitle / Tagline
+                    </label>
                     <input
                       type="text"
                       className="form-control"
                       value={settingsForm.landing_tagline || ''}
                       onChange={(e) => setSettingsForm({ ...settingsForm, landing_tagline: e.target.value })}
+                      style={{ backgroundColor: 'var(--bg-surface)' }}
                     />
                   </div>
 
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label>Hero Title (Landing Page Banner)</label>
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <Award size={18} style={{ color: 'var(--primary)' }} />
+                      Hero Title (Landing Page Banner)
+                    </label>
                     <input
                       type="text"
                       className="form-control"
                       value={settingsForm.landing_hero_title || ''}
                       onChange={(e) => setSettingsForm({ ...settingsForm, landing_hero_title: e.target.value })}
+                      style={{ backgroundColor: 'var(--bg-surface)' }}
                     />
                   </div>
 
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label>Hero Description</label>
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <LayoutDashboard size={18} style={{ color: 'var(--primary)' }} />
+                      Hero Description
+                    </label>
                     <textarea
                       className="form-control"
                       rows="3"
                       value={settingsForm.landing_hero_desc || ''}
                       onChange={(e) => setSettingsForm({ ...settingsForm, landing_hero_desc: e.target.value })}
+                      style={{ backgroundColor: 'var(--bg-surface)' }}
                     ></textarea>
                   </div>
 
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label>Official School Address</label>
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <Globe size={18} style={{ color: 'var(--primary)' }} />
+                      Official School Address
+                    </label>
                     <input
                       type="text"
                       className="form-control"
                       value={settingsForm.landing_address || ''}
                       onChange={(e) => setSettingsForm({ ...settingsForm, landing_address: e.target.value })}
+                      style={{ backgroundColor: 'var(--bg-surface)' }}
                     />
                   </div>
                 </div>
 
-                <button type="submit" className="btn btn-primary" style={{ padding: '10px 24px' }}>Save Landing Page Settings</button>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '12px 28px', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Save size={18} />
+                    Save Landing Page Settings
+                  </button>
+                </div>
               </form>
             </div>
           )}
@@ -3691,10 +4023,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           {/* Sub-Tab 4: Move Students Up */}
           {(settingsSubTab === 'promotion' || settingsSubTab === 'promotions') && (
             <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <h3 style={{ marginBottom: '8px', fontSize: '1.1rem' }}>Move Students to Next Class</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '24px' }}>
-                Promote a whole class of students up to their new class for the new school year. Student past grade records stay safely saved in their timeline.
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                  <GraduationCap size={24} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Move Students to Next Class</h3>
+                  <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                    Promote a whole class of students up to their new class for the new school year. Student past grade records stay safely saved in their timeline.
+                  </p>
+                </div>
+              </div>
 
               <form onSubmit={handlePromotionBulk} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', alignItems: 'flex-end' }}>
                 <div className="form-group" style={{ margin: 0 }}>
@@ -3744,46 +4083,21 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       {activeSubTab === 'attendance' && (
         <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
           
-          {/* Sub Navigation for Attendance */}
-          <div style={{ display: 'flex', gap: '15px', borderBottom: '1px solid var(--border-color)', marginBottom: '20px' }} className="no-print">
-            <button
-              onClick={() => setActiveAdminAttendanceSubTab('mark')}
-              style={{
-                padding: '10px 15px',
-                background: 'none',
-                border: 'none',
-                borderBottom: activeAdminAttendanceSubTab === 'mark' ? '2.5px solid var(--primary)' : 'none',
-                color: activeAdminAttendanceSubTab === 'mark' ? 'var(--primary)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '0.95rem'
-              }}
-            >
-              Mark Attendance
-            </button>
-            <button
-              onClick={() => setActiveAdminAttendanceSubTab('report')}
-              style={{
-                padding: '10px 15px',
-                background: 'none',
-                border: 'none',
-                borderBottom: activeAdminAttendanceSubTab === 'report' ? '2.5px solid var(--primary)' : 'none',
-                color: activeAdminAttendanceSubTab === 'report' ? 'var(--primary)' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '0.95rem'
-              }}
-            >
-              Attendance Report
-            </button>
-          </div>
+          {/* Sub Navigation handled by Sidebar */}
 
           {activeAdminAttendanceSubTab === 'mark' ? (
             <>
-              <h3>Class Attendance Management</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '20px' }}>
-                Select a class and date to view or mark attendance roster.
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                  <CalendarCheck size={24} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Class Attendance Management</h3>
+                  <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                    Select a class and date to view or mark attendance roster.
+                  </p>
+                </div>
+              </div>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }} className="no-print">
                 <div className="form-group" style={{ margin: 0, minWidth: '200px' }}>
@@ -3913,10 +4227,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             </>
           ) : (
             <>
-              <h3>Attendance Summary Report</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '20px' }}>
-                View cumulative class attendance tallies by date range.
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                  <BarChart2 size={24} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Attendance Summary Report</h3>
+                  <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                    View cumulative class attendance tallies by date range.
+                  </p>
+                </div>
+              </div>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'flex-end' }} className="no-print">
                 <div className="form-group" style={{ margin: 0, minWidth: '180px' }}>
@@ -3955,13 +4276,18 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   />
                 </div>
 
-                <button className="btn btn-secondary no-print" onClick={() => window.print()}>Print Report</button>
+                <button className="btn btn-secondary no-print" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => exportPDF(attendanceReportRefAdmin, 'attendance_report.pdf', 'landscape')}><Download size={16} /> Download PDF</button>
               </div>
 
               {!adminReportClassId ? (
                 <p style={{ color: 'var(--text-muted)' }}>Please select a class stream to load report summary.</p>
               ) : (
-                <div className="table-container">
+                <div className="table-container" ref={attendanceReportRefAdmin}>
+                  <div className="only-print" style={{ display: 'none', textAlign: 'center', marginBottom: '15px' }}>
+                    <h2 style={{ fontSize: '1.4rem', margin: '0 0 5px 0' }}>{settingsForm?.landing_school_name || 'Jere Model Academy'}</h2>
+                    <h4 style={{ margin: '0 0 10px 0' }}>Attendance Report: {classes.find(c => c.id === parseInt(adminReportClassId))?.name || 'Class'}</h4>
+                    <p style={{ margin: '0', fontSize: '0.9rem' }}>Date Range: {adminReportStartDate || 'Start'} to {adminReportEndDate || 'End'}</p>
+                  </div>
                   <table className="school-table">
                     <thead>
                       <tr>
@@ -4027,10 +4353,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             <h3>Register Student</h3>
             
             <form onSubmit={handleStudentRegister} style={{ marginTop: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
-                <button type="button" className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => seedMockPassport('student')}>
-                  📸 Seed Student Photo
-                </button>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
+                <label style={{ marginRight: '10px', fontWeight: 'bold' }}>Passport Photo:</label>
+                <input type="file" accept="image/*" className="form-control" onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setStudentForm({ ...studentForm, passport_photo: reader.result });
+                    reader.readAsDataURL(file);
+                  }
+                }} />
+                {studentForm.passport_photo && <span style={{ marginLeft: '10px', color: 'var(--success)' }}>✓ Added</span>}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
@@ -4132,10 +4465,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             <h3>Register Teacher</h3>
 
             <form onSubmit={handleTeacherRegister} style={{ marginTop: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '15px' }}>
-                <button type="button" className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => seedMockPassport('teacher')}>
-                  📸 Add Photo
-                </button>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
+                <label style={{ marginRight: '10px', fontWeight: 'bold' }}>Passport Photo:</label>
+                <input type="file" accept="image/*" className="form-control" onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setTeacherForm({ ...teacherForm, passport_photo: reader.result });
+                    reader.readAsDataURL(file);
+                  }
+                }} />
+                {teacherForm.passport_photo && <span style={{ marginLeft: '10px', color: 'var(--success)' }}>✓ Added</span>}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
@@ -4443,31 +4783,89 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
         <div className="modal-overlay">
           <div className="modal-content glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
             <button className="modal-close" onClick={() => setShowPayModal(false)}>✕</button>
-            <h3>Record Fee Payment</h3>
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'var(--primary-light)', color: 'var(--primary)', marginBottom: '10px' }}>
+                <CreditCard size={28} />
+              </div>
+              <h3 style={{ margin: 0 }}>Record Fee Payment</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '5px 0 0 0' }}>Lodge a payment against an outstanding invoice.</p>
+            </div>
             
-            <form onSubmit={handleLogPayment} style={{ marginTop: '20px' }}>
-              <div style={{ padding: '10px 14px', backgroundColor: 'var(--bg-secondary)', borderRadius: 'var(--radius-sm)', marginBottom: '15px', fontSize: '0.85rem' }}>
-                <div>Student Name: <strong>{payForm.student_name}</strong></div>
-                <div style={{ color: 'var(--primary)', marginTop: '4px' }}>
-                  Target Academic Term: <strong>{settings?.active_term || '3rd Term'}</strong> ({settings?.active_session || '2025/2026'})
-                </div>
-              </div>
-              
-              <div className="form-group">
-                <label>Amount Paid (₦)</label>
-                <input type="number" className="form-control" value={payForm.amount_paid} onChange={(e) => setPayForm({ ...payForm, amount_paid: e.target.value })} required />
-              </div>
+            <form onSubmit={handleLogPayment}>
+              {(() => {
+                const inv = studentHistoryData?.invoices?.find(i => i.id === payForm.invoice_id) || {};
+                const totalDue = inv.amount_due || 0;
+                const totalPaid = inv.amount_paid || 0;
+                const rem = totalDue - totalPaid;
+                return (
+                  <>
+                    <div style={{ padding: '14px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', marginBottom: '20px', fontSize: '0.85rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Student Name:</span>
+                        <strong style={{ color: 'var(--text-primary)' }}>{payForm.student_name}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Fee Description:</span>
+                        <strong style={{ color: 'var(--text-primary)' }}>{inv.title || 'N/A'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Term / Session:</span>
+                        <strong style={{ color: 'var(--primary)' }}>{inv.term || settings?.active_term || '3rd Term'} ({inv.session || settings?.active_session || '2025/2026'})</strong>
+                      </div>
+                      <div style={{ borderTop: '1px dashed var(--border-color)', margin: '10px 0' }}></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Total Billed:</span>
+                        <strong style={{ color: 'var(--text-primary)' }}>₦{totalDue.toLocaleString()}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Previously Paid:</span>
+                        <strong style={{ color: 'var(--success)' }}>₦{totalPaid.toLocaleString()}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontWeight: 'bold' }}>Remaining Balance:</span>
+                        <strong style={{ color: 'var(--danger)', fontSize: '1.05rem' }}>₦{rem.toLocaleString()}</strong>
+                      </div>
+                    </div>
+                    
+                    <div className="form-group">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <label style={{ margin: 0 }}>Amount to Pay (₦)</label>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary btn-sm" 
+                          style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '4px' }}
+                          onClick={() => setPayForm({ ...payForm, amount_paid: rem })}
+                        >
+                          Pay Full Balance
+                        </button>
+                      </div>
+                      <input 
+                        type="number" 
+                        className="form-control" 
+                        style={{ fontSize: '1.2rem', padding: '12px', fontWeight: 'bold', letterSpacing: '1px' }}
+                        value={payForm.amount_paid} 
+                        onChange={(e) => setPayForm({ ...payForm, amount_paid: e.target.value })} 
+                        min="1"
+                        max={rem}
+                        required 
+                      />
+                    </div>
+                  </>
+                );
+              })()}
 
               <div className="form-group">
                 <label>Payment Method</label>
-                <select className="form-control" value={payForm.payment_method} onChange={(e) => setPayForm({ ...payForm, payment_method: e.target.value })}>
+                <select className="form-control" style={{ padding: '10px' }} value={payForm.payment_method} onChange={(e) => setPayForm({ ...payForm, payment_method: e.target.value })}>
                   <option value="Cash">Cash</option>
                   <option value="Transfer">Bank Transfer</option>
                   <option value="Bank Draft">Bank Draft</option>
                 </select>
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Save Payment & Print Receipt</button>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <CheckCircle size={18} /> Record Payment & Print Receipt
+              </button>
             </form>
           </div>
         </div>
@@ -4648,22 +5046,24 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       {selectedStudentForHistory && (
         <div className="modal-overlay">
           <div className="modal-content glass-panel" style={{ maxWidth: '850px', backgroundColor: 'var(--bg-surface)', padding: '20px' }}>
-            <button className="modal-close no-print" onClick={() => setSelectedStudentForHistory(null)}>✕</button>
+            <button className="modal-close no-print" style={{ top: '15px', right: '15px', backgroundColor: 'rgba(255,255,255,0.2)', color: 'white', backdropFilter: 'blur(5px)' }} onClick={() => setSelectedStudentForHistory(null)}>✕</button>
 
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '25px', margin: '-20px -20px 20px -20px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
               {selectedStudentForHistory.passport_photo ? (
-                <img src={selectedStudentForHistory.passport_photo} alt="Student Avatar" style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary)' }} />
+                <img src={selectedStudentForHistory.passport_photo} alt="Student Avatar" style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '3px solid rgba(255,255,255,0.8)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }} />
               ) : (
-                <div style={{ width: '46px', height: '46px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.3rem' }}>
+                <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
                   💳
                 </div>
               )}
               <div style={{ flex: 1 }}>
-                <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Student Payment Ledger — {selectedStudentForHistory.full_name}</h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: '3px 0 0 0' }}>
-                  Term: <strong>{settings?.active_term || '3rd Term'}</strong> ({settings?.active_session || '2025/2026'}) | Admission ID: <code>{selectedStudentForHistory.admission_number}</code> | Class: <strong>{selectedStudentForHistory.class_name || 'Unassigned'}</strong>
-                  {selectedStudentForHistory.parent_phone && <span> | Parent Contact: 📞 <strong>{selectedStudentForHistory.parent_phone}</strong></span>}
+                <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', letterSpacing: '0.5px' }}>Student Payment Ledger — {selectedStudentForHistory.full_name}</h3>
+                <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '8px 0 0 0', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <span><CalendarCheck size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }}/> {settings?.active_term || '3rd Term'} ({settings?.active_session || '2025/2026'})</span>
+                  <span><Lock size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }}/> {selectedStudentForHistory.admission_number}</span>
+                  <span><Users size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }}/> {selectedStudentForHistory.class_name || 'Unassigned'}</span>
+                  {selectedStudentForHistory.parent_phone && <span>📞 <strong>{selectedStudentForHistory.parent_phone}</strong></span>}
                 </p>
               </div>
             </div>
@@ -4683,41 +5083,44 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
                   return (
                     <>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
-                        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', backgroundColor: 'rgba(59, 130, 246, 0.08)', borderLeft: '4px solid #3b82f6' }}>
-                          <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Total Fees</div>
-                          <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#2563eb', marginTop: '2px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '18px' }}>
+                        <div style={{ padding: '16px 20px', borderRadius: 'var(--radius-md)', background: 'linear-gradient(to right bottom, #ffffff, #f8fafc)', border: '1px solid #e2e8f0', borderLeft: '5px solid #3b82f6', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}>
+                          <div style={{ position: 'absolute', right: '-15px', top: '-15px', color: '#3b82f6', opacity: 0.1, transform: 'rotate(-15deg)' }}><Receipt size={90} /></div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Fees</div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e3a8a', marginTop: '6px' }}>
                             ₦{totalBilled.toLocaleString()}
                           </div>
                         </div>
-                        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', backgroundColor: 'rgba(16, 185, 129, 0.08)', borderLeft: '4px solid #10b981' }}>
-                          <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Paid</div>
-                          <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#059669', marginTop: '2px' }}>
+                        <div style={{ padding: '16px 20px', borderRadius: 'var(--radius-md)', background: 'linear-gradient(to right bottom, #ffffff, #f8fafc)', border: '1px solid #e2e8f0', borderLeft: '5px solid #10b981', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}>
+                          <div style={{ position: 'absolute', right: '-15px', top: '-15px', color: '#10b981', opacity: 0.1, transform: 'rotate(-15deg)' }}><CheckCircle size={90} /></div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Paid</div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#065f46', marginTop: '6px' }}>
                             ₦{totalPaid.toLocaleString()}
                           </div>
                         </div>
-                        <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-sm)', backgroundColor: 'rgba(239, 68, 68, 0.08)', borderLeft: '4px solid #ef4444' }}>
-                          <div style={{ fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Debt</div>
-                          <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#dc2626', marginTop: '2px' }}>
+                        <div style={{ padding: '16px 20px', borderRadius: 'var(--radius-md)', background: 'linear-gradient(to right bottom, #ffffff, #f8fafc)', border: '1px solid #e2e8f0', borderLeft: '5px solid #ef4444', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', position: 'relative', overflow: 'hidden' }}>
+                          <div style={{ position: 'absolute', right: '-15px', top: '-15px', color: '#ef4444', opacity: 0.1, transform: 'rotate(-15deg)' }}><AlertCircle size={90} /></div>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Debt</div>
+                          <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#991b1b', marginTop: '6px' }}>
                             ₦{balanceOwed.toLocaleString()}
                           </div>
                         </div>
                       </div>
 
                       {/* Section 1: Invoices Breakdown */}
-                      <div>
-                        <h4 style={{ fontSize: '0.9rem', margin: '0 0 8px 0', color: 'var(--text-primary)' }}>📜 Fee Invoices Billed</h4>
-                        <div className="table-container" style={{ margin: 0, maxHeight: '200px', overflowY: 'auto' }}>
-                          <table className="school-table" style={{ margin: 0, fontSize: '0.8rem' }}>
-                            <thead>
+                      <div style={{ marginTop: '10px' }}>
+                        <h4 style={{ fontSize: '1.05rem', margin: '0 0 12px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}><Receipt size={20} color="var(--primary)" /> Fee Invoices Billed</h4>
+                        <div className="table-container" style={{ margin: 0, maxHeight: '250px', overflowY: 'auto', borderRadius: 'var(--radius-md)', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', border: '1px solid var(--border-color)' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                            <thead style={{ backgroundColor: 'var(--bg-secondary)', position: 'sticky', top: 0, zIndex: 1 }}>
                               <tr>
-                                <th>Fee Title</th>
-                                <th>Term & Session</th>
-                                <th style={{ textAlign: 'right' }}>Total Fees</th>
-                                <th style={{ textAlign: 'right' }}>Paid</th>
-                                <th style={{ textAlign: 'right' }}>Debt</th>
-                                <th style={{ textAlign: 'center' }}>Status</th>
-                                <th style={{ textAlign: 'center' }} className="no-print">Action</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Fee Title</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Term & Session</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Total Fees</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Paid</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Debt</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Status</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }} className="no-print">Action</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -4727,28 +5130,28 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                                 invs.map((inv, idx) => {
                                   const rem = inv.amount_due - inv.amount_paid;
                                   return (
-                                    <tr key={idx}>
-                                      <td style={{ fontWeight: '600' }}>{inv.title}</td>
-                                      <td>
-                                        <span className="badge" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '0.68rem' }}>
+                                    <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                      <td style={{ padding: '14px 15px', fontWeight: '600', color: 'var(--text-primary)' }}>{inv.title}</td>
+                                      <td style={{ padding: '14px 15px' }}>
+                                        <span className="badge" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
                                           {inv.term || settings?.active_term || '3rd Term'} ({inv.session || settings?.active_session || '2025/2026'})
                                         </span>
                                       </td>
-                                      <td style={{ textAlign: 'right', fontWeight: '600' }}>₦{inv.amount_due.toLocaleString()}</td>
-                                      <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 'bold' }}>₦{inv.amount_paid.toLocaleString()}</td>
-                                      <td style={{ textAlign: 'right', color: rem > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
+                                      <td style={{ padding: '14px 15px', textAlign: 'right', fontWeight: '700', color: 'var(--text-primary)' }}>₦{inv.amount_due.toLocaleString()}</td>
+                                      <td style={{ padding: '14px 15px', textAlign: 'right', color: 'var(--success)', fontWeight: '700' }}>₦{inv.amount_paid.toLocaleString()}</td>
+                                      <td style={{ padding: '14px 15px', textAlign: 'right', color: rem > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: '700' }}>
                                         ₦{rem.toLocaleString()}
                                       </td>
-                                      <td style={{ textAlign: 'center' }}>
-                                        <span className={`badge ${inv.status === 'paid' ? 'badge-success' : inv.status === 'partial' ? 'badge-warning' : 'badge-danger'}`} style={{ fontSize: '0.68rem' }}>
-                                          {inv.status}
+                                      <td style={{ padding: '14px 15px', textAlign: 'center' }}>
+                                        <span className={`badge ${inv.status === 'paid' ? 'badge-success' : inv.status === 'partial' ? 'badge-warning' : 'badge-danger'}`} style={{ fontSize: '0.7rem', padding: '5px 12px', borderRadius: '12px', letterSpacing: '0.5px' }}>
+                                          {inv.status.toUpperCase()}
                                         </span>
                                       </td>
-                                      <td style={{ textAlign: 'center' }} className="no-print">
+                                      <td style={{ padding: '14px 15px', textAlign: 'center' }} className="no-print">
                                         {inv.status !== 'paid' && (
                                           <button
                                             className="btn btn-primary"
-                                            style={{ padding: '4px 10px', fontSize: '0.74rem' }}
+                                            style={{ padding: '6px 16px', fontSize: '0.75rem', borderRadius: '20px', boxShadow: '0 2px 8px rgba(59, 130, 246, 0.4)', fontWeight: '600' }}
                                             onClick={() => {
                                               setSelectedStudentForHistory(null);
                                               setPayForm({
@@ -4774,18 +5177,18 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       </div>
 
                       {/* Section 2: Payment Receipts History */}
-                      <div>
-                        <h4 style={{ fontSize: '0.9rem', margin: '0 0 8px 0', color: 'var(--text-primary)' }}>🧾 Payment Receipts History</h4>
-                        <div className="table-container" style={{ margin: 0, maxHeight: '200px', overflowY: 'auto' }}>
-                          <table className="school-table" style={{ margin: 0, fontSize: '0.8rem' }}>
-                            <thead>
+                      <div style={{ marginTop: '20px' }}>
+                        <h4 style={{ fontSize: '1.05rem', margin: '0 0 12px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}><History size={20} color="var(--primary)" /> Payment Receipts History</h4>
+                        <div className="table-container" style={{ margin: 0, maxHeight: '250px', overflowY: 'auto', borderRadius: 'var(--radius-md)', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', border: '1px solid var(--border-color)' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                            <thead style={{ backgroundColor: 'var(--bg-secondary)', position: 'sticky', top: 0, zIndex: 1 }}>
                               <tr>
-                                <th>Receipt #</th>
-                                <th>Date</th>
-                                <th>Fee Item</th>
-                                <th style={{ textAlign: 'right' }}>Amount Paid</th>
-                                <th>Logged By</th>
-                                <th style={{ textAlign: 'center' }} className="no-print">Action</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Receipt #</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Date</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Fee Item</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'right', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Amount Paid</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Logged By</th>
+                                <th style={{ padding: '12px 15px', textAlign: 'center', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }} className="no-print">Action</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -4793,16 +5196,16 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                                 <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '15px' }}>No payment receipts recorded yet.</td></tr>
                               ) : (
                                 recs.map((rec, idx) => (
-                                  <tr key={idx}>
-                                    <td><code>{rec.receipt_number}</code></td>
-                                    <td>{rec.payment_date}</td>
-                                    <td style={{ fontWeight: '500' }}>{rec.title}</td>
-                                    <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 'bold' }}>₦{rec.amount_paid.toLocaleString()}</td>
-                                    <td style={{ fontSize: '0.78rem' }}>{rec.logged_by_name || 'Staff'}</td>
-                                    <td style={{ textAlign: 'center' }} className="no-print">
+                                  <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                                    <td style={{ padding: '12px 15px' }}><code style={{ fontSize: '0.75rem', padding: '5px 8px', borderRadius: '4px', backgroundColor: 'var(--bg-surface)' }}>{rec.receipt_number}</code></td>
+                                    <td style={{ padding: '12px 15px', color: 'var(--text-secondary)' }}>{rec.payment_date}</td>
+                                    <td style={{ padding: '12px 15px', fontWeight: '600', color: 'var(--text-primary)' }}>{rec.title}</td>
+                                    <td style={{ padding: '12px 15px', textAlign: 'right', color: 'var(--success)', fontWeight: '700' }}>₦{rec.amount_paid.toLocaleString()}</td>
+                                    <td style={{ padding: '12px 15px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{rec.logged_by_name || 'Staff'}</td>
+                                    <td style={{ padding: '12px 15px', textAlign: 'center' }} className="no-print">
                                       <button
-                                        className="btn btn-secondary"
-                                        style={{ padding: '4px 10px', fontSize: '0.74rem' }}
+                                        className="btn btn-outline btn-sm"
+                                        style={{ padding: '6px 14px', fontSize: '0.75rem', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                                         onClick={() => {
                                           setSelectedReceipt({
                                             ...rec,
@@ -4841,7 +5244,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           <div className="modal-content glass-panel" style={{ maxWidth: '450px', backgroundColor: '#fff', color: '#000' }}>
             <button className="modal-close no-print" onClick={() => setSelectedReceipt(null)} style={{ color: '#000' }}>✕</button>
             
-            <div className="print-area" style={{ fontFamily: 'monospace', padding: '10px' }}>
+            <div className="print-area" style={{ fontFamily: 'monospace', padding: '10px' }} ref={receiptSlipRef}>
               <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '10px', marginBottom: '15px' }}>
                 <h3 style={{ margin: '0' }}>{settingsForm?.landing_school_name || 'Jere Model Academy'}</h3>
                 <p style={{ margin: '3px 0', fontSize: '0.8rem' }}>{settingsForm?.landing_tagline || 'KADUNA STATE, NIGERIA'}</p>
@@ -4882,7 +5285,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             </div>
 
             <div style={{ marginTop: '20px', display: 'flex', flexWrap: 'wrap', gap: '10px' }} className="no-print">
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => window.print()}>🖨️ Print Slip</button>
+              <button className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }} onClick={() => exportPDF(receiptSlipRef, `receipt_${selectedReceipt?.receipt_number || 'slip'}.pdf`)}><Download size={16} /> Download PDF</button>
               <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setSelectedReceipt(null)}>Close</button>
             </div>
           </div>

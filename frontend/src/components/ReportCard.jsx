@@ -1,13 +1,34 @@
 import React from 'react';
-import { ArrowLeft, Printer, Award, X } from 'lucide-react';
+import { ArrowLeft, Award, X, Download } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 export default function ReportCard({ data, settings, onClose, closeLabel, isBulk = false }) {
   if (!data) return null;
 
   const { student, grades, attendance, term, academic_year, position, total_students, class_average, behavioral } = data;
 
-  const handlePrint = () => {
-    window.print();
+  const getPhotoSrc = (photo) => {
+    if (!photo) return null;
+    return photo.startsWith('data:') ? photo : `http://localhost:5000${photo}`;
+  };
+
+
+
+  const reportRef = React.useRef(null);
+  
+  const handleExportPDF = () => {
+    const element = reportRef.current;
+    if (!element) return;
+    
+    const opt = {
+      margin:       0.2,
+      filename:     `${student?.admission_number || 'student'}_report.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+    
+    html2pdf().set(opt).from(element).save();
   };
 
   const is3rdTerm = term === '3rd Term';
@@ -78,16 +99,17 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
                 <Award size={14} />
                 {isNursery ? 'Nursery Template' : isPrimary ? 'Primary Template' : 'Secondary Template'}
               </span>
-              <button className="btn btn-primary" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 20px', fontWeight: 'bold' }}>
-                <Printer size={16} />
-                <span>Print Report Sheet</span>
+
+              <button className="btn btn-secondary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 20px', fontWeight: 'bold', backgroundColor: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' }} title="Download as PDF">
+                <Download size={16} />
+                <span>Export to PDF</span>
               </button>
             </div>
           </div>
         )}
 
         {/* PRINTABLE REPORT CARD CONTAINER */}
-        <div className="modern-report-card print-area">
+        <div className="modern-report-card print-area" ref={reportRef}>
           
           {/* HEADER BANNER */}
           <div className="m-header">
@@ -118,7 +140,7 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
 
             <div className="m-photo-frame">
               {student.passport_photo ? (
-                <img src={student.passport_photo} alt="Passport" />
+                <img src={getPhotoSrc(student.passport_photo)} alt="Passport" />
               ) : (
                 <div className="m-photo-placeholder">STUDENT PHOTO</div>
               )}

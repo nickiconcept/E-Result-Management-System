@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import ReportCard from '../components/ReportCard';
 import Toast from '../components/Toast';
-import { ArrowLeft, Award, CreditCard, FileText, ShieldCheck, Printer, CheckCircle, Lock, Unlock, Receipt, X } from 'lucide-react';
+import { ArrowLeft, Award, CreditCard, FileText, ShieldCheck, CheckCircle, Lock, Unlock, Receipt, X, Download, Key, BookOpen, User, Bell, AlertTriangle, BarChart2, Search } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 export default function StudentDashboard({ user, settings, activeTab, subTab }) {
   const [activeSubTab, setActiveSubTab] = useState('overview');
@@ -15,7 +16,7 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
 
   // Result check PIN prompts
   const [showPinModal, setShowPinModal] = useState(false);
-  const [selectedTermForRC, setSelectedTermForRC] = useState(null); // {term, academic_year}
+  const [selectedTermForRC, setSelectedTermForRC] = useState(null);
   const [pinInput, setPinInput] = useState('');
 
   // Unlocked Result data
@@ -81,7 +82,7 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
       });
       setSchemeWeeks(newWeeks);
     } catch (err) {
-      setErrorMsg('Failed to load schemes: ' + err.message);
+      setErrorMsg('Failed to load scheme: ' + err.message);
     }
   };
 
@@ -92,50 +93,45 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
   }, [activeSubTab]);
 
   useEffect(() => {
-    if (activeSubTab === 'schemes' && selectedSubjectId) {
+    if (selectedSubjectId) {
       loadStudentSchemes(selectedSubjectId);
     }
-  }, [activeSubTab, selectedSubjectId]);
+  }, [selectedSubjectId]);
 
   const loadStudentData = async () => {
     try {
-      const tlData = await api.getStudentTimeline(user.id);
-      setTimeline(tlData.timeline);
-      setUnlockedPins(tlData.unlockedPins || []);
-
-      const feeData = await api.getStudentFees(user.id);
-      setInvoices(feeData.invoices);
-      setReceipts(feeData.receipts);
+      const [tl, pins, invs, recs] = await Promise.all([
+        api.getStudentTimeline(),
+        api.getStudentUnlockedPins(),
+        api.getStudentInvoices(),
+        api.getStudentReceipts(),
+      ]);
+      setTimeline(tl);
+      setUnlockedPins(pins);
+      setInvoices(invs);
+      setReceipts(recs);
     } catch (err) {
-      setErrorMsg('Failed to sync student data: ' + err.message);
+      setErrorMsg('Failed to load data: ' + err.message);
     }
   };
 
-  const handleTermClick = (termItem) => {
-    setErrorMsg('');
-    setNotify('');
-    const isUnlocked = unlockedPins.some(
-      p => p.term === termItem.term && p.academic_year === termItem.academic_year && p.usage_count < 5
-    );
-
+  const handleTermClick = (item) => {
+    const pinBinding = unlockedPins.find(p => p.term === item.term && p.academic_year === item.academic_year);
+    const isUnlocked = pinBinding && pinBinding.usage_count < 5;
     if (isUnlocked) {
-      // Fetch report card immediately
-      fetchReportCard(termItem.term, termItem.academic_year);
+      fetchReportCard(item.term, item.academic_year);
     } else {
-      setSelectedTermForRC(termItem);
-      setPinInput('');
+      setSelectedTermForRC(item);
       setShowPinModal(true);
     }
   };
 
-  const fetchReportCard = async (term, year) => {
+  const fetchReportCard = async (term, academic_year) => {
     try {
-      const data = await api.getReportCard(user.id, term, year);
+      const data = await api.getStudentReportCard(term, academic_year);
       setActiveReportCardData(data);
-      // Reload timeline details to refresh usage counts
-      loadStudentData();
     } catch (err) {
-      setErrorMsg(err.message);
+      setErrorMsg('Failed to load report card: ' + err.message);
     }
   };
 
@@ -144,33 +140,63 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
     if (!pinInput || !selectedTermForRC) return;
     setErrorMsg('');
     setNotify('');
-
     try {
       const res = await api.verifyPin(pinInput, selectedTermForRC.term, selectedTermForRC.academic_year);
       setNotify(`${res.message} You have ${res.usage_remaining} checks remaining.`);
       setShowPinModal(false);
-
-      // Reload student data to obtain bound activePin
       await loadStudentData();
-
-      // Fetch result sheet
       fetchReportCard(selectedTermForRC.term, selectedTermForRC.academic_year);
     } catch (err) {
       setErrorMsg(err.message);
     }
   };
 
-  const handlePrintReceipt = (receipt) => {
-    setActiveReceipt(receipt);
+  const receiptRef = React.useRef(null);
+
+  const downloadReceiptPDF = () => {
+    const element = receiptRef.current;
+    if (!element) return;
+    const opt = {
+      margin: 0.3,
+      filename: `receipt_${activeReceipt?.receipt_number || 'slip'}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
   };
 
-  const printReceiptAction = () => {
-    window.print();
-  };
-
-  // Check if outstanding fees exist
   const unpaidInvoices = invoices.filter(inv => inv.status !== 'paid');
   const outstandingDebt = unpaidInvoices.reduce((sum, inv) => sum + (inv.amount_due - inv.amount_paid), 0);
+  const totalPaid = receipts.reduce((sum, r) => sum + r.amount_paid, 0);
+
+  // Hero header component shared across tabs
+  const HeroHeader = ({ icon: Icon, title, subtitle, right }) => (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      flexWrap: 'wrap', gap: '15px',
+      background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)',
+      padding: '24px', color: 'white',
+      boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+      borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0'
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+        <div style={{
+          width: '48px', height: '48px', borderRadius: '50%',
+          backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          border: '2px solid rgba(255,255,255,0.4)', flexShrink: 0
+        }}>
+          <Icon size={24} color="white" />
+        </div>
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700' }}>{title}</h3>
+          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>{subtitle}</p>
+        </div>
+      </div>
+      {right && <div>{right}</div>}
+    </div>
+  );
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
@@ -179,91 +205,146 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
       <Toast message={notify} type="success" onClose={() => setNotify('')} duration={4000} />
       <Toast message={errorMsg} type="error" onClose={() => setErrorMsg('')} duration={5000} />
 
-
-
       {/* ==========================================
           TAB 1: OVERVIEW & ALERTS
           ========================================== */}
       {activeSubTab === 'overview' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* Student Info Welcome card */}
-            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)', display: 'flex', gap: '24px', alignItems: 'center' }}>
+          {/* Hero Welcome Banner */}
+          <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
+            <div style={{
+              background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)',
+              padding: '28px 28px 20px',
+              color: 'white',
+              display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap'
+            }}>
+              {/* Passport photo */}
               <div style={{
-                width: '90px',
-                height: '110px',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                overflow: 'hidden',
-                backgroundColor: 'var(--bg-secondary)'
+                width: '90px', height: '110px',
+                border: '3px solid rgba(255,255,255,0.5)', borderRadius: '10px',
+                overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.1)', flexShrink: 0
               }}>
                 {user.passport_photo ? (
-                  <img src={user.passport_photo} alt="Student Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={user.passport_photo.startsWith('data:') ? user.passport_photo : `http://localhost:5000${user.passport_photo}`} alt="Student Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>PHOTO</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                    <User size={36} style={{ opacity: 0.6 }} color="white" />
+                  </div>
                 )}
               </div>
-              <div>
-                <h2>{user.full_name}</h2>
-                <p style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>
-                  Admission Number: <code>{user.admission_number}</code>
-                </p>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '6px' }}>
-                  Current Class: <strong>{user.class_name || 'Not Enrolled'}</strong> | {settings?.landing_school_name || 'Jere Model Academy'} Student Portal
-                </p>
+              <div style={{ flex: 1 }}>
+                <p style={{ margin: '0 0 4px 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.75)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Student Portal</p>
+                <h2 style={{ margin: '0 0 8px 0', fontSize: '1.6rem', fontWeight: '800' }}>{user.full_name}</h2>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.85rem', backgroundColor: 'rgba(255,255,255,0.15)', padding: '4px 12px', borderRadius: '20px', backdropFilter: 'blur(5px)' }}>
+                    Adm. No: <strong>{user.admission_number}</strong>
+                  </span>
+                  <span style={{ fontSize: '0.85rem', backgroundColor: 'rgba(255,255,255,0.15)', padding: '4px 12px', borderRadius: '20px', backdropFilter: 'blur(5px)' }}>
+                    Class: <strong>{user.class_name || 'Not Enrolled'}</strong>
+                  </span>
+                  <span style={{ fontSize: '0.85rem', backgroundColor: 'rgba(255,255,255,0.15)', padding: '4px 12px', borderRadius: '20px', backdropFilter: 'blur(5px)' }}>
+                    Term: <strong>{settings?.active_term}</strong>
+                  </span>
+                </div>
+              </div>
+              {/* Quick stats pills */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', minWidth: '150px' }}>
+                <div style={{ backgroundColor: outstandingDebt > 0 ? 'rgba(239,68,68,0.2)' : 'rgba(34,197,94,0.2)', border: `1px solid ${outstandingDebt > 0 ? 'rgba(239,68,68,0.4)' : 'rgba(34,197,94,0.4)'}`, borderRadius: '10px', padding: '10px 14px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: outstandingDebt > 0 ? '#fca5a5' : '#86efac' }}>Outstanding</div>
+                  <div style={{ fontWeight: '800', fontSize: '1.1rem' }}>₦{outstandingDebt.toLocaleString()}</div>
+                </div>
+                <div style={{ backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: '10px', padding: '10px 14px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.2)' }}>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.7)' }}>Results</div>
+                  <div style={{ fontWeight: '800', fontSize: '1.1rem' }}>{timeline.length} Term{timeline.length !== 1 ? 's' : ''}</div>
+                </div>
               </div>
             </div>
 
-            {/* Fee Debt Alert */}
-            {outstandingDebt > 0 && (
-              <div className="glass-panel" style={{ padding: '24px', borderLeft: '5px solid var(--danger)', backgroundColor: 'var(--bg-surface)' }}>
-                <h3 style={{ color: 'var(--danger)' }}>Unpaid Fees: ₦{outstandingDebt.toLocaleString()}</h3>
-                <p style={{ color: 'var(--text-secondary)', marginTop: '8px', fontSize: '0.9rem' }}>
-                  You have unpaid fees. In compliance with school rules, result PINs are only given after all fees are paid.
-                </p>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-                  *Pay fees at the office to get your result PIN.
-                </p>
-              </div>
-            )}
-
-            {/* General Announcements */}
-            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <h3>School Announcements</h3>
-              <div style={{ marginTop: '15px', borderLeft: '3px solid var(--primary)', paddingLeft: '15px' }}>
-                <h4 style={{ fontSize: '1rem' }}>Third Term Terminal Exams Commencement</h4>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '4px' }}>
-                  Students are reminded that all final term grades are computed with 4 CA components (10 marks each) and final exam sheets (60 marks). Study accordingly.
-                </p>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>Posted: July 2026 | Admin Office</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Metrics */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-              <h3>My Info</h3>
-              <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Current Term</span>
-                  <strong>{settings.active_term}</strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Unpaid Fees</span>
-                  <strong style={{ color: outstandingDebt > 0 ? 'var(--danger)' : 'var(--success)' }}>
-                    ₦{outstandingDebt.toLocaleString()}
-                  </strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Status</span>
-                  <span className="badge badge-success">Active</span>
-                </div>
-              </div>
+            {/* Bottom: status bar */}
+            <div style={{ padding: '14px 28px', display: 'flex', gap: '20px', flexWrap: 'wrap', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', color: 'var(--success)', fontWeight: '600' }}>
+                <CheckCircle size={14} /> Active Enrollment
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                <Award size={14} /> Session: {settings?.active_session}
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                <CreditCard size={14} /> Paid: ₦{totalPaid.toLocaleString()}
+              </span>
             </div>
           </div>
 
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Fee Debt Alert */}
+              {outstandingDebt > 0 && (
+                <div className="glass-panel" style={{ overflow: 'hidden', backgroundColor: 'var(--bg-surface)' }}>
+                  <div style={{ background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)', padding: '18px 22px', color: 'white', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <AlertTriangle size={24} />
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '1rem' }}>Outstanding Fees: ₦{outstandingDebt.toLocaleString()}</div>
+                      <div style={{ fontSize: '0.82rem', opacity: 0.85 }}>Result PINs are only issued after all fees are settled.</div>
+                    </div>
+                  </div>
+                  <div style={{ padding: '14px 22px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    *Visit the finance office to make payment and obtain your result PIN.
+                  </div>
+                </div>
+              )}
+
+              {/* School Announcements */}
+              <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
+                <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '18px 22px', color: 'white', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Bell size={20} />
+                  <div>
+                    <div style={{ fontWeight: '700' }}>School Announcements</div>
+                    <div style={{ fontSize: '0.82rem', opacity: 0.85 }}>Latest updates from the admin office</div>
+                  </div>
+                </div>
+                <div style={{ padding: '20px 22px' }}>
+                  <div style={{ borderLeft: '3px solid var(--primary)', paddingLeft: '16px' }}>
+                    <h4 style={{ fontSize: '1rem', margin: '0 0 6px 0' }}>Third Term Terminal Exams Commencement</h4>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0 0 8px 0' }}>
+                      Students are reminded that all final term grades are computed with 4 CA components (10 marks each) and final exam sheets (60 marks). Study accordingly.
+                    </p>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Posted: July 2026 | Admin Office</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Info Sidebar */}
+            <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
+              <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '18px 22px', color: 'white', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <User size={20} />
+                <div style={{ fontWeight: '700' }}>My Info</div>
+              </div>
+              <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {[
+                  { label: 'Current Term', value: settings.active_term },
+                  { label: 'Academic Session', value: settings.active_session },
+                  { label: 'Class', value: user.class_name || 'Not Enrolled' },
+                  { label: 'Gender', value: user.sex || '—' },
+                  { label: 'Religion', value: user.religion || '—' },
+                  {
+                    label: 'Unpaid Fees',
+                    value: `₦${outstandingDebt.toLocaleString()}`,
+                    valueColor: outstandingDebt > 0 ? 'var(--danger)' : 'var(--success)'
+                  },
+                  {
+                    label: 'Status',
+                    custom: <span className="badge badge-success">Active</span>
+                  },
+                ].map((row, i, arr) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: i < arr.length - 1 ? '14px' : 0, borderBottom: i < arr.length - 1 ? '1px solid var(--border-color)' : 'none' }}>
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{row.label}</span>
+                    {row.custom || <strong style={{ color: row.valueColor || 'var(--text-primary)', fontSize: '0.9rem' }}>{row.value}</strong>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -271,15 +352,24 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
           TAB 2: REPORT CARDS ACADEMIC TIMELINE
           ========================================== */}
       {activeSubTab === 'results' && (
-        <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-          <h3>My Results</h3>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '25px' }}>
-            Click on a term below to view your results. Enter your PIN code when prompted.
-          </p>
+        <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
+          <HeroHeader
+            icon={Award}
+            title="My Results"
+            subtitle="Click a term below to view your result card. Enter your PIN when prompted."
+            right={
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '20px', padding: '8px 16px', fontSize: '0.82rem', fontWeight: '600' }}>
+                <FileText size={14} /> {timeline.length} Term Record{timeline.length !== 1 ? 's' : ''}
+              </div>
+            }
+          />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
             {timeline.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)' }}>No academic records found on this profile.</p>
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                <Award size={40} style={{ opacity: 0.3, marginBottom: '12px' }} />
+                <p style={{ margin: 0 }}>No academic records found on this profile.</p>
+              </div>
             ) : (
               timeline.map((item, idx) => {
                 const pinBinding = unlockedPins.find(p => p.term === item.term && p.academic_year === item.academic_year);
@@ -288,33 +378,44 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
                 return (
                   <div
                     key={idx}
-                    className="glass-panel"
                     style={{
-                      padding: '20px 24px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      backgroundColor: 'var(--bg-primary)',
-                      borderLeft: isUnlocked ? '5px solid var(--success)' : '5px solid var(--warning)'
+                      padding: '18px 22px',
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      backgroundColor: isUnlocked ? 'rgba(34,197,94,0.04)' : 'var(--bg-primary)',
+                      borderLeft: `5px solid ${isUnlocked ? 'var(--success)' : 'rgba(59,130,246,0.4)'}`,
+                      borderRadius: '10px', border: `1px solid ${isUnlocked ? 'rgba(34,197,94,0.2)' : 'var(--border-color)'}`,
+                      borderLeftWidth: '5px', transition: 'box-shadow 0.2s',
                     }}
+                    onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.06)'}
+                    onMouseLeave={(e) => e.currentTarget.style.boxShadow = 'none'}
                   >
                     <div>
-                      <h4 style={{ fontSize: '1.05rem' }}>{item.academic_year} - {item.term}</h4>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                      <h4 style={{ fontSize: '1.05rem', margin: '0 0 6px 0' }}>{item.academic_year} — {item.term}</h4>
+                      <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
                         {isUnlocked ? (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--success)' }}>
-                            <Key size={14} /> Unlocked - Views Used: {pinBinding.usage_count} / 5
+                            <Key size={13} /> Unlocked — Views Used: {pinBinding.usage_count} / 5
                           </span>
                         ) : (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--danger)' }}>
-                            <Lock size={14} /> Enter PIN to view results
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
+                            <Lock size={13} /> Enter PIN to view results
                           </span>
                         )}
                       </p>
                     </div>
-
-                    <button className="btn btn-primary" onClick={() => handleTermClick(item)}>
-                      {isUnlocked ? 'View Report Card' : 'Check Results'}
+                    <button
+                      className="btn"
+                      onClick={() => handleTermClick(item)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        background: isUnlocked ? 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)' : undefined,
+                        backgroundColor: isUnlocked ? undefined : 'var(--bg-secondary)',
+                        color: isUnlocked ? 'white' : 'var(--text-primary)',
+                        border: isUnlocked ? 'none' : '1px solid var(--border-color)',
+                        padding: '10px 20px', borderRadius: '20px', fontWeight: '700', cursor: 'pointer'
+                      }}
+                    >
+                      {isUnlocked ? <><Unlock size={14} /> View Report Card</> : <><Key size={14} /> Enter PIN</>}
                     </button>
                   </div>
                 );
@@ -328,83 +429,118 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
           TAB 3: INVOICES & RECEIPTS LEDGER
           ========================================== */}
       {activeSubTab === 'fees' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
-          {/* Invoices List */}
-          <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-            <h3>School Fees</h3>
-            <div className="table-container" style={{ marginTop: '15px' }}>
-              <table className="school-table">
-                <thead>
-                  <tr>
-                    <th>Fee Name</th>
-                    <th>Amount</th>
-                    <th>Paid</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.map((inv, idx) => (
-                    <tr key={idx}>
-                      <td style={{ fontWeight: '600' }}>
-                        <div>{inv.title}</div>
-                        <span className="badge" style={{ fontSize: '0.7rem', marginTop: '3px', backgroundColor: 'var(--bg-primary)', color: 'var(--primary)', border: '1px solid var(--border-color)' }}>
-                          {inv.category || 'School Fees'}
-                        </span>
-                      </td>
-                      <td>₦{inv.amount_due.toLocaleString()}</td>
-                      <td>₦{inv.amount_paid.toLocaleString()}</td>
-                      <td>
-                        <span className={`badge ${inv.status === 'paid' ? 'badge-success' : 'badge-danger'}`}>
-                          {inv.status === 'paid' ? 'Paid' : inv.status === 'partial' ? 'Partially Paid' : 'Unpaid'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          {/* Summary Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+            {[
+              { label: 'Total Charged', value: `₦${invoices.reduce((s, i) => s + i.amount_due, 0).toLocaleString()}`, icon: FileText, color: '#2563eb', bg: 'rgba(37,99,235,0.08)', border: 'rgba(37,99,235,0.2)' },
+              { label: 'Total Paid', value: `₦${totalPaid.toLocaleString()}`, icon: CheckCircle, color: '#16a34a', bg: 'rgba(22,163,74,0.08)', border: 'rgba(22,163,74,0.2)' },
+              { label: 'Outstanding', value: `₦${outstandingDebt.toLocaleString()}`, icon: outstandingDebt > 0 ? AlertTriangle : CheckCircle, color: outstandingDebt > 0 ? '#dc2626' : '#16a34a', bg: outstandingDebt > 0 ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)', border: outstandingDebt > 0 ? 'rgba(220,38,38,0.2)' : 'rgba(22,163,74,0.2)' },
+              { label: 'Payment Receipts', value: receipts.length, icon: Receipt, color: '#7c3aed', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.2)' },
+            ].map((card, i) => (
+              <div key={i} className="glass-panel" style={{ padding: '18px 20px', backgroundColor: card.bg, border: `1px solid ${card.border}`, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: card.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `1px solid ${card.border}` }}>
+                    <card.icon size={20} style={{ color: card.color }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{card.label}</div>
+                    <div style={{ fontWeight: '800', fontSize: '1.1rem', color: card.color }}>{card.value}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Receipts List */}
-          <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-            <h3>Receipts</h3>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Receipts for payments made.</p>
-
-            <div className="table-container" style={{ marginTop: '15px' }}>
-              <table className="school-table">
-                <thead>
-                  <tr>
-                    <th>Receipt Number</th>
-                    <th>Fee Name</th>
-                    <th>Amount Paid</th>
-                    <th>Receipt</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {receipts.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} style={{ textAlign: 'center' }}>No payments logged yet.</td>
-                    </tr>
-                  ) : (
-                    receipts.map((rec, idx) => (
-                      <tr key={idx}>
-                        <td style={{ fontWeight: 'bold' }}>{rec.receipt_number}</td>
-                        <td>{rec.title}</td>
-                        <td>₦{rec.amount_paid.toLocaleString()}</td>
-                        <td>
-                          <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.8rem' }} onClick={() => handlePrintReceipt(rec)}>
-                            View
-                          </button>
-                        </td>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            {/* Invoices */}
+            <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
+              <HeroHeader
+                icon={CreditCard}
+                title="School Fees"
+                subtitle="All invoices issued to your account"
+              />
+              <div style={{ padding: '20px' }}>
+                <div className="table-container" style={{ marginTop: 0 }}>
+                  <table className="school-table">
+                    <thead style={{ backgroundColor: '#f8fafc' }}>
+                      <tr>
+                        <th style={{ padding: '12px 14px' }}>Fee Name</th>
+                        <th style={{ padding: '12px 14px' }}>Amount</th>
+                        <th style={{ padding: '12px 14px' }}>Paid</th>
+                        <th style={{ padding: '12px 14px' }}>Status</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {invoices.length === 0 ? (
+                        <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px' }}>No invoices on record.</td></tr>
+                      ) : invoices.map((inv, idx) => (
+                        <tr key={idx}>
+                          <td style={{ padding: '12px 14px', fontWeight: '600' }}>
+                            <div>{inv.title}</div>
+                            <span className="badge" style={{ fontSize: '0.7rem', marginTop: '3px', backgroundColor: 'var(--bg-primary)', color: 'var(--primary)', border: '1px solid var(--border-color)' }}>
+                              {inv.category || 'School Fees'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '12px 14px' }}>₦{inv.amount_due.toLocaleString()}</td>
+                          <td style={{ padding: '12px 14px' }}>₦{inv.amount_paid.toLocaleString()}</td>
+                          <td style={{ padding: '12px 14px' }}>
+                            <span className={`badge ${inv.status === 'paid' ? 'badge-success' : 'badge-danger'}`}>
+                              {inv.status === 'paid' ? 'Paid' : inv.status === 'partial' ? 'Partial' : 'Unpaid'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Receipts */}
+            <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
+              <HeroHeader
+                icon={Receipt}
+                title="Receipts"
+                subtitle="Payment receipts — click View to print or download"
+              />
+              <div style={{ padding: '20px' }}>
+                <div className="table-container" style={{ marginTop: 0 }}>
+                  <table className="school-table">
+                    <thead style={{ backgroundColor: '#f8fafc' }}>
+                      <tr>
+                        <th style={{ padding: '12px 14px' }}>Receipt No.</th>
+                        <th style={{ padding: '12px 14px' }}>Fee Name</th>
+                        <th style={{ padding: '12px 14px' }}>Amount Paid</th>
+                        <th style={{ padding: '12px 14px', textAlign: 'center' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {receipts.length === 0 ? (
+                        <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px' }}>No payments logged yet.</td></tr>
+                      ) : receipts.map((rec, idx) => (
+                        <tr key={idx}>
+                          <td style={{ padding: '12px 14px', fontWeight: 'bold' }}>{rec.receipt_number}</td>
+                          <td style={{ padding: '12px 14px' }}>{rec.title}</td>
+                          <td style={{ padding: '12px 14px' }}>₦{rec.amount_paid.toLocaleString()}</td>
+                          <td style={{ padding: '12px 14px', textAlign: 'center' }}>
+                            <button
+                              className="btn"
+                              style={{ padding: '6px 14px', fontSize: '0.8rem', borderRadius: '8px', border: '1px solid rgba(37,99,235,0.3)', backgroundColor: 'rgba(37,99,235,0.07)', color: '#2563eb', fontWeight: '600', cursor: 'pointer' }}
+                              onClick={() => setActiveReceipt(rec)}
+                            >
+                              <Download size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} /> View
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
-
         </div>
       )}
 
@@ -412,39 +548,64 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
           TAB 4: SCHOOL RULES & UNDERTAKING HANDBOOK
           ========================================== */}
       {activeSubTab === 'rules' && (
-        <div className="glass-panel" style={{ padding: '32px', backgroundColor: 'var(--bg-surface)', maxWidth: '800px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '24px', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
-            <h2 style={{ color: 'var(--primary)' }}>{settings?.landing_school_name || 'Jere Model Academy'}</h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>
-              SCHOOL REQUIREMENTS & RULES
-            </p>
-          </div>
+        <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden', maxWidth: '820px', margin: '0 auto', width: '100%' }}>
+          <HeroHeader
+            icon={ShieldCheck}
+            title="School Rules & Handbook"
+            subtitle={`${settings?.landing_school_name || 'Jere Model Academy'} — Student Undertaking & Code of Conduct`}
+            right={
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(34,197,94,0.2)', borderRadius: '20px', padding: '6px 14px', fontSize: '0.8rem', fontWeight: '700', border: '1px solid rgba(34,197,94,0.4)' }}>
+                <CheckCircle size={14} /> Signed Undertaking
+              </span>
+            }
+          />
 
-          <div style={{ marginBottom: '24px' }}>
-            <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '6px', marginBottom: '10px' }}>I. STUDENT REQUIREMENTS</h4>
-            <ul style={{ paddingLeft: '20px', lineHeight: '1.8' }}>
-              <li><strong>Books:</strong> 12 60-page books for Junior Secondary, and 12 80-page books for Senior Secondary.</li>
-              <li><strong>Math Tools:</strong> 1 Math Set, and 1 scientific calculator (for Senior Secondary).</li>
-              <li><strong>Attire & Items:</strong> 1 pair of white socks, 1 broom, 1 pair of brown sandals, and 1 school bag.</li>
-              <li><strong>Textbooks:</strong> English and Mathematics textbooks are required.</li>
-              <li><strong>Sports:</strong> Sports wear (₦2,500) from the sports office.</li>
-            </ul>
-          </div>
+          <div style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Requirements */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(37,99,235,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(37,99,235,0.2)' }}>
+                  <FileText size={16} style={{ color: 'var(--primary)' }} />
+                </div>
+                <h4 style={{ margin: 0, borderBottom: '2px solid var(--primary)', paddingBottom: '4px', color: 'var(--primary)', flex: 1 }}>I. STUDENT REQUIREMENTS</h4>
+              </div>
+              <ul style={{ paddingLeft: '20px', lineHeight: '2', color: 'var(--text-secondary)', margin: 0 }}>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Books:</strong> 12 60-page books for Junior Secondary, and 12 80-page books for Senior Secondary.</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Math Tools:</strong> 1 Math Set, and 1 scientific calculator (for Senior Secondary).</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Attire & Items:</strong> 1 pair of white socks, 1 broom, 1 pair of brown sandals, and 1 school bag.</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Textbooks:</strong> English and Mathematics textbooks are required.</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Sports:</strong> Sports wear (₦2,500) from the sports office.</li>
+              </ul>
+            </div>
 
-          <div>
-            <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '6px', marginBottom: '10px' }}>II. GENERAL SCHOOL RULES</h4>
-            <ol style={{ paddingLeft: '20px', lineHeight: '1.8' }}>
-              <li><strong>Afternoon Lessons:</strong> All students must attend afternoon lessons from 2:30pm to 3:30pm (Monday to Wednesday).</li>
-              <li><strong>Be on Time:</strong> All students must be in school by 7:45am.</li>
-              <li><strong>No Phones:</strong> Cellphones are not allowed in school.</li>
-              <li><strong>English Language:</strong> No speaking of pidgin or local languages; only correct English is allowed.</li>
-              <li><strong>Grooming:</strong> No face paint, tattoos, rings, or long fingernails.</li>
-              <li><strong>School Fees:</strong> All school fees must be paid by mid-term.</li>
-            </ol>
-          </div>
+            <div style={{ height: '1px', backgroundColor: 'var(--border-color)' }} />
 
-          <div style={{ marginTop: '30px', padding: '16px', backgroundColor: 'var(--success-light)', color: 'var(--success)', borderRadius: 'var(--radius-sm)', fontWeight: 'bold', textAlign: 'center' }}>
-            ✓ Signed Undertaking Form Confirmed
+            {/* Rules */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: 'rgba(37,99,235,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(37,99,235,0.2)' }}>
+                  <ShieldCheck size={16} style={{ color: 'var(--primary)' }} />
+                </div>
+                <h4 style={{ margin: 0, borderBottom: '2px solid var(--primary)', paddingBottom: '4px', color: 'var(--primary)', flex: 1 }}>II. GENERAL SCHOOL RULES</h4>
+              </div>
+              <ol style={{ paddingLeft: '20px', lineHeight: '2', color: 'var(--text-secondary)', margin: 0 }}>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Afternoon Lessons:</strong> All students must attend afternoon lessons from 2:30pm to 3:30pm (Monday to Wednesday).</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Be on Time:</strong> All students must be in school by 7:45am.</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>No Phones:</strong> Cellphones are not allowed in school.</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>English Language:</strong> No speaking of pidgin or local languages; only correct English is allowed.</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Grooming:</strong> No face paint, tattoos, rings, or long fingernails.</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>School Fees:</strong> All school fees must be paid by mid-term.</li>
+              </ol>
+            </div>
+
+            {/* Signed confirmation */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px 20px', backgroundColor: 'rgba(22,163,74,0.06)', border: '1px solid rgba(22,163,74,0.2)', borderRadius: '10px' }}>
+              <CheckCircle size={24} style={{ color: 'var(--success)', flexShrink: 0 }} />
+              <div>
+                <div style={{ fontWeight: '700', color: 'var(--success)' }}>Undertaking Form Confirmed</div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>You have agreed to comply with all school rules and regulations upon enrollment.</div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -453,59 +614,70 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
           TAB 5: SCHEME OF WORK VIEW (READ-ONLY)
           ========================================== */}
       {activeSubTab === 'schemes' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
 
-          {/* Filter Bar */}
-          <div className="glass-panel" style={{ padding: '20px', backgroundColor: 'var(--bg-surface)' }}>
-            <div style={{ marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Scheme of Work</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '4px 0 0 0' }}>
-                Review the 12-week course outline for your subjects this term ({settings?.active_term || '3rd Term'}).
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <div className="form-group" style={{ margin: 0, flex: '1 1 250px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Select Subject</label>
-                <select
-                  className="form-control"
-                  value={selectedSubjectId}
-                  onChange={(e) => setSelectedSubjectId(e.target.value)}
-                >
-                  <option value="">Choose subject...</option>
-                  {studentSubjects.map((sub, idx) => (
-                    <option key={idx} value={sub.subject_id}>{sub.subject_name}</option>
-                  ))}
-                </select>
+          {/* Hero Header */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            flexWrap: 'wrap', gap: '15px',
+            background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)',
+            padding: '24px', color: 'white',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+            borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)' }}>
+                <BookOpen size={24} color="white" />
               </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700' }}>Scheme of Work</h3>
+                <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
+                  12-week course outline for your class — {settings?.active_term || '3rd Term'}
+                </p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: '20px', padding: '8px 16px', fontSize: '0.82rem', fontWeight: '600' }}>
+              <FileText size={14} /> {studentSubjects.length} Subject{studentSubjects.length !== 1 ? 's' : ''} Available
             </div>
           </div>
 
-          {/* Scheme Table */}
+          {/* Subject selector */}
+          <div className="glass-panel" style={{ padding: '20px', backgroundColor: 'var(--bg-surface)', borderRadius: '0', borderTop: 'none' }}>
+            <div className="form-group" style={{ margin: 0, maxWidth: '360px' }}>
+              <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Select Subject</label>
+              <select
+                className="form-control"
+                value={selectedSubjectId}
+                onChange={(e) => setSelectedSubjectId(e.target.value)}
+              >
+                <option value="">Choose subject...</option>
+                {studentSubjects.map((sub, idx) => (
+                  <option key={idx} value={sub.subject_id}>{sub.subject_name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Scheme table */}
           {!selectedSubjectId ? (
-            <div className="glass-panel" style={{ padding: '40px', backgroundColor: 'var(--bg-surface)', textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>📋</div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>No subjects mapped to your class or none selected.</p>
+            <div className="glass-panel" style={{ padding: '40px', backgroundColor: 'var(--bg-surface)', textAlign: 'center', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(59,130,246,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                <BookOpen size={32} style={{ color: 'var(--primary)' }} />
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0 }}>No subjects mapped to your class or none selected.</p>
             </div>
           ) : (
-            <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
-              {/* Subject Info Header */}
+            <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', borderTop: 'none' }}>
+              {/* Subject sub-header */}
               <div style={{
-                padding: '16px 24px',
-                borderBottom: '1px solid var(--border-color)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: '8px',
-                backgroundColor: 'var(--primary-light)'
+                padding: '14px 22px', borderBottom: '1px solid var(--border-color)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px',
+                background: 'linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(30,58,138,0.04) 100%)'
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '36px', height: '36px', borderRadius: '50%',
-                    backgroundColor: 'var(--primary)', color: '#fff',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '1rem', fontWeight: 'bold', flexShrink: 0
-                  }}>📚</div>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <BookOpen size={18} />
+                  </div>
                   <div>
                     <div style={{ fontWeight: '700', fontSize: '0.95rem', color: 'var(--primary)' }}>
                       {studentSubjects.find(s => s.subject_id === parseInt(selectedSubjectId) || s.subject_id === selectedSubjectId)?.subject_name || 'Subject'}
@@ -515,24 +687,23 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
                     </div>
                   </div>
                 </div>
-                <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '600', backgroundColor: 'var(--success-light)', color: 'var(--success)' }}>
-                  {schemeWeeks.filter(w => w.topic).length} / 12 Weeks
+                <span style={{ padding: '4px 12px', borderRadius: '20px', fontSize: '0.78rem', fontWeight: '600', backgroundColor: 'rgba(22,163,74,0.1)', color: 'var(--success)', border: '1px solid rgba(22,163,74,0.2)' }}>
+                  {schemeWeeks.filter(w => w.topic).length} / 12 Weeks Filled
                 </span>
               </div>
 
-              {/* Table */}
               <div className="table-container" style={{ margin: 0, borderRadius: 0 }}>
                 <table className="school-table" style={{ margin: 0 }}>
-                  <thead>
+                  <thead style={{ backgroundColor: '#f8fafc' }}>
                     <tr>
-                      <th style={{ width: '70px', textAlign: 'center' }}>Week</th>
-                      <th style={{ width: '38%' }}>Title & Subtitle</th>
-                      <th>Content / Objectives</th>
+                      <th style={{ width: '70px', textAlign: 'center', padding: '14px' }}>Week</th>
+                      <th style={{ width: '38%', padding: '14px' }}>Title & Subtitle</th>
+                      <th style={{ padding: '14px' }}>Content / Objectives</th>
                     </tr>
                   </thead>
                   <tbody>
                     {schemeWeeks.map((w, idx) => (
-                      <tr key={idx}>
+                      <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                         <td style={{ textAlign: 'center', verticalAlign: 'top', paddingTop: '14px' }}>
                           <span style={{
                             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -556,7 +727,7 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
                             <em style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No topic defined yet</em>
                           )}
                         </td>
-                        <td style={{ color: w.objectives ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: '0.88rem', verticalAlign: 'top', whiteSpace: 'pre-line' }}>
+                        <td style={{ color: w.objectives ? 'var(--text-primary)' : 'var(--text-muted)', fontSize: '0.88rem', verticalAlign: 'top', whiteSpace: 'pre-line', padding: '12px 14px' }}>
                           {w.objectives || <em>—</em>}
                         </td>
                       </tr>
@@ -574,39 +745,42 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
           ========================================== */}
       {showPinModal && selectedTermForRC && (
         <div className="modal-overlay">
-          <div className="modal-content glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
-            <button className="modal-close" onClick={() => setShowPinModal(false)}>✕</button>
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px', color: 'var(--primary)' }}>
-                <Key size={42} />
+          <div className="modal-content glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden', padding: 0 }}>
+            {/* Modal Hero */}
+            <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '28px', textAlign: 'center', color: 'white', position: 'relative' }}>
+              <button className="modal-close" onClick={() => setShowPinModal(false)} style={{ color: 'white', position: 'absolute', top: '12px', right: '16px' }}>✕</button>
+              <div style={{ width: '60px', height: '60px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px', border: '2px solid rgba(255,255,255,0.4)' }}>
+                <Key size={28} color="white" />
               </div>
-              <h3>Enter Result PIN</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                Please enter your 10-character PIN for {selectedTermForRC.academic_year} ({selectedTermForRC.term}).
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '1.2rem' }}>Enter Result PIN</h3>
+              <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.85rem', margin: 0 }}>
+                {selectedTermForRC.academic_year} — {selectedTermForRC.term}
               </p>
             </div>
 
-            <form onSubmit={handleVerifyPinSubmit}>
-              <div className="form-group">
-                <input
-                  type="text"
-                  placeholder="e.g. ABC123XYZ9"
-                  className="form-control"
-                  style={{ textTransform: 'uppercase', fontSize: '1.3rem', textAlign: 'center', letterSpacing: '0.1em' }}
-                  maxLength="10"
-                  value={pinInput}
-                  onChange={(e) => setPinInput(e.target.value)}
-                  required
-                />
-                <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '6px', textAlign: 'center' }}>
-                  *This PIN can check results up to 5 times.
-                </small>
-              </div>
-
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px' }}>
-                Check Results
-              </button>
-            </form>
+            <div style={{ padding: '24px' }}>
+              <form onSubmit={handleVerifyPinSubmit}>
+                <div className="form-group">
+                  <label style={{ textAlign: 'center', display: 'block', marginBottom: '8px', fontWeight: '600' }}>Your 10-Character PIN</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ABC123XYZ9"
+                    className="form-control"
+                    style={{ textTransform: 'uppercase', fontSize: '1.4rem', textAlign: 'center', letterSpacing: '0.15em', fontWeight: '700' }}
+                    maxLength="10"
+                    value={pinInput}
+                    onChange={(e) => setPinInput(e.target.value)}
+                    required
+                  />
+                  <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '6px', textAlign: 'center' }}>
+                    *This PIN can check results up to 5 times.
+                  </small>
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontWeight: '700', fontSize: '1rem' }}>
+                  <Key size={16} /> Verify & View Results
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       )}
@@ -627,16 +801,20 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
           ========================================== */}
       {activeReceipt && (
         <div className="modal-overlay">
-          <div className="modal-content glass-panel" style={{ maxWidth: '450px', backgroundColor: '#fff', color: '#000' }}>
-            <button className="modal-close no-print" onClick={() => setActiveReceipt(null)} style={{ color: '#000' }}>✕</button>
+          <div className="modal-content glass-panel" style={{ maxWidth: '450px', backgroundColor: '#fff', color: '#000', overflow: 'hidden', padding: 0 }}>
+            <div className="no-print" style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'white' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '700' }}>
+                <Receipt size={18} /> Payment Receipt
+              </div>
+              <button className="modal-close" onClick={() => setActiveReceipt(null)} style={{ color: 'white', position: 'static', fontSize: '1.2rem' }}>✕</button>
+            </div>
 
-            <div className="print-area" style={{ fontFamily: 'monospace', padding: '10px' }}>
+            <div className="print-area" style={{ fontFamily: 'monospace', padding: '20px' }} ref={receiptRef}>
               <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '10px', marginBottom: '15px' }}>
                 <h3 style={{ margin: '0' }}>{settings?.landing_school_name || 'Jere Model Academy'}</h3>
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem' }}>{settings?.landing_address || 'Jere Kagarko LGA, Kaduna State.'}</p>
                 <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem' }}>PAYMENT RECEIPT</p>
               </div>
-
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem' }}>
                 <div><strong>RECEIPT NO:</strong> {activeReceipt.receipt_number}</div>
                 <div><strong>DATE:</strong> {activeReceipt.payment_date}</div>
@@ -660,12 +838,12 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }} className="no-print">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderTop: '1px solid #eee' }} className="no-print">
               <button className="btn btn-secondary" onClick={() => setActiveReceipt(null)} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <ArrowLeft size={16} /> Back to Fees
               </button>
-              <button className="btn btn-primary" onClick={printReceiptAction} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Printer size={16} /> Print Slip
+              <button className="btn btn-primary" onClick={downloadReceiptPDF} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Download size={16} /> Download PDF
               </button>
             </div>
           </div>

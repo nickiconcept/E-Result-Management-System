@@ -111,7 +111,7 @@ app.post('/api/auth/login', async (req, res) => {
       id: user.id,
       username: user.username,
       role: user.role,
-      full_name: user.full_name,
+      name: user.name || user.full_name,
       class_id: user.class_id || null,
       class_name: user.class_name || null,
       admission_number: user.admission_number || null
@@ -177,7 +177,11 @@ app.post('/api/settings', authenticateToken, requireRole('admin'), async (req, r
     next_term_fee,
     next_term_begins,
     next_term_ends,
-    last_term_debit
+    last_term_debit,
+    allow_past_attendance,
+    allow_fm_register_student,
+    allow_fm_edit_student,
+    max_ca_count
   } = req.body;
   try {
     const settings = await getQuery('SELECT id FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1');
@@ -210,7 +214,11 @@ app.post('/api/settings', authenticateToken, requireRole('admin'), async (req, r
         next_term_fee = ?,
         next_term_begins = ?,
         next_term_ends = ?,
-        last_term_debit = ?
+        last_term_debit = ?,
+        allow_past_attendance = ?,
+        allow_fm_register_student = ?,
+        allow_fm_edit_student = ?,
+        max_ca_count = ?
       WHERE id = ?
     `, [
       active_session, 
@@ -240,6 +248,10 @@ app.post('/api/settings', authenticateToken, requireRole('admin'), async (req, r
       next_term_begins || '',
       next_term_ends || '',
       last_term_debit || '',
+      allow_past_attendance !== undefined ? allow_past_attendance : 0,
+      allow_fm_register_student !== undefined ? allow_fm_register_student : 0,
+      allow_fm_edit_student !== undefined ? allow_fm_edit_student : 0,
+      max_ca_count || 4,
       settings.id
     ]);
     res.json({ message: 'Settings updated successfully' });
@@ -253,7 +265,11 @@ app.post('/api/settings', authenticateToken, requireRole('admin'), async (req, r
 // ==========================================
 
 // Register Student (Includes Passport Photo & Parent Details)
-app.post('/api/users/register-student', authenticateToken, requireRole('admin'), async (req, res) => {
+app.post('/api/users/register-student', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    const settings = await getQuery('SELECT allow_fm_register_student FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1');
+    if (!settings || !settings.allow_fm_register_student) return res.status(403).json({ error: 'Permission denied: Only Admins or permitted Form Masters can register students.' });
+  }
   const {
     username, password, full_name, class_id, date_of_birth, class_of_entry,
     term_year_of_entry, last_school_attended, address_residence, sex, religion,
@@ -348,7 +364,11 @@ app.post('/api/users/register-teacher', authenticateToken, requireRole('admin'),
 });
 
 // Update Student Profile
-app.put('/api/users/update-student/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+app.put('/api/users/update-student/:id', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    const settings = await getQuery('SELECT allow_fm_edit_student FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1');
+    if (!settings || !settings.allow_fm_edit_student) return res.status(403).json({ error: 'Permission denied: Only Admins or permitted Form Masters can edit students.' });
+  }
   const { id } = req.params;
   const {
     full_name, class_id, date_of_birth, class_of_entry,
@@ -767,7 +787,7 @@ app.post('/api/skills/evaluate', authenticateToken, async (req, res) => {
 });
 
 // Get Assigned Subjects for logged-in Teacher
-app.get('/api/teacher/assignments', authenticateToken, requireRole('teacher'), async (req, res) => {
+app.get('/api/teacher/assignments', authenticateToken, requireRole('teacher', 'form_master'), async (req, res) => {
   try {
     const classes = await allQuery(`
       SELECT cs.class_id, cs.subject_id, c.name as class_name, s.name as subject_name 
@@ -1430,7 +1450,7 @@ app.get(['/api/report-cards/bulk', '/api/report-card/bulk'], authenticateToken, 
 // ==========================================
 
 // 1. Teacher Result Upload Progress Endpoint
-app.get('/api/teacher/result-progress', authenticateToken, requireRole('teacher'), async (req, res) => {
+app.get('/api/teacher/result-progress', authenticateToken, requireRole('teacher', 'form_master'), async (req, res) => {
   try {
     const settings = await getQuery('SELECT active_term, active_session FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1');
     const term = settings ? settings.active_term : '3rd Term';

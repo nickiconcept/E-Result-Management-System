@@ -1,13 +1,32 @@
 import React from 'react';
-import { ArrowLeft, Printer, Download } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 export default function ClassBroadsheet({ data, className, term, session, settings, onBack }) {
   if (!data) return <p>Loading broadsheet data...</p>;
 
   const { subjects, rows } = data;
 
-  const handlePrint = () => {
-    window.print();
+  const broadsheetRef = React.useRef(null);
+
+  const handleExportPDF = () => {
+    const element = broadsheetRef.current;
+    if (!element) return;
+
+    // Temporarily show .only-print elements inside the container
+    const printHeaders = element.querySelectorAll('.only-print');
+    printHeaders.forEach(el => el.style.display = 'block');
+
+    const opt = {
+      margin:       0.2,
+      filename:     `Broadsheet_${String(className).replace(/\s+/g, '_')}_${String(term).replace(/\s+/g, '_')}.pdf`,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true },
+      jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+    };
+    html2pdf().set(opt).from(element).save().then(() => {
+      printHeaders.forEach(el => el.style.display = 'none');
+    });
   };
 
   const handleExportExcel = () => {
@@ -103,13 +122,13 @@ export default function ClassBroadsheet({ data, className, term, session, settin
           <button className="btn btn-secondary" onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Download size={16} /> Export to Excel
           </button>
-          <button className="btn btn-primary" onClick={handlePrint} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Printer size={16} /> Print Broadsheet
+          <button className="btn btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Download size={16} /> Download PDF
           </button>
         </div>
       </div>
 
-      <div className="broadsheet-scroll print-area">
+      <div className="broadsheet-scroll print-area" ref={broadsheetRef}>
         {/* Print Only Header */}
         <div className="only-print" style={{ textAlign: 'center', marginBottom: '15px', display: 'none' }}>
           <h2 style={{ fontSize: '1.5rem', fontFamily: 'Times New Roman' }}>JERE MODEL ACADEMY</h2>
@@ -121,11 +140,18 @@ export default function ClassBroadsheet({ data, className, term, session, settin
             <tr>
               <th rowSpan="2" style={{ minWidth: '150px' }}>Student Name</th>
               <th rowSpan="2" style={{ minWidth: '100px' }}>Admission No</th>
-              {subjects.map((sub, idx) => (
-                <th key={idx} colSpan="7" className="subject-header">
-                  {sub.name}
-                </th>
-              ))}
+              {subjects.map((sub, idx) => {
+                let colSpan = 3;
+                if (!settings?.max_ca_count || settings.max_ca_count >= 1) colSpan++;
+                if (!settings?.max_ca_count || settings.max_ca_count >= 2) colSpan++;
+                if (!settings?.max_ca_count || settings.max_ca_count >= 3) colSpan++;
+                if (!settings?.max_ca_count || settings.max_ca_count >= 4) colSpan++;
+                return (
+                  <th key={idx} colSpan={colSpan} style={{ backgroundColor: 'var(--primary)', color: 'white', borderRight: '2px solid white' }}>
+                    {sub.name}
+                  </th>
+                );
+              })}
               <th rowSpan="2">Grand Total</th>
               <th rowSpan="2">Average</th>
               <th rowSpan="2">Position</th>
@@ -133,10 +159,10 @@ export default function ClassBroadsheet({ data, className, term, session, settin
             <tr>
               {subjects.map((sub, idx) => (
                 <React.Fragment key={idx}>
-                  <th className="sub-header">{settings?.ca1_name ? settings.ca1_name.substring(0, 3) : 'C1'}</th>
-                  <th className="sub-header">{settings?.ca2_name ? settings.ca2_name.substring(0, 3) : 'C2'}</th>
-                  <th className="sub-header">{settings?.ca3_name ? settings.ca3_name.substring(0, 3) : 'C3'}</th>
-                  <th className="sub-header">{settings?.ca4_name ? settings.ca4_name.substring(0, 3) : 'C4'}</th>
+                  {(!settings?.max_ca_count || settings.max_ca_count >= 1) && <th className="sub-header">{settings?.ca1_name ? settings.ca1_name.substring(0, 3) : 'C1'}</th>}
+                  {(!settings?.max_ca_count || settings.max_ca_count >= 2) && <th className="sub-header">{settings?.ca2_name ? settings.ca2_name.substring(0, 3) : 'C2'}</th>}
+                  {(!settings?.max_ca_count || settings.max_ca_count >= 3) && <th className="sub-header">{settings?.ca3_name ? settings.ca3_name.substring(0, 3) : 'C3'}</th>}
+                  {(!settings?.max_ca_count || settings.max_ca_count >= 4) && <th className="sub-header">{settings?.ca4_name ? settings.ca4_name.substring(0, 3) : 'C4'}</th>}
                   <th className="sub-header">{settings?.exam_name ? settings.exam_name.substring(0, 3) : 'Exm'}</th>
                   <th className="sub-header">Tot</th>
                   <th className="sub-header">Grd</th>
@@ -158,10 +184,10 @@ export default function ClassBroadsheet({ data, className, term, session, settin
                     const g = row.grades[sub.id];
                     return (
                       <React.Fragment key={sIdx}>
-                        <td>{g ? g.ca1 : 0}</td>
-                        <td>{g ? g.ca2 : 0}</td>
-                        <td>{g ? g.ca3 : 0}</td>
-                        <td>{g ? g.ca4 : 0}</td>
+                        {(!settings?.max_ca_count || settings.max_ca_count >= 1) && <td>{g ? g.ca1 : 0}</td>}
+                        {(!settings?.max_ca_count || settings.max_ca_count >= 2) && <td>{g ? g.ca2 : 0}</td>}
+                        {(!settings?.max_ca_count || settings.max_ca_count >= 3) && <td>{g ? g.ca3 : 0}</td>}
+                        {(!settings?.max_ca_count || settings.max_ca_count >= 4) && <td>{g ? g.ca4 : 0}</td>}
                         <td>{g ? g.exam : 0}</td>
                         <td className="total-col">{g ? g.total : 0}</td>
                         <td style={{ fontWeight: 'bold' }}>{g ? g.grade : '-'}</td>

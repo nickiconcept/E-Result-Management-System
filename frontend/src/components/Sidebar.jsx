@@ -34,12 +34,11 @@ import {
 } from 'lucide-react';
 
 export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout, user, isOpen, onClose, settings }) {
-  // Keep track of expanded sub-menus
   const [openMenus, setOpenMenus] = useState({});
 
   const navItems = {
     admin: [
-      { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'students', label: 'Students', icon: Users },
       { id: 'teachers', label: 'Teachers', icon: GraduationCap },
       { id: 'classes', label: 'Classes', icon: School },
@@ -66,10 +65,12 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
         label: 'Student Results',
         icon: FileSpreadsheet,
         subItems: [
-          { id: 'bulk', label: 'Print Bulk Results', icon: Printer },
-          { id: 'single', label: 'Single Result View', icon: FileText },
           { id: 'enter-marks', label: 'Enter Marks', icon: Edit3 },
+          { id: 'blank-scoresheet', label: 'Print Scoresheet', icon: FileText },
           { id: 'broadsheet', label: 'Class Broadsheet', icon: Grid },
+          { id: 'single', label: 'Single Result View', icon: FileText },
+          { id: 'bulk', label: 'Print Bulk Results', icon: Printer },
+          { id: 'promotions', label: 'Student Promotions', icon: TrendingUp },
           { id: 'pins', label: 'Scratch Cards / PINs', icon: Key }
         ]
       },
@@ -92,13 +93,13 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
           { id: 'academic', label: 'Academic Settings', icon: Sliders },
           { id: 'website', label: 'Portal Landing Settings', icon: Globe },
           { id: 'reports', label: 'Grading & Reports', icon: Award },
-          { id: 'skills', label: 'Behavioral Domains', icon: Sparkles },
-          { id: 'promotion', label: 'Student Promotions', icon: TrendingUp }
+          { id: 'skills', label: 'Behavioral Domains', icon: Sparkles }
         ]
       }
     ],
     teacher: [
-      { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'students', label: 'My Students', icon: Users },
       { id: 'grades', label: 'Enter Marks', icon: Edit3 },
       {
         id: 'attendance',
@@ -113,7 +114,7 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
       { id: 'schemes', label: 'Scheme of Work', icon: FileText }
     ],
     student: [
-      { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+      { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'results', label: 'My Results', icon: Award },
       { id: 'schemes', label: 'Scheme of Work', icon: FileText },
       { id: 'fees', label: 'Fees & Payments', icon: CreditCard },
@@ -123,7 +124,6 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
 
   const items = navItems[role] || [];
 
-  // Automatically expand menu if the active tab has subItems
   useEffect(() => {
     if (activeTab) {
       setOpenMenus(prev => ({ ...prev, [activeTab]: true }));
@@ -139,9 +139,7 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
 
   const handleTabClick = (item, subItemId = null) => {
     if (item.subItems && !subItemId) {
-      // Toggle collapse/expand on parent click
       toggleMenu(item.id);
-      // Select first subItem by default if expanding
       if (!openMenus[item.id] && item.subItems.length > 0) {
         onSelectTab(item.id, item.subItems[0].id);
       } else {
@@ -153,141 +151,151 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
       onSelectTab(item.id, null);
     }
 
-    if (onClose) onClose(); // Close mobile drawer
+    if (onClose) onClose();
   };
 
   return (
-    <aside className={`sidebar-container ${isOpen ? 'open' : ''}`} style={{
-      width: '280px',
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      borderRight: '1px solid var(--border-color)',
-      backgroundColor: 'var(--bg-surface)',
-      transition: 'transform 0.3s ease',
-      zIndex: 90
-    }}>
-      {/* Branding Header */}
+    <aside
+      className={`sidebar-container ${isOpen ? 'open' : ''}`}
+      style={{
+        width: '268px',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        borderRight: '1px solid var(--border-color)',
+        backgroundColor: 'var(--bg-surface)',
+        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+        zIndex: 90,
+        boxShadow: 'var(--shadow-md)',
+      }}
+    >
+      {/* ── Branding Header ── */}
       <div style={{
-        padding: '20px 24px',
+        padding: '20px 20px 18px',
         borderBottom: '1px solid var(--border-color)',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        background: 'linear-gradient(135deg, var(--bg-surface) 0%, var(--primary-light) 100%)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: '10px',
+            width: '38px', height: '38px', borderRadius: '10px',
             background: 'linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 12px rgba(0, 114, 255, 0.25)'
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#fff', fontWeight: 'bold',
+            boxShadow: '0 4px 14px var(--primary-glow)',
+            flexShrink: 0,
           }}>
-            <School size={20} />
+            <School size={19} />
           </div>
           <div>
-            <h2 style={{ fontSize: '0.95rem', fontWeight: '800', color: 'var(--primary)', margin: 0, letterSpacing: '0.5px' }}>
+            <h2 style={{
+              fontSize: '0.875rem', fontWeight: '800', color: 'var(--text-primary)',
+              margin: 0, letterSpacing: '-0.01em', lineHeight: 1.2,
+            }}>
               {settings?.landing_school_name || 'Jere Model Academy'}
             </h2>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: '700', letterSpacing: '1px' }}>
+            <span style={{
+              fontSize: '0.65rem', color: 'var(--primary)', fontWeight: '700',
+              letterSpacing: '0.08em', textTransform: 'uppercase',
+            }}>
               ACADEMIC PORTAL
             </span>
           </div>
         </div>
-        <button 
-          onClick={onClose} 
-          className="mobile-only" 
+        <button
+          onClick={onClose}
+          className="mobile-only"
           style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--text-primary)',
+            background: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            color: 'var(--text-secondary)',
             cursor: 'pointer',
-            padding: '4px',
+            padding: '5px',
             display: 'flex',
-            alignItems: 'center'
+            alignItems: 'center',
+            borderRadius: '8px',
           }}
         >
-          <X size={20} />
+          <X size={18} />
         </button>
       </div>
 
-      {/* Navigation List */}
+      {/* ── Navigation ── */}
       <nav style={{
-        padding: '16px 12px',
+        padding: '14px 10px',
         flexGrow: 1,
         display: 'flex',
         flexDirection: 'column',
-        gap: '4px',
-        overflowY: 'auto'
+        gap: '2px',
+        overflowY: 'auto',
       }}>
-        {items.map(item => {
+        {items.map((item, idx) => {
           const Icon = item.icon;
           const hasSub = item.subItems && item.subItems.length > 0;
           const isExpanded = !!openMenus[item.id];
           const isParentActive = activeTab === item.id;
 
           return (
-            <div key={item.id} style={{ display: 'flex', flexDirection: 'column' }}>
-              {/* Main Item Button */}
+            <div key={item.id} className="sidebar-nav-item">
+              {/* Main nav button */}
               <button
                 onClick={() => handleTabClick(item)}
+                className={`sidebar-nav-btn ${isParentActive ? 'active' : ''} ${isParentActive && hasSub ? 'parent-active' : ''}`}
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  width: '100%',
-                  padding: '10px 14px',
-                  border: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  cursor: 'pointer',
-                  fontSize: '0.88rem',
-                  fontWeight: isParentActive ? '600' : '500',
-                  backgroundColor: isParentActive ? 'var(--primary)' : 'transparent',
-                  color: isParentActive ? '#ffffff' : 'var(--text-primary)',
-                  boxShadow: isParentActive ? '0 4px 14px var(--primary-glow)' : 'none',
-                  textAlign: 'left',
-                  transition: 'var(--transition)'
+                  // Override active gradient for items WITH sub-items (use lighter style)
+                  ...(isParentActive && hasSub ? {
+                    background: 'var(--primary-light)',
+                    color: 'var(--primary)',
+                    fontWeight: '700',
+                    boxShadow: 'none',
+                  } : {}),
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Icon size={18} style={{ color: isParentActive ? '#ffffff' : 'var(--text-secondary)' }} />
+                <div className="sidebar-icon-wrap">
+                  <div style={{
+                    width: '30px', height: '30px', borderRadius: '8px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: isParentActive
+                      ? (hasSub ? 'rgba(14,165,233,0.15)' : 'rgba(255,255,255,0.18)')
+                      : 'transparent',
+                    transition: 'var(--transition)',
+                    flexShrink: 0,
+                  }}>
+                    <Icon
+                      size={16}
+                      style={{
+                        color: isParentActive
+                          ? (hasSub ? 'var(--primary)' : '#fff')
+                          : 'var(--text-muted)',
+                      }}
+                    />
+                  </div>
                   <span>{item.label}</span>
                 </div>
                 {hasSub && (
-                  <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleMenu(item.id);
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '2px',
-                      borderRadius: '4px',
-                      color: 'var(--text-secondary)'
-                    }}
-                  >
-                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  <div style={{
+                    color: isParentActive ? 'var(--primary)' : 'var(--text-muted)',
+                    transition: 'transform 0.2s ease',
+                    transform: isExpanded ? 'rotate(0deg)' : 'rotate(0deg)',
+                  }}>
+                    {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                   </div>
                 )}
               </button>
 
-              {/* Sub-Items Collapsible Container */}
+              {/* Sub-items */}
               {hasSub && isExpanded && (
                 <div style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '2px',
-                  marginLeft: '20px',
-                  paddingLeft: '12px',
+                  gap: '1px',
+                  marginLeft: '14px',
+                  paddingLeft: '14px',
                   borderLeft: '2px solid var(--primary-light)',
-                  marginTop: '4px',
-                  marginBottom: '6px'
+                  marginTop: '3px',
+                  marginBottom: '4px',
                 }}>
                   {item.subItems.map(subItem => {
                     const SubIcon = subItem.icon;
@@ -297,24 +305,12 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
                       <button
                         key={subItem.id}
                         onClick={() => handleTabClick(item, subItem.id)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          width: '100%',
-                          padding: '8px 12px',
-                          border: 'none',
-                          borderRadius: 'var(--radius-sm)',
-                          cursor: 'pointer',
-                          fontSize: '0.83rem',
-                          fontWeight: isSubActive ? '600' : '400',
-                          backgroundColor: isSubActive ? 'var(--primary-light)' : 'transparent',
-                          color: isSubActive ? 'var(--primary)' : 'var(--text-secondary)',
-                          textAlign: 'left',
-                          transition: 'var(--transition)'
-                        }}
+                        className={`sidebar-sub-btn ${isSubActive ? 'active' : ''}`}
                       >
-                        <SubIcon size={15} style={{ color: isSubActive ? 'var(--primary)' : 'var(--text-muted)' }} />
+                        <SubIcon
+                          size={14}
+                          style={{ color: isSubActive ? 'var(--primary)' : 'var(--text-muted)', flexShrink: 0 }}
+                        />
                         <span>{subItem.label}</span>
                       </button>
                     );
@@ -326,17 +322,16 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
         })}
       </nav>
 
-      {/* Sidebar Footer */}
+      {/* ── Sidebar Footer ── */}
       <div style={{
-        padding: '16px 20px',
+        padding: '14px 20px',
         borderTop: '1px solid var(--border-color)',
-        textAlign: 'center',
-        fontSize: '0.75rem',
-        color: 'var(--text-muted)'
+        background: 'var(--bg-secondary)',
       }}>
-        {settings?.landing_school_name || 'Jere Model Academy'} Portal v1.0
+        <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+          {settings?.landing_school_name || 'Jere Model Academy'} · Portal v1.0
+        </p>
       </div>
     </aside>
   );
 }
-

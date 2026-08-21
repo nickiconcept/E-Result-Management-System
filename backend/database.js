@@ -113,12 +113,17 @@ async function initDB() {
     'result_show_position', 'result_show_average', 'contact_phone', 'contact_email', 
     'ca1_name', 'ca2_name', 'ca3_name', 'ca4_name', 'exam_name',
     'games_master_name', 'games_master_remark', 'house_master_name', 'house_master_remark', 'principal_name', 'principal_signature',
-    'next_term_fee', 'next_term_begins', 'next_term_ends', 'last_term_debit'
+    'next_term_fee', 'next_term_begins', 'next_term_ends', 'last_term_debit',
+    'allow_past_attendance', 'allow_fm_register_student', 'allow_fm_edit_student', 'max_ca_count'
   ];
   for (const col of checkCols) {
     try {
-      if (col === 'result_show_position' || col === 'result_show_average') {
+      if (['result_show_position', 'result_show_average'].includes(col)) {
         await runQuery(`ALTER TABLE SYSTEM_SETTINGS ADD COLUMN ${col} INTEGER DEFAULT 1`);
+      } else if (['allow_past_attendance', 'allow_fm_register_student', 'allow_fm_edit_student'].includes(col)) {
+        await runQuery(`ALTER TABLE SYSTEM_SETTINGS ADD COLUMN ${col} INTEGER DEFAULT 0`);
+      } else if (col === 'max_ca_count') {
+        await runQuery(`ALTER TABLE SYSTEM_SETTINGS ADD COLUMN ${col} INTEGER DEFAULT 4`);
       } else {
         await runQuery(`ALTER TABLE SYSTEM_SETTINGS ADD COLUMN ${col} TEXT`);
       }
@@ -407,8 +412,8 @@ async function initDB() {
   if (settings.count === 0) {
     console.log('Seeding initial system settings...');
     await runQuery(`
-      INSERT INTO SYSTEM_SETTINGS (active_session, active_term, result_entry_open, landing_school_name, landing_tagline, landing_hero_title, landing_hero_desc, landing_address, result_show_position, result_show_average, contact_phone, contact_email, ca1_name, ca2_name, ca3_name, ca4_name, exam_name) 
-      VALUES ('2025/2026', '3rd Term', 1, 'Jere Model Academy', 'KADUNA STATE, NIGERIA', 'Shaping Minds, Building the Future.', 'Welcome to the Jere Model Academy online school portal. We provide high-quality education from Nursery, Primary, Junior Secondary to Senior Secondary School levels. Our portal makes result checking, fee logging, and attendance tracking simple, fast, and completely digital.', 'Opposite Jabal-Annur Mosque, New Abuja Road, Jere Kagarko LGA, Kaduna State.', 1, 1, '08031234567', 'admin@jeremodel.com', 'CA 1', 'CA 2', 'CA 3', 'CA 4', 'Exam')
+      INSERT INTO SYSTEM_SETTINGS (active_session, active_term, result_entry_open, landing_school_name, landing_tagline, landing_hero_title, landing_hero_desc, landing_address, result_show_position, result_show_average, contact_phone, contact_email, ca1_name, ca2_name, ca3_name, ca4_name, exam_name, allow_past_attendance, allow_fm_register_student, allow_fm_edit_student, max_ca_count) 
+      VALUES ('2025/2026', '3rd Term', 1, 'Jere Model Academy', 'KADUNA STATE, NIGERIA', 'Shaping Minds, Building the Future.', 'Welcome to the Jere Model Academy online school portal. We provide high-quality education from Nursery, Primary, Junior Secondary to Senior Secondary School levels. Our portal makes result checking, fee logging, and attendance tracking simple, fast, and completely digital.', 'Opposite Jabal-Annur Mosque, New Abuja Road, Jere Kagarko LGA, Kaduna State.', 1, 1, '08031234567', 'admin@jeremodel.com', 'CA 1', 'CA 2', 'CA 3', 'CA 4', 'Exam', 0, 0, 0, 4)
     `);
   } else {
     // If already seeded, ensure new columns are updated if they contain NULL
@@ -428,7 +433,11 @@ async function initDB() {
         ca2_name = COALESCE(ca2_name, 'CA 2'),
         ca3_name = COALESCE(ca3_name, 'CA 3'),
         ca4_name = COALESCE(ca4_name, 'CA 4'),
-        exam_name = COALESCE(exam_name, 'Exam')
+        exam_name = COALESCE(exam_name, 'Exam'),
+        allow_past_attendance = COALESCE(allow_past_attendance, 0),
+        allow_fm_register_student = COALESCE(allow_fm_register_student, 0),
+        allow_fm_edit_student = COALESCE(allow_fm_edit_student, 0),
+        max_ca_count = COALESCE(max_ca_count, 4)
       WHERE id = (SELECT id FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1)
     `);
   }
