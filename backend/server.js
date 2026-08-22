@@ -128,7 +128,8 @@ app.post('/api/auth/login', async (req, res) => {
         full_name: user.full_name,
         admission_number: user.admission_number,
         class_id: user.class_id,
-        class_name: user.class_name
+        class_name: user.class_name,
+        passport_photo: user.passport_photo
       }
     });
 
@@ -271,20 +272,18 @@ app.post('/api/users/register-student', authenticateToken, async (req, res) => {
     if (!settings || !settings.allow_fm_register_student) return res.status(403).json({ error: 'Permission denied: Only Admins or permitted Form Masters can register students.' });
   }
   const {
-    username, password, full_name, class_id, date_of_birth, class_of_entry,
+    full_name, class_id, date_of_birth, class_of_entry,
     term_year_of_entry, last_school_attended, address_residence, sex, religion,
     local_government, state_of_origin, handicapped, handicap_details,
-    parent_name, parent_address, parent_phone, passport_photo, custom_admission_number
+    parent_name, parent_address, parent_phone, passport_photo, custom_admission_number,
+    offline_debt_amount
   } = req.body;
 
-  if (!username || !password || !full_name) {
-    return res.status(400).json({ error: 'Username, password, and full name are required' });
+  if (!full_name) {
+    return res.status(400).json({ error: 'Full name is required' });
   }
 
   try {
-    // Generate secure password hash
-    const password_hash = await bcrypt.hash(password, 10);
-    
     // Auto-generate Admission Number if not custom provided
     let admission_number = custom_admission_number;
     if (!admission_number) {
@@ -294,11 +293,15 @@ app.post('/api/users/register-student', authenticateToken, async (req, res) => {
       admission_number = `JMA/${year}/${nextSeq}`;
     }
 
+    // Default credentials for student is their admission number
+    const username = admission_number.toUpperCase();
+    const password_hash = await bcrypt.hash(admission_number, 10);
+
     // Insert into USERS table
     const userRes = await runQuery(`
       INSERT INTO USERS (username, password_hash, full_name, role, passport_photo)
       VALUES (?, ?, ?, 'student', ?)
-    `, [username.toLowerCase(), password_hash, full_name, passport_photo || null]);
+    `, [username, password_hash, full_name, passport_photo || null]);
     
     const studentId = userRes.lastID;
 
@@ -316,6 +319,14 @@ app.post('/api/users/register-student', authenticateToken, async (req, res) => {
       parent_name, parent_address, parent_phone
     ]);
 
+    // Handle optional offline debt
+    if (offline_debt_amount && !isNaN(offline_debt_amount) && Number(offline_debt_amount) > 0) {
+      await runQuery(`
+        INSERT INTO FEE_INVOICES (student_id, title, category, amount_due, amount_paid, status)
+        VALUES (?, 'Outstanding Offline Debt', 'Outstanding Debt', ?, 0, 'unpaid')
+      `, [studentId, Number(offline_debt_amount)]);
+    }
+
     res.status(201).json({ message: 'Student registered successfully', admission_number, studentId });
   } catch (err) {
     if (err.message.includes('UNIQUE constraint')) {
@@ -328,20 +339,28 @@ app.post('/api/users/register-student', authenticateToken, async (req, res) => {
 // Register Teacher
 app.post('/api/users/register-teacher', authenticateToken, requireRole('admin'), async (req, res) => {
   const { 
-    username, password, full_name, email, passport_photo,
+    full_name, email, passport_photo,
     surname, first_name, other_names, address, state_of_residence, lga_of_residence, signature
   } = req.body;
   
-  if (!username || !password || !full_name) {
-    return res.status(400).json({ error: 'Username, password, and full name are required' });
+  if (!full_name) {
+    return res.status(400).json({ error: 'Full name is required' });
   }
 
   try {
-    const password_hash = await bcrypt.hash(password, 10);
+    // Generate Staff ID (JMA/STF/Year/Serial)
+    const year = new Date().getFullYear();
+    const countRow = await getQuery("SELECT COUNT(*) as count FROM TEACHERS");
+    const nextSeq = String(countRow.count + 1).padStart(3, '0');
+    const staff_id = `JMA/STF/${year}/${nextSeq}`;
+    
+    const username = staff_id.toUpperCase();
+    const password_hash = await bcrypt.hash(staff_id, 10);
+    
     const userRes = await runQuery(`
       INSERT INTO USERS (username, password_hash, email, full_name, role, passport_photo)
       VALUES (?, ?, ?, ?, 'teacher', ?)
-    `, [username.toLowerCase(), password_hash, email || null, full_name, passport_photo || null]);
+    `, [username, password_hash, email || null, full_name, passport_photo || null]);
     
     const teacherId = userRes.lastID;
 
@@ -577,10 +596,39 @@ app.post('/api/classes', authenticateToken, requireRole('admin'), async (req, re
   }
 });
 
+// Edit Class
+app.put('/api/classes/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { name, tier } = req.body;
+  try {
+    await runQuery('UPDATE CLASSES SET name = ?, tier = ? WHERE id = ?', [name, tier, req.params.id]);
+    res.json({ message: 'Class updated successfully' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Delete Class
+app.delete('/api/classes/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    await runQuery('DELETE FROM CLASSES WHERE id = ?', [req.params.id]);
+    res.json({ message: 'Class deleted successfully' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Assign Form Master (Subject teachers can also be form masters)
 app.post('/api/classes/assign-form-master', authenticateToken, requireRole('admin'), async (req, res) => {
   const { class_id, teacher_id } = req.body;
   try {
+    if (teacher_id) {
+      // Rule: Check if teacher is already a form master for another class
+      const existingAssignment = await getQuery('SELECT id, name FROM CLASSES WHERE form_master_id = ? AND id != ?', [teacher_id, class_id]);
+      if (existingAssignment) {
+        return res.status(400).json({ error: `This teacher is already assigned as Form Master for ${existingAssignment.name}. A teacher can only be a form master for one class.` });
+      }
+    }
+    
     await runQuery('UPDATE CLASSES SET form_master_id = ? WHERE id = ?', [teacher_id || null, class_id]);
     res.json({ message: 'Form master assigned successfully' });
   } catch (err) {
@@ -654,9 +702,22 @@ app.get('/api/class-subjects', authenticateToken, async (req, res) => {
 
 // Assign Subject Teacher
 app.post('/api/class-subjects/assign', authenticateToken, requireRole('admin'), async (req, res) => {
-  const { class_ids, class_id, subject_id, teacher_id } = req.body;
+  const { class_ids, class_id, subject_id, teacher_id, overwrite } = req.body;
   try {
     const targetClasses = class_ids || (class_id ? [class_id] : []);
+    
+    // Check for existing teachers if not explicitly overwriting
+    if (!overwrite) {
+      for (const cid of targetClasses) {
+        const existing = await getQuery('SELECT teacher_id FROM CLASS_SUBJECTS WHERE class_id = ? AND subject_id = ? AND teacher_id IS NOT NULL', [cid, subject_id]);
+        if (existing && existing.teacher_id !== teacher_id) {
+          const cls = await getQuery('SELECT name FROM CLASSES WHERE id = ?', [cid]);
+          const sub = await getQuery('SELECT name FROM SUBJECTS WHERE id = ?', [subject_id]);
+          return res.status(400).json({ error: `A teacher is already assigned to ${sub.name} in ${cls.name}. Use the Edit option on the class subject to reassign.` });
+        }
+      }
+    }
+
     for (const cid of targetClasses) {
       await runQuery(`
         INSERT INTO CLASS_SUBJECTS (class_id, subject_id, teacher_id) 
@@ -669,7 +730,6 @@ app.post('/api/class-subjects/assign', authenticateToken, requireRole('admin'), 
     res.status(500).json({ error: err.message });
   }
 });
-
 // ==========================================
 // AFFECTIVE & PSYCHOMOTOR SKILLS
 // ==========================================
@@ -677,7 +737,15 @@ app.post('/api/class-subjects/assign', authenticateToken, requireRole('admin'), 
 // Get all Skills (Admin & Teachers)
 app.get('/api/skills', authenticateToken, async (req, res) => {
   try {
-    const skills = await allQuery('SELECT * FROM BEHAVIORAL_SKILLS ORDER BY category, name');
+    const { tier } = req.query;
+    let skills = await allQuery('SELECT * FROM BEHAVIORAL_SKILLS ORDER BY category, name');
+    
+    if (tier) {
+      const t = tier.toLowerCase();
+      const section = (t === 'jss' || t === 'sss') ? 'secondary' : 'primary';
+      skills = skills.filter(s => s.target_section === 'all' || s.target_section === section);
+    }
+    
     res.json(skills);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -686,10 +754,11 @@ app.get('/api/skills', authenticateToken, async (req, res) => {
 
 // Add Skill (Admin)
 app.post('/api/skills', authenticateToken, requireRole('admin'), async (req, res) => {
-  const { name, category } = req.body;
+  const { name, category, target_section } = req.body;
   const cat = (category || 'affective').toLowerCase();
+  const section = (target_section || 'secondary').toLowerCase();
   try {
-    await runQuery('INSERT INTO BEHAVIORAL_SKILLS (name, category) VALUES (?, ?)', [name, cat]);
+    await runQuery('INSERT INTO BEHAVIORAL_SKILLS (name, category, target_section) VALUES (?, ?, ?)', [name, cat, section]);
     res.status(201).json({ message: 'Skill created successfully' });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -698,10 +767,11 @@ app.post('/api/skills', authenticateToken, requireRole('admin'), async (req, res
 
 // Update Skill (Admin)
 app.put('/api/skills/:id', authenticateToken, requireRole('admin'), async (req, res) => {
-  const { name, category } = req.body;
+  const { name, category, target_section } = req.body;
   const cat = (category || 'affective').toLowerCase();
+  const section = (target_section || 'secondary').toLowerCase();
   try {
-    await runQuery('UPDATE BEHAVIORAL_SKILLS SET name = ?, category = ? WHERE id = ?', [name, cat, req.params.id]);
+    await runQuery('UPDATE BEHAVIORAL_SKILLS SET name = ?, category = ?, target_section = ? WHERE id = ?', [name, cat, section, req.params.id]);
     res.json({ message: 'Skill updated successfully' });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -1454,7 +1524,7 @@ app.get('/api/teacher/result-progress', authenticateToken, requireRole('teacher'
   try {
     const settings = await getQuery('SELECT active_term, active_session FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1');
     const term = settings ? settings.active_term : '3rd Term';
-    const year = settings ? settings.active_session : '2025/2026';
+    const year = settings ? settings.active_session : '2026/2027';
 
     const assignments = await allQuery(`
       SELECT cs.class_id, cs.subject_id, c.name as class_name, s.name as subject_name 
@@ -1534,7 +1604,7 @@ app.get('/api/admin/result-progress', authenticateToken, requireRole('admin'), a
   try {
     const settings = await getQuery('SELECT active_term, active_session FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1');
     const term = settings ? settings.active_term : '3rd Term';
-    const year = settings ? settings.active_session : '2025/2026';
+    const year = settings ? settings.active_session : '2026/2027';
 
     const allocations = await allQuery(`
       SELECT cs.class_id, cs.subject_id, cs.teacher_id, 

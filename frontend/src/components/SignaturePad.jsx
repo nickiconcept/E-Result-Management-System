@@ -3,9 +3,11 @@ import React, { useRef, useState, useEffect } from 'react';
 export default function SignaturePad({ onSave }) {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [hasDrawn, setHasDrawn] = useState(false);
 
   const startDrawing = (e) => {
     setIsDrawing(true);
+    setHasDrawn(true);
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
@@ -19,8 +21,11 @@ export default function SignaturePad({ onSave }) {
       clientY = e.clientY;
     }
     
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
     ctx.beginPath();
-    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    ctx.moveTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY);
   };
 
   const draw = (e) => {
@@ -39,13 +44,21 @@ export default function SignaturePad({ onSave }) {
       clientY = e.clientY;
     }
 
-    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    ctx.lineTo((clientX - rect.left) * scaleX, (clientY - rect.top) * scaleY);
     ctx.stroke();
   };
 
   const stopDrawing = () => {
     if (!isDrawing) return;
     setIsDrawing(false);
+  };
+
+  const acceptSignature = (e) => {
+    e.preventDefault();
+    if (!hasDrawn) return;
     const canvas = canvasRef.current;
     onSave(canvas.toDataURL('image/png'));
   };
@@ -55,7 +68,7 @@ export default function SignaturePad({ onSave }) {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    onSave(''); // Clear the signature
+    setHasDrawn(false);
   };
 
   useEffect(() => {
@@ -67,7 +80,7 @@ export default function SignaturePad({ onSave }) {
   }, []);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
       <canvas
         ref={canvasRef}
         width={400}
@@ -81,8 +94,9 @@ export default function SignaturePad({ onSave }) {
         onTouchMove={draw}
         onTouchEnd={stopDrawing}
       />
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.8rem' }} onClick={clearCanvas}>Clear Signature</button>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+        <button type="button" className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={clearCanvas}>Resign</button>
+        <button type="button" className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.85rem' }} onClick={acceptSignature} disabled={!hasDrawn}>Accept Signature</button>
       </div>
     </div>
   );

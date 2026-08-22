@@ -5,8 +5,40 @@ import Toast from '../components/Toast';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
 import { ArrowLeft, Edit3, CheckSquare, BarChart2, FileSpreadsheet, FileText, Save, Search, Users, Award, CheckCircle, XCircle, Plus, Lock, Printer, BookOpen, Clock, UploadCloud, CheckCircle2, Hourglass, Eye } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import html2pdf from 'html2pdf.js';
+import { Download } from 'lucide-react';
+
 export default function TeacherDashboard({ user, settings, activeTab, subTab }) {
   const [activeSubTab, setActiveSubTab] = useState('overview');
+  
+  const attendanceReportRef = React.useRef(null);
+  const schemeReportRef = React.useRef(null);
+
+  const handleDownloadAttendancePDF = () => {
+    const element = attendanceReportRef.current;
+    if (!element) return;
+    const opt = {
+      margin: 0.3,
+      filename: `Attendance_Report.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+  };
+
+  const handleDownloadSchemePDF = () => {
+    const element = schemeReportRef.current;
+    if (!element) return;
+    const opt = {
+      margin: 0.3,
+      filename: `Scheme_Of_Work.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+  };
   
   // Teacher metadata
   const [assignments, setAssignments] = useState({ subjects: [], formClass: null });
@@ -45,7 +77,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [viewingStudent, setViewingStudent] = useState(null);
   const [studentForm, setStudentForm] = useState({
-    username: '', password: 'password123', full_name: '', class_id: '',
+    surname: '', first_name: '', other_names: '', full_name: '', class_id: '',
     date_of_birth: '', sex: 'Male', religion: 'Islam',
     address_residence: '', last_school_attended: '', passport_photo: ''
   });
@@ -142,7 +174,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
       const res = await api.registerStudent(payload);
       setNotify(`Student registered! Admission No: ${res.admission_number}`);
       setShowStudentModal(false);
-      setStudentForm({ username: '', password: 'password123', full_name: '', class_id: '', date_of_birth: '', sex: 'Male', religion: 'Islam', address_residence: '', last_school_attended: '', passport_photo: '' });
+      setStudentForm({ surname: '', first_name: '', other_names: '', full_name: '', class_id: '', date_of_birth: '', sex: 'Male', religion: 'Islam', address_residence: '', last_school_attended: '', passport_photo: '' });
       loadFormClassStudents(assignments.formClass.id);
     } catch (err) {
       setErrorMsg('Failed to register student: ' + err.message);
@@ -166,6 +198,18 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
   };
 
   const handleGradeFieldChange = (studentId, field, value) => {
+    if (value !== '') {
+      const numVal = parseFloat(value);
+      if (['ca1', 'ca2', 'ca3', 'ca4'].includes(field) && numVal > 10) {
+        setErrorMsg('CA score cannot exceed 10 marks.');
+        return;
+      }
+      if (field === 'exam_score' && numVal > 60) {
+        setErrorMsg('Exam score cannot exceed 60 marks.');
+        return;
+      }
+    }
+
     setStudentsGrades(prev => prev.map(g => {
       if (g.student_id === studentId) {
         const updated = { ...g, [field]: value };
@@ -273,10 +317,10 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
 
   const loadBehavioralRoster = async () => {
     if (!assignments.formClass) return;
-    try {
-      // 1. Fetch Skills
-      const fetchedSkills = await api.getSkills();
-      setSkillsList(fetchedSkills);
+      try {
+        // 1. Fetch Skills
+        const fetchedSkills = await api.getSkills(assignments.formClass.tier);
+        setSkillsList(fetchedSkills);
 
       // 2. Fetch Rated/Unrated Students
       const data = await api.getSkillsStudents(assignments.formClass.id, settings.active_term, settings.active_session);
@@ -1034,10 +1078,10 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                     <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>To:</span>
                     <input type="date" className="form-control" style={{ width: '150px', padding: '6px' }} value={attendanceReportEndDate} onChange={(e) => setAttendanceReportEndDate(e.target.value)} />
                   </div>
-                  <button className="btn btn-secondary no-print" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => window.print()}><Printer size={15} /> Print Report</button>
+                  <button className="btn btn-secondary no-print" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={handleDownloadAttendancePDF}><Download size={15} /> Download PDF</button>
                 </div>
               </div>
-              <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+              <div ref={attendanceReportRef} style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: '#fff', padding: '10px' }}>
                 <table className="school-table" style={{ width: '100%', margin: 0 }}>
                   <thead style={{ backgroundColor: '#f8fafc' }}>
                     <tr>
@@ -1106,15 +1150,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                 </p>
               </div>
             </div>
-            <button
-              className="btn no-print"
-              onClick={() => window.print()}
-              style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', border: '1.5px solid rgba(255,255,255,0.5)', color: 'white', padding: '10px 20px', borderRadius: '20px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.3)'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
-            >
-              <Printer size={15} /> Print Broadsheet
-            </button>
+            {/* The ClassBroadsheet component below provides its own Download PDF and Export to Excel buttons */}
           </div>
           <ClassBroadsheet
             data={broadsheetData}
@@ -1266,12 +1302,12 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
               {teacherSchemeAssignIdx !== '' && (
                 <button
                   className="btn no-print"
-                  onClick={() => window.print()}
+                  onClick={handleDownloadSchemePDF}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', border: '1.5px solid rgba(255,255,255,0.5)', color: 'white', padding: '10px 20px', borderRadius: '20px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}
                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.3)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)'}
                 >
-                  <Printer size={15} /> Print Scheme
+                  <Download size={15} /> Download PDF
                 </button>
               )}
             </div>
@@ -1317,7 +1353,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
               <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0 }}>Select a subject above to load the scheme of work.</p>
             </div>
           ) : (
-            <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', borderTop: 'none' }}>
+            <div ref={schemeReportRef} className="glass-panel" style={{ backgroundColor: '#fff', overflow: 'hidden', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', borderTop: 'none', padding: '10px' }}>
               {/* Subject Info Sub-Header */}
               <div style={{
                 padding: '16px 24px',
@@ -1568,21 +1604,39 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
               Registering into: <strong style={{ color: 'var(--primary)' }}>{assignments.formClass.name}</strong>
             </p>
             <form onSubmit={handleRegisterStudent} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label>Full Name *</label>
-                  <input type="text" className="form-control" required value={studentForm.full_name} onChange={(e) => setStudentForm({ ...studentForm, full_name: e.target.value })} />
+                  <label>Surname *</label>
+                  <input type="text" className="form-control" required value={studentForm.surname} onChange={(e) => {
+                    const newSurname = e.target.value;
+                    const computedFullname = `${newSurname} ${studentForm.first_name} ${studentForm.other_names}`.replace(/\s+/g, ' ').trim();
+                    setStudentForm({ ...studentForm, surname: newSurname, full_name: computedFullname });
+                  }} />
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label>Username *</label>
-                  <input type="text" className="form-control" required value={studentForm.username} onChange={(e) => setStudentForm({ ...studentForm, username: e.target.value })} />
+                  <label>First Name *</label>
+                  <input type="text" className="form-control" required value={studentForm.first_name} onChange={(e) => {
+                    const newFirstname = e.target.value;
+                    const computedFullname = `${studentForm.surname} ${newFirstname} ${studentForm.other_names}`.replace(/\s+/g, ' ').trim();
+                    setStudentForm({ ...studentForm, first_name: newFirstname, full_name: computedFullname });
+                  }} />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Other Names</label>
+                  <input type="text" className="form-control" value={studentForm.other_names} onChange={(e) => {
+                    const newOthernames = e.target.value;
+                    const computedFullname = `${studentForm.surname} ${studentForm.first_name} ${newOthernames}`.replace(/\s+/g, ' ').trim();
+                    setStudentForm({ ...studentForm, other_names: newOthernames, full_name: computedFullname });
+                  }} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label>Password</label>
-                  <input type="text" className="form-control" value={studentForm.password} onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })} />
+                  <label>Display Full Name</label>
+                  <input type="text" className="form-control" required readOnly style={{ backgroundColor: 'var(--bg-secondary)' }} value={studentForm.full_name} />
                 </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>Date of Birth</label>
                   <input type="date" className="form-control" value={studentForm.date_of_birth} onChange={(e) => setStudentForm({ ...studentForm, date_of_birth: e.target.value })} />
@@ -1626,19 +1680,14 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
           MY STUDENTS — PROFILE VIEWER MODAL
           ========================================== */}
       {viewingStudent && (
-        <div className="modal-overlay">
-          <div className="modal-content glass-panel" style={{ backgroundColor: 'var(--bg-surface)', maxWidth: '700px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
-            <button className="modal-close" onClick={() => setViewingStudent(null)}>✕</button>
-            <StudentRegistrationForm
-              student={viewingStudent}
-              onClose={() => setViewingStudent(null)}
-              onUpdate={() => {
-                setViewingStudent(null);
-                loadFormClassStudents(assignments.formClass.id);
-              }}
-            />
-          </div>
-        </div>
+        <StudentRegistrationForm
+          student={viewingStudent}
+          onClose={() => setViewingStudent(null)}
+          onUpdate={() => {
+            setViewingStudent(null);
+            loadFormClassStudents(assignments.formClass.id);
+          }}
+        />
       )}
 
     </div>

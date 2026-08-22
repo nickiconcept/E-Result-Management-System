@@ -292,13 +292,19 @@ async function initDB() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       category TEXT NOT NULL CHECK(category IN ('affective', 'psychomotor')),
-      UNIQUE(name, category)
+      target_section TEXT DEFAULT 'secondary' CHECK(target_section IN ('primary', 'secondary', 'all')),
+      UNIQUE(name, category, target_section)
     );
   `);
 
   // Migration check to ensure all categories are lowercase
   try {
     await runQuery(`UPDATE BEHAVIORAL_SKILLS SET category = LOWER(category) WHERE category != LOWER(category)`);
+  } catch (err) {}
+
+  // Migration check to add target_section column
+  try {
+    await runQuery(`ALTER TABLE BEHAVIORAL_SKILLS ADD COLUMN target_section TEXT DEFAULT 'secondary' CHECK(target_section IN ('primary', 'secondary', 'all'))`);
   } catch (err) {}
 
   // Create STUDENT_SKILLS_EVALUATION Table
@@ -413,7 +419,7 @@ async function initDB() {
     console.log('Seeding initial system settings...');
     await runQuery(`
       INSERT INTO SYSTEM_SETTINGS (active_session, active_term, result_entry_open, landing_school_name, landing_tagline, landing_hero_title, landing_hero_desc, landing_address, result_show_position, result_show_average, contact_phone, contact_email, ca1_name, ca2_name, ca3_name, ca4_name, exam_name, allow_past_attendance, allow_fm_register_student, allow_fm_edit_student, max_ca_count) 
-      VALUES ('2025/2026', '3rd Term', 1, 'Jere Model Academy', 'KADUNA STATE, NIGERIA', 'Shaping Minds, Building the Future.', 'Welcome to the Jere Model Academy online school portal. We provide high-quality education from Nursery, Primary, Junior Secondary to Senior Secondary School levels. Our portal makes result checking, fee logging, and attendance tracking simple, fast, and completely digital.', 'Opposite Jabal-Annur Mosque, New Abuja Road, Jere Kagarko LGA, Kaduna State.', 1, 1, '08031234567', 'admin@jeremodel.com', 'CA 1', 'CA 2', 'CA 3', 'CA 4', 'Exam', 0, 0, 0, 4)
+      VALUES ('2026/2027', '3rd Term', 1, 'Jere Model Academy', 'KADUNA STATE, NIGERIA', 'Shaping Minds, Building the Future.', 'Welcome to the Jere Model Academy online school portal. We provide high-quality education from Nursery, Primary, Junior Secondary to Senior Secondary School levels. Our portal makes result checking, fee logging, and attendance tracking simple, fast, and completely digital.', 'Opposite Jabal-Annur Mosque, New Abuja Road, Jere Kagarko LGA, Kaduna State.', 1, 1, '08031234567', 'admin@jeremodel.com', 'CA 1', 'CA 2', 'CA 3', 'CA 4', 'Exam', 0, 0, 0, 4)
     `);
   } else {
     // If already seeded, ensure new columns are updated if they contain NULL
@@ -446,7 +452,7 @@ async function initDB() {
   const sessionsCount = await getQuery('SELECT COUNT(*) as count FROM ACADEMIC_SESSIONS');
   if (sessionsCount.count === 0) {
     console.log('Seeding initial academic sessions...');
-    await runQuery(`INSERT INTO ACADEMIC_SESSIONS (session_name, is_current) VALUES ('2025/2026', 1)`);
+    await runQuery(`INSERT INTO ACADEMIC_SESSIONS (session_name, is_current) VALUES ('2026/2027', 1)`);
     await runQuery(`INSERT INTO ACADEMIC_SESSIONS (session_name, is_current) VALUES ('2024/2025', 0)`);
     await runQuery(`INSERT INTO ACADEMIC_SESSIONS (session_name, is_current) VALUES ('2023/2024', 0)`);
   }
@@ -662,7 +668,7 @@ async function initDB() {
         const grade1 = getGradeLetter(score1);
         await runQuery(`
           INSERT INTO GRADES (student_id, subject_id, term, academic_year, ca1, ca2, ca3, ca4, exam_score, total_score, grade_letter, remark)
-          VALUES (?, ?, '1st Term', '2025/2026', 8, 7, 9, 8, ?, ?, ?, 'Completed')
+          VALUES (?, ?, '1st Term', '2026/2027', 8, 7, 9, 8, ?, ?, ?, 'Completed')
         `, [sId, sub.id, score1 - 32, score1, grade1]);
 
         // 2nd Term
@@ -670,7 +676,7 @@ async function initDB() {
         const grade2 = getGradeLetter(score2);
         await runQuery(`
           INSERT INTO GRADES (student_id, subject_id, term, academic_year, ca1, ca2, ca3, ca4, exam_score, total_score, grade_letter, remark)
-          VALUES (?, ?, '2nd Term', '2025/2026', 7, 8, 8, 9, ?, ?, ?, 'Completed')
+          VALUES (?, ?, '2nd Term', '2026/2027', 7, 8, 8, 9, ?, ?, ?, 'Completed')
         `, [sId, sub.id, score2 - 32, score2, grade2]);
         
         // Seed partial 3rd Term grades (which teacher can edit or complete)
@@ -683,7 +689,7 @@ async function initDB() {
         const grade3 = getGradeLetter(total);
         await runQuery(`
           INSERT INTO GRADES (student_id, subject_id, term, academic_year, ca1, ca2, ca3, ca4, exam_score, total_score, grade_letter, remark)
-          VALUES (?, ?, '3rd Term', '2025/2026', ?, ?, ?, ?, ?, ?, ?, 'Good')
+          VALUES (?, ?, '3rd Term', '2026/2027', ?, ?, ?, ?, ?, ?, ?, 'Good')
         `, [sId, sub.id, ca1, ca2, ca3, ca4, exam, total, grade3]);
       }
 
@@ -710,7 +716,7 @@ async function initDB() {
           INSERT INTO BEHAVIORAL_GRADES (
             student_id, term, academic_year, punctuality, neatness, honesty,
             self_control, peer_relationship, sports, manual_skills, musical_skills, verbal_fluency
-          ) VALUES (?, ?, '2025/2026', ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, '2026/2027', ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           sId, t, 
           Math.floor(Math.random() * 2) + 4, // 4-5

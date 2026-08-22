@@ -58,8 +58,10 @@ const api = {
   },
 
   // Behavioral Skills Management (Affective & Psychomotor)
-  getSkills: async () => {
-    const res = await fetch(`${API_BASE}/skills`, { headers: getHeaders() });
+  getSkills: async (tier) => {
+    let url = `${API_BASE}/skills`;
+    if (tier) url += `?tier=${tier}`;
+    const res = await fetch(url, { headers: getHeaders() });
     return handleResponse(res);
   },
   addSkill: async (skillData) => {
@@ -171,6 +173,23 @@ const api = {
     return handleResponse(res);
   },
 
+  editClass: async (id, classData) => {
+    const res = await fetch(`${API_BASE}/classes/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(classData)
+    });
+    return handleResponse(res);
+  },
+
+  deleteClass: async (id) => {
+    const res = await fetch(`${API_BASE}/classes/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    return handleResponse(res);
+  },
+
   assignFormMaster: async (class_id, teacher_id) => {
     const res = await fetch(`${API_BASE}/classes/assign-form-master`, {
       method: 'POST',
@@ -199,11 +218,11 @@ const api = {
     return handleResponse(res);
   },
 
-  assignSubjectTeacher: async (class_ids, subject_id, teacher_id) => {
+  assignSubjectTeacher: async (class_ids, subject_id, teacher_id, overwrite = false) => {
     const res = await fetch(`${API_BASE}/class-subjects/assign`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ class_ids, subject_id, teacher_id })
+      body: JSON.stringify({ class_ids, subject_id, teacher_id, overwrite })
     });
     return handleResponse(res);
   },

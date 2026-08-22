@@ -48,7 +48,7 @@ export default function App() {
         active_session: '2025/2025',
         active_term: '3rd Term',
         landing_school_name: 'Jere Model Academy',
-        landing_tagline: 'KADUNA STATE, NIGERIA',
+        landing_tagline: 'JERE, KADUNA STATE',
         landing_hero_title: 'Shaping Minds, Building the Future.',
         landing_hero_desc: 'Welcome to the Jere Model Academy online school portal.',
         landing_address: 'Opposite Jabal-Annur Mosque, New Abuja Road, Jere Kagarko LGA, Kaduna State.',
@@ -69,7 +69,7 @@ export default function App() {
         const base64Url = token.split('.')[1];
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         const payload = JSON.parse(window.atob(base64));
-        
+
         // Check expiry (in seconds)
         if (payload.exp * 1000 < Date.now()) {
           handleLogout();

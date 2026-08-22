@@ -254,7 +254,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [classSubjects, setClassSubjects] = useState([]);
   const [pins, setPins] = useState([]);
   const [skills, setSkills] = useState([]);
-  const [skillForm, setSkillForm] = useState({ name: '', category: 'AFFECTIVE' });
+  const [skillForm, setSkillForm] = useState({ name: '', category: 'affective', target_section: 'secondary' });
   
   // Registration form states
   const [showStudentModal, setShowStudentModal] = useState(false);
@@ -264,6 +264,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showFeeModal, setShowFeeModal] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
+  const [showEditSkillModal, setShowEditSkillModal] = useState(false);
+  const [skillEditForm, setSkillEditForm] = useState({ id: '', name: '', category: 'affective', target_section: 'secondary' });
   const [showBulkPrintModal, setShowBulkPrintModal] = useState(false);
 
   // Selected details
@@ -272,15 +274,16 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   
   // Form input states
   const [studentForm, setStudentForm] = useState({
-    username: '', password: 'password123', full_name: '', class_id: '',
+    surname: '', first_name: '', other_names: '', full_name: '', class_id: '',
     date_of_birth: '', class_of_entry: '', term_year_of_entry: '',
     last_school_attended: '', address_residence: '', sex: 'Male', religion: 'Islam',
     local_government: '', state_of_origin: '', handicapped: false, handicap_details: '',
-    parent_name: '', parent_address: '', parent_phone: '', passport_photo: '', custom_admission_number: ''
+    parent_name: '', parent_address: '', parent_phone: '', passport_photo: '', custom_admission_number: '',
+    has_offline_debt: false, offline_debt_amount: ''
   });
   
   const [teacherForm, setTeacherForm] = useState({ 
-    username: '', password: 'password123', full_name: '', email: '', passport_photo: '',
+    full_name: '', email: '', passport_photo: '',
     surname: '', first_name: '', other_names: '', address: '', state_of_residence: '', lga_of_residence: '', signature: ''
   });
   const [classForm, setClassForm] = useState({ name: '', tier: 'jss' });
@@ -360,6 +363,13 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [selectedSubject, setSelectedSubject] = useState(null);
   const [subjectEditForm, setSubjectEditForm] = useState({ name: '', tier: 'jss' });
 
+  // Class Edit modal states
+  const [showEditClassModal, setShowEditClassModal] = useState(false);
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [classEditForm, setClassEditForm] = useState({ name: '', tier: 'jss' });
+
+  const [isEditingAssignment, setIsEditingAssignment] = useState(false);
+
   // Admin Attendance report states
   const [activeAdminAttendanceSubTab, setActiveAdminAttendanceSubTab] = useState('mark'); // 'mark' or 'report'
   const [adminAttendanceReport, setAdminAttendanceReport] = useState([]);
@@ -409,7 +419,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
     setAdminBroadsheetLoading(true);
     try {
       const term = settings?.active_term || '3rd Term';
-      const year = settings?.active_session || '2025/2026';
+      const year = settings?.active_session || '2026/2027';
       const res = await api.getBroadsheet(classId, term, year);
       setAdminBroadsheetData(res);
     } catch (err) {
@@ -657,11 +667,12 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       loadAllData();
       // Reset form
       setStudentForm({
-        username: '', password: 'password123', full_name: '', class_id: '',
+        surname: '', first_name: '', other_names: '', full_name: '', class_id: '',
         date_of_birth: '', class_of_entry: '', term_year_of_entry: '',
         last_school_attended: '', address_residence: '', sex: 'Male', religion: 'Islam',
         local_government: '', state_of_origin: '', handicapped: false, handicap_details: '',
-        parent_name: '', parent_address: '', parent_phone: '', passport_photo: '', custom_admission_number: ''
+        parent_name: '', parent_address: '', parent_phone: '', passport_photo: '', custom_admission_number: '',
+        has_offline_debt: false, offline_debt_amount: ''
       });
     } catch (err) {
       setErrorMsg(err.message);
@@ -676,7 +687,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       setShowTeacherModal(false);
       loadAllData();
       setTeacherForm({ 
-        username: '', password: 'password123', full_name: '', email: '', passport_photo: '',
+        full_name: '', email: '', passport_photo: '',
         surname: '', first_name: '', other_names: '', address: '', state_of_residence: '', lga_of_residence: '', signature: ''
       });
     } catch (err) {
@@ -732,7 +743,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const handleAssignTeacher = async (e) => {
     e.preventDefault();
     try {
-      await api.assignSubjectTeacher(assignForm.class_ids, assignForm.subject_id, assignForm.teacher_id);
+      await api.assignSubjectTeacher(assignForm.class_ids, assignForm.subject_id, assignForm.teacher_id, isEditingAssignment);
       setNotify('Subject Teacher mapped successfully!');
       setShowAssignModal(false);
       loadAllData();
@@ -764,12 +775,24 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
     }
   };
 
+  const handleEditSkillSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.updateSkill(skillEditForm.id, skillEditForm);
+      setNotify('Skill updated successfully!');
+      setShowEditSkillModal(false);
+      loadAllData();
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
   const handleSkillCreate = async (e) => {
     e.preventDefault();
     try {
       await api.addSkill(skillForm);
       setNotify('Skill added successfully!');
-      setSkillForm({ name: '', category: 'AFFECTIVE' });
+      setSkillForm({ name: '', category: 'affective', target_section: 'secondary' });
       loadAllData();
     } catch (err) {
       setErrorMsg(err.message);
@@ -906,6 +929,54 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
     } catch (err) {
       setErrorMsg(err.message);
     }
+  };
+
+  // ==========================================
+  // CLASS CRUD LOGIC
+  // ==========================================
+  const handleEditClassClick = (cls) => {
+    setSelectedClass(cls);
+    setClassEditForm({ 
+      name: cls.name, 
+      tier: cls.tier
+    });
+    setShowEditClassModal(true);
+  };
+
+  const handleEditClassSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedClass) return;
+    setNotify('');
+    setErrorMsg('');
+    try {
+      await api.editClass(selectedClass.id, classEditForm);
+      setNotify('Class details updated successfully!');
+      setShowEditClassModal(false);
+      loadAllData();
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
+  const handleDeleteClass = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this class? This will also unassign form masters.')) return;
+    try {
+      await api.deleteClass(id);
+      setNotify('Class deleted successfully!');
+      loadAllData();
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
+  const handleEditClassSubjectClick = (cs) => {
+    setIsEditingAssignment(true);
+    setAssignForm({
+      class_ids: [cs.class_id],
+      subject_id: cs.subject_id,
+      teacher_id: cs.teacher_id || ''
+    });
+    setShowAssignModal(true);
   };
 
   // ==========================================
@@ -1218,6 +1289,18 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   };
 
   const handleAdminGradeChange = (studentId, field, value) => {
+    if (value !== '') {
+      const numVal = parseFloat(value);
+      if (['ca1', 'ca2', 'ca3', 'ca4'].includes(field) && numVal > 10) {
+        setErrorMsg('CA score cannot exceed 10 marks.');
+        return;
+      }
+      if (field === 'exam_score' && numVal > 60) {
+        setErrorMsg('Exam score cannot exceed 60 marks.');
+        return;
+      }
+    }
+
     setAdminStudentsGrades(prev => prev.map(g => {
       if (g.student_id === studentId) {
         const updated = { ...g, [field]: value };
@@ -1755,7 +1838,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           TAB 4: CLASSES & SUBJECTS CONFIG
           ======================================================= */}
       {activeSubTab === 'classes' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           {/* Class List */}
           <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
@@ -1780,6 +1863,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     <th>Class</th>
                     <th>Tier</th>
                     <th>Form Master</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1799,6 +1883,24 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                             <option key={idx} value={t.id}>{t.full_name}</option>
                           ))}
                         </select>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '6px' }}
+                          title="Edit"
+                          onClick={() => handleEditClassClick(c)}
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="Delete"
+                          onClick={() => handleDeleteClass(c.id)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -1820,10 +1922,10 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               </div>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button className="btn btn-secondary" onClick={() => setShowSubjectModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
-                  <Plus size={16} /> Seed Subject
+                  <Plus size={16} /> Register Subject
                 </button>
-                <button className="btn btn-primary" onClick={() => setShowAssignModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.3)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
-                  <Users size={16} /> Map Teacher
+                <button className="btn btn-primary" onClick={() => { setIsEditingAssignment(false); setAssignForm({ class_ids: [], subject_id: '', teacher_id: '' }); setShowAssignModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.3)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+                  <Users size={16} /> Assign Teacher
                 </button>
               </div>
             </div>
@@ -1835,6 +1937,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     <th>Class</th>
                     <th>Subject</th>
                     <th>Subject Teacher</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1846,6 +1949,16 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                         <span style={{ fontWeight: '500', color: cs.teacher_name ? 'inherit' : 'var(--danger)' }}>
                           {cs.teacher_name || '🚨 Unassigned'}
                         </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="Edit Teacher"
+                          onClick={() => handleEditClassSubjectClick(cs)}
+                        >
+                          <Edit3 size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -2514,7 +2627,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     STUDENT PAYMENT COLLECTIONS AUDIT REPORT
                   </h4>
                   <div style={{ fontSize: '0.82rem', color: '#333' }}>
-                    Academic Session: <strong>{settings?.active_session || '2025/2026'}</strong> | Term: <strong>{settings?.active_term || '3rd Term'}</strong> | Date: <strong>{new Date().toLocaleDateString()}</strong>
+                    Academic Session: <strong>{settings?.active_session || '2026/2027'}</strong> | Term: <strong>{settings?.active_term || '3rd Term'}</strong> | Date: <strong>{new Date().toLocaleDateString()}</strong>
                   </div>
                   {paymentReportStatusFilter !== 'all' && (
                     <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginTop: '4px', color: '#000' }}>
@@ -2647,7 +2760,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     <div>
                       <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', letterSpacing: '0.5px' }}>School Fees Payment Summary</h3>
                       <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-                        Term: <strong>{settings?.active_term || '3rd Term'}</strong> ({settings?.active_session || '2025/2026'}) | Executive MVP breakdown of school fee collections & outstanding debt balances.
+                        Term: <strong>{settings?.active_term || '3rd Term'}</strong> ({settings?.active_session || '2026/2027'}) | Executive MVP breakdown of school fee collections & outstanding debt balances.
                       </p>
                     </div>
                   </div>
@@ -2665,7 +2778,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     EXECUTIVE TERM FINANCIAL PAYMENT SUMMARY REPORT
                   </h4>
                   <div style={{ fontSize: '0.82rem', color: '#333' }}>
-                    Academic Session: <strong>{settings?.active_session || '2025/2026'}</strong> | Term: <strong>{settings?.active_term || '3rd Term'}</strong> | Date: <strong>{new Date().toLocaleDateString()}</strong>
+                    Academic Session: <strong>{settings?.active_session || '2026/2027'}</strong> | Term: <strong>{settings?.active_term || '3rd Term'}</strong> | Date: <strong>{new Date().toLocaleDateString()}</strong>
                   </div>
                 </div>
 
@@ -3874,6 +3987,18 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                           <option value="psychomotor">Psychomotor Domain (Skills)</option>
                         </select>
                       </div>
+                      <div className="form-group">
+                        <label>Target Section</label>
+                        <select 
+                          className="form-control" 
+                          value={skillForm.target_section}
+                          onChange={(e) => setSkillForm({ ...skillForm, target_section: e.target.value })}
+                        >
+                          <option value="secondary">Secondary Section (JSS / SSS)</option>
+                          <option value="primary">Primary Section (Nursery / Primary)</option>
+                          <option value="all">Both Sections (All Classes)</option>
+                        </select>
+                      </div>
                       <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Add Skill</button>
                     </form>
                   </div>
@@ -3886,12 +4011,13 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                           <tr>
                             <th>Skill Name</th>
                             <th>Category</th>
+                            <th>Target Section</th>
                             <th style={{ textAlign: 'center' }}>Action</th>
                           </tr>
                         </thead>
                         <tbody>
                           {skills.length === 0 ? (
-                            <tr><td colSpan="3" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No skills found.</td></tr>
+                            <tr><td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No skills found.</td></tr>
                           ) : (
                             skills.map(s => (
                               <tr key={s.id}>
@@ -3906,7 +4032,28 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                                     {s.category}
                                   </span>
                                 </td>
-                                <td style={{ textAlign: 'center' }}>
+                                <td>
+                                  <span className="badge" style={{
+                                    backgroundColor: '#f3f4f6',
+                                    color: '#374151',
+                                    textTransform: 'capitalize',
+                                    fontSize: '0.72rem'
+                                  }}>
+                                    {s.target_section || 'Secondary'}
+                                  </span>
+                                </td>
+                                <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                  <button 
+                                    className="btn btn-secondary" 
+                                    title="Edit" 
+                                    style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginRight: '5px' }} 
+                                    onClick={() => {
+                                      setSkillEditForm(s);
+                                      setShowEditSkillModal(true);
+                                    }}
+                                  >
+                                    <Edit3 size={14} />
+                                  </button>
                                   <button className="btn btn-danger" title="Delete" style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => handleSkillDelete(s.id)}><Trash2 size={14} /></button>
                                 </td>
                               </tr>
@@ -4344,6 +4491,58 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           TAB 9: SCHEME OF WORK MANAGEMENT (ADMIN)
           ======================================================= */}
       {/* =======================================================
+          MODAL: EDIT SKILL
+          ======================================================= */}
+      {showEditSkillModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
+            <button className="modal-close" onClick={() => setShowEditSkillModal(false)}>×</button>
+            <h3>Edit Behavioral Skill</h3>
+            <form onSubmit={handleEditSkillSubmit} style={{ marginTop: '20px' }}>
+              <div className="form-group">
+                <label>Skill Name</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="e.g. Punctuality" 
+                  required 
+                  value={skillEditForm.name}
+                  onChange={(e) => setSkillEditForm({ ...skillEditForm, name: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Category</label>
+                <select 
+                  className="form-control" 
+                  value={skillEditForm.category}
+                  onChange={(e) => setSkillEditForm({ ...skillEditForm, category: e.target.value })}
+                >
+                  <option value="affective">Affective Domain (Character)</option>
+                  <option value="psychomotor">Psychomotor Domain (Skills)</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Target Section</label>
+                <select 
+                  className="form-control" 
+                  value={skillEditForm.target_section}
+                  onChange={(e) => setSkillEditForm({ ...skillEditForm, target_section: e.target.value })}
+                >
+                  <option value="secondary">Secondary Section (JSS / SSS)</option>
+                  <option value="primary">Primary Section (Nursery / Primary)</option>
+                  <option value="all">Both Sections (All Classes)</option>
+                </select>
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Update Skill</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =======================================================
+          MODAL: BULK PRINT RESULT
+          ======================================================= */}
+      {/* =======================================================
           MODAL: STUDENT REGISTRATION FORM
           ======================================================= */}
       {showStudentModal && (
@@ -4366,16 +4565,43 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 {studentForm.passport_photo && <span style={{ marginLeft: '10px', color: 'var(--success)' }}>✓ Added</span>}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                <div className="form-group">
-                  <label>Full Name</label>
-                  <input type="text" className="form-control" required value={studentForm.full_name} onChange={(e) => setStudentForm({ ...studentForm, full_name: e.target.value })} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+                  <div className="form-group">
+                    <label>Surname</label>
+                    <input type="text" className="form-control" required value={studentForm.surname} onChange={(e) => {
+                      const newSurname = e.target.value;
+                      const computedFullname = `${newSurname} ${studentForm.first_name} ${studentForm.other_names}`.replace(/\s+/g, ' ').trim();
+                      setStudentForm({ ...studentForm, surname: newSurname, full_name: computedFullname });
+                    }} />
+                  </div>
+                  <div className="form-group">
+                    <label>First Name</label>
+                    <input type="text" className="form-control" required value={studentForm.first_name} onChange={(e) => {
+                      const newFirstname = e.target.value;
+                      const computedFullname = `${studentForm.surname} ${newFirstname} ${studentForm.other_names}`.replace(/\s+/g, ' ').trim();
+                      setStudentForm({ ...studentForm, first_name: newFirstname, full_name: computedFullname });
+                    }} />
+                  </div>
+                  <div className="form-group">
+                    <label>Other Names</label>
+                    <input type="text" className="form-control" value={studentForm.other_names} onChange={(e) => {
+                      const newOthernames = e.target.value;
+                      const computedFullname = `${studentForm.surname} ${studentForm.first_name} ${newOthernames}`.replace(/\s+/g, ' ').trim();
+                      setStudentForm({ ...studentForm, other_names: newOthernames, full_name: computedFullname });
+                    }} />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label>Username</label>
-                  <input type="text" className="form-control" required value={studentForm.username} onChange={(e) => setStudentForm({ ...studentForm, username: e.target.value })} />
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div className="form-group">
+                    <label>Display Full Name</label>
+                    <input type="text" className="form-control" required readOnly style={{ backgroundColor: 'var(--bg-secondary)' }} value={studentForm.full_name} />
+                  </div>
+                  <div className="form-group">
+                    <label>Last School Attended</label>
+                    <input type="text" className="form-control" value={studentForm.last_school_attended} onChange={(e) => setStudentForm({ ...studentForm, last_school_attended: e.target.value })} />
+                  </div>
                 </div>
-              </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div className="form-group">
@@ -4449,7 +4675,21 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 <textarea className="form-control" value={studentForm.parent_address} onChange={(e) => setStudentForm({ ...studentForm, parent_address: e.target.value })} />
               </div>
 
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Save Student</button>
+              <hr style={{ margin: '20px 0', borderColor: 'var(--border-color)' }} />
+              <div className="form-group" style={{ backgroundColor: 'rgba(239, 68, 68, 0.05)', padding: '15px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                  <input type="checkbox" checked={studentForm.has_offline_debt} onChange={(e) => setStudentForm({ ...studentForm, has_offline_debt: e.target.checked })} />
+                  Student owes an outstanding fee from offline records?
+                </label>
+                {studentForm.has_offline_debt && (
+                  <div style={{ marginTop: '15px' }}>
+                    <label>Outstanding Amount (₦)</label>
+                    <input type="number" min="0" className="form-control" placeholder="e.g. 5000" value={studentForm.offline_debt_amount} onChange={(e) => setStudentForm({ ...studentForm, offline_debt_amount: e.target.value })} />
+                  </div>
+                )}
+              </div>
+
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>Save Student</button>
             </form>
           </div>
         </div>
@@ -4498,11 +4738,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 <input type="text" className="form-control" required placeholder="e.g. Mr. John Doe" value={teacherForm.full_name} onChange={(e) => setTeacherForm({ ...teacherForm, full_name: e.target.value })} />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                <div className="form-group">
-                  <label>Username (For Login)</label>
-                  <input type="text" className="form-control" required value={teacherForm.username} onChange={(e) => setTeacherForm({ ...teacherForm, username: e.target.value })} />
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
                 <div className="form-group">
                   <label>Email Address</label>
                   <input type="email" className="form-control" value={teacherForm.email} onChange={(e) => setTeacherForm({ ...teacherForm, email: e.target.value })} />
@@ -4810,7 +5046,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                         <span style={{ color: 'var(--text-secondary)' }}>Term / Session:</span>
-                        <strong style={{ color: 'var(--primary)' }}>{inv.term || settings?.active_term || '3rd Term'} ({inv.session || settings?.active_session || '2025/2026'})</strong>
+                        <strong style={{ color: 'var(--primary)' }}>{inv.term || settings?.active_term || '3rd Term'} ({inv.session || settings?.active_session || '2026/2027'})</strong>
                       </div>
                       <div style={{ borderTop: '1px dashed var(--border-color)', margin: '10px 0' }}></div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -4911,6 +5147,44 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 />
               </div>
               <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Create Session</button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =======================================================
+          MODAL: EDIT CLASS DETAILS
+          ======================================================= */}
+      {showEditClassModal && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
+            <button className="modal-close" onClick={() => setShowEditClassModal(false)}>&times;</button>
+            <h3>Edit Class Details</h3>
+            <form onSubmit={handleEditClassSubmit} style={{ marginTop: '20px' }}>
+              <div className="form-group">
+                <label>Class Name</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  required 
+                  value={classEditForm.name} 
+                  onChange={(e) => setClassEditForm({ ...classEditForm, name: e.target.value })} 
+                />
+              </div>
+              <div className="form-group">
+                <label>School Level</label>
+                <select 
+                  className="form-control" 
+                  value={classEditForm.tier} 
+                  onChange={(e) => setClassEditForm({ ...classEditForm, tier: e.target.value })}
+                >
+                  <option value="nursery">Pre-Nursery / Nursery</option>
+                  <option value="primary">Primary</option>
+                  <option value="jss">Junior Secondary (JSS)</option>
+                  <option value="sss">Senior Secondary (SSS)</option>
+                </select>
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>Save Changes</button>
             </form>
           </div>
         </div>
@@ -5060,7 +5334,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               <div style={{ flex: 1 }}>
                 <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '700', letterSpacing: '0.5px' }}>Student Payment Ledger — {selectedStudentForHistory.full_name}</h3>
                 <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '8px 0 0 0', display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
-                  <span><CalendarCheck size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }}/> {settings?.active_term || '3rd Term'} ({settings?.active_session || '2025/2026'})</span>
+                  <span><CalendarCheck size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }}/> {settings?.active_term || '3rd Term'} ({settings?.active_session || '2026/2027'})</span>
                   <span><Lock size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }}/> {selectedStudentForHistory.admission_number}</span>
                   <span><Users size={14} style={{ display: 'inline', verticalAlign: '-2px', marginRight: '4px' }}/> {selectedStudentForHistory.class_name || 'Unassigned'}</span>
                   {selectedStudentForHistory.parent_phone && <span>📞 <strong>{selectedStudentForHistory.parent_phone}</strong></span>}
@@ -5134,7 +5408,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                                       <td style={{ padding: '14px 15px', fontWeight: '600', color: 'var(--text-primary)' }}>{inv.title}</td>
                                       <td style={{ padding: '14px 15px' }}>
                                         <span className="badge" style={{ backgroundColor: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
-                                          {inv.term || settings?.active_term || '3rd Term'} ({inv.session || settings?.active_session || '2025/2026'})
+                                          {inv.term || settings?.active_term || '3rd Term'} ({inv.session || settings?.active_session || '2026/2027'})
                                         </span>
                                       </td>
                                       <td style={{ padding: '14px 15px', textAlign: 'right', fontWeight: '700', color: 'var(--text-primary)' }}>₦{inv.amount_due.toLocaleString()}</td>

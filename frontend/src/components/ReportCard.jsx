@@ -7,6 +7,13 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
 
   const { student, grades, attendance, term, academic_year, position, total_students, class_average, behavioral } = data;
 
+  const isSecondary = student.class_tier === 'jss' || student.class_tier === 'sss';
+  const behaviorMainHeading = isSecondary 
+    ? "Character Development & Skills Evaluation (Rating Scale 1 to 5)"
+    : "Affective & Psychomotor Evaluation (Rating Scale 1 to 5)";
+  const affectiveColHeading = isSecondary ? "Character Development" : "Affective Area";
+  const psychomotorColHeading = isSecondary ? "Skills" : "Psychomotor Skills";
+
   const getPhotoSrc = (photo) => {
     if (!photo) return null;
     return photo.startsWith('data:') ? photo : `http://localhost:5000${photo}`;
@@ -320,11 +327,11 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
           {/* AFFECTIVE & PSYCHOMOTOR DOMAINS GRID */}
           <div className="m-behavior-section">
             <h4 style={{ margin: '0 0 8px 0', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1e293b' }}>
-              Affective & Psychomotor Evaluation (Rating Scale 1 to 5)
+              {behaviorMainHeading}
             </h4>
             <div className="m-behavior-grid">
               <div className="m-behavior-col">
-                <div className="m-behavior-header">Personal & Social Traits</div>
+                <div className="m-behavior-header">{affectiveColHeading}</div>
                 {(() => {
                   const affectiveSkills = Array.isArray(behavioral)
                     ? behavioral.filter(b => (b.category || '').toLowerCase() === 'affective')
@@ -350,7 +357,7 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
               </div>
 
               <div className="m-behavior-col">
-                <div className="m-behavior-header">Practical & Physical Skills</div>
+                <div className="m-behavior-header">{psychomotorColHeading}</div>
                 {(() => {
                   const psychomotorSkills = Array.isArray(behavioral)
                     ? behavioral.filter(b => (b.category || '').toLowerCase() === 'psychomotor')

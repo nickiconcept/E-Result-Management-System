@@ -11,7 +11,7 @@ import {
   CheckSquare,
   BarChart2,
   FileSpreadsheet,
-  Printer,
+  Download,
   Edit3,
   Grid,
   Key,
@@ -66,10 +66,10 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
         icon: FileSpreadsheet,
         subItems: [
           { id: 'enter-marks', label: 'Enter Marks', icon: Edit3 },
-          { id: 'blank-scoresheet', label: 'Print Scoresheet', icon: FileText },
+          { id: 'blank-scoresheet', label: 'Download Scoresheet', icon: Download },
           { id: 'broadsheet', label: 'Class Broadsheet', icon: Grid },
           { id: 'single', label: 'Single Result View', icon: FileText },
-          { id: 'bulk', label: 'Print Bulk Results', icon: Printer },
+          { id: 'bulk', label: 'Download Bulk Results', icon: Download },
           { id: 'promotions', label: 'Student Promotions', icon: TrendingUp },
           { id: 'pins', label: 'Scratch Cards / PINs', icon: Key }
         ]

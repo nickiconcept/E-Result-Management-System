@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import ReportCard from './ReportCard';
-import { ArrowLeft, Download, Printer } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
 export default function BulkResultPrinter({ classes, sessions, currentTerm, currentSession, settings, onClose, onBack, isStandalonePage = false }) {
@@ -40,7 +40,7 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
       } else if (sessions && sessions.length > 0) {
         setSession(sessions[0].session_name);
       } else {
-        setSession('2025/2026');
+        setSession('2026/2027');
       }
     }
   }, [currentSession, sessions]);
@@ -85,12 +85,12 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }} className="no-print">
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
-            <Printer size={24} color="white" />
+            <Download size={24} color="white" />
           </div>
           <div>
-            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Print Results</h3>
+            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Download Bulk Results</h3>
             <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-              Select a class arm to view and print all student report cards in one continuous batch.
+              Select a class arm to view and download all student report cards in one continuous batch.
             </p>
           </div>
         </div>
@@ -145,8 +145,6 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
               ))
             ) : (
               <>
-                <option value="2025/2026">2025/2026</option>
-                <option value="2024/2025">2024/2025</option>
                 <option value="2026/2027">2026/2027</option>
               </>
             )}
