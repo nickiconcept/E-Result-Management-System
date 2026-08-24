@@ -7,7 +7,7 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
 
   const { student, grades, attendance, term, academic_year, position, total_students, class_average, behavioral } = data;
 
-  const isSecondary = student.class_tier === 'jss' || student.class_tier === 'sss';
+  const isSecondary = (student.tier || '').toLowerCase() === 'jss' || (student.tier || '').toLowerCase() === 'sss';
   const behaviorMainHeading = isSecondary 
     ? "Character Development & Skills Evaluation (Rating Scale 1 to 5)"
     : "Affective & Psychomotor Evaluation (Rating Scale 1 to 5)";
@@ -47,6 +47,11 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
   const activeTermAverage = grades && grades.length > 0 
     ? (grades.reduce((sum, g) => sum + (g.total_score || 0), 0) / grades.length).toFixed(1)
     : '0.0';
+
+  // Term Grand Total
+  const activeTermGrandTotal = grades && grades.length > 0 
+    ? grades.reduce((sum, g) => sum + (g.total_score || 0), 0)
+    : 0;
 
   // Annual Cumulative average for 3rd Term
   const overallCumAverage = is3rdTerm && grades && grades.length > 0
@@ -162,29 +167,32 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
                 <thead>
                   {is3rdTerm ? (
                     <tr>
-                      <th style={{ textAlign: 'left' }}>Subject Title</th>
+                      <th style={{ textAlign: 'left' }}>Subject (s)</th>
+                      {(!settings?.max_ca_count || settings.max_ca_count >= 1) && <th>{settings?.ca1_name || 'CA 1'} (10)</th>}
+                      {(!settings?.max_ca_count || settings.max_ca_count >= 2) && <th>{settings?.ca2_name || 'CA 2'} (10)</th>}
+                      {(!settings?.max_ca_count || settings.max_ca_count >= 3) && <th>{settings?.ca3_name || 'CA 3'} (10)</th>}
+                      {(!settings?.max_ca_count || settings.max_ca_count >= 4) && <th>{settings?.ca4_name || 'CA 4'} (10)</th>}
+                      <th>{settings?.exam_name || 'Exam'} (60)</th>
+                      <th>3rd Term Total (100)</th>
                       <th>1st Term (100)</th>
                       <th>2nd Term (100)</th>
-                      <th>3rd Term CA (40)</th>
-                      <th>3rd Term Exam (60)</th>
-                      <th>3rd Term Total (100)</th>
-                      <th>Annual Average</th>
-                      {showPosition && <th>Subject Rank</th>}
+                      <th>Cumm Avg</th>
+                      {showPosition && <th>Subj. Pos</th>}
                       <th>Grade</th>
-                      <th>Teacher Remark</th>
+                      <th>Remark</th>
                     </tr>
                   ) : (
                     <tr>
-                      <th style={{ textAlign: 'left' }}>Subject Title</th>
-                      <th>{settings?.ca1_name || 'CA 1'} (10)</th>
-                      <th>{settings?.ca2_name || 'CA 2'} (10)</th>
-                      <th>{settings?.ca3_name || 'CA 3'} (10)</th>
-                      <th>{settings?.ca4_name || 'CA 4'} (10)</th>
+                      <th style={{ textAlign: 'left' }}>Subject (s)</th>
+                      {(!settings?.max_ca_count || settings.max_ca_count >= 1) && <th>{settings?.ca1_name || 'CA 1'} (10)</th>}
+                      {(!settings?.max_ca_count || settings.max_ca_count >= 2) && <th>{settings?.ca2_name || 'CA 2'} (10)</th>}
+                      {(!settings?.max_ca_count || settings.max_ca_count >= 3) && <th>{settings?.ca3_name || 'CA 3'} (10)</th>}
+                      {(!settings?.max_ca_count || settings.max_ca_count >= 4) && <th>{settings?.ca4_name || 'CA 4'} (10)</th>}
                       <th>{settings?.exam_name || 'Exam'} (60)</th>
                       <th>Total Score (100)</th>
-                      {showPosition && <th>Subject Rank</th>}
+                      {showPosition && <th>Subj. Pos</th>}
                       <th>Grade</th>
-                      <th>Teacher Remark</th>
+                      <th>Remark</th>
                     </tr>
                   )}
                 </thead>
@@ -204,11 +212,14 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
                         return (
                           <tr key={idx}>
                             <td className="subject-name">{g.subject_name}</td>
+                            {(!settings?.max_ca_count || settings.max_ca_count >= 1) && <td>{g.ca1 ?? 0}</td>}
+                            {(!settings?.max_ca_count || settings.max_ca_count >= 2) && <td>{g.ca2 ?? 0}</td>}
+                            {(!settings?.max_ca_count || settings.max_ca_count >= 3) && <td>{g.ca3 ?? 0}</td>}
+                            {(!settings?.max_ca_count || settings.max_ca_count >= 4) && <td>{g.ca4 ?? 0}</td>}
+                            <td>{g.exam_score ?? 0}</td>
+                            <td style={{ fontWeight: 'bold' }}>{g.total_score}</td>
                             <td>{g.term1_total}</td>
                             <td>{g.term2_total}</td>
-                            <td>{caTotal}</td>
-                            <td>{g.exam_score}</td>
-                            <td style={{ fontWeight: 'bold' }}>{g.total_score}</td>
                             <td style={{ fontWeight: 'bold', backgroundColor: '#f8fafc' }}>{g.cum_average}%</td>
                             {showPosition && <td style={{ fontWeight: 'bold' }}>{g.subject_position ? `${g.subject_position}${getOrdinalSuffix(g.subject_position)}` : '-'}</td>}
                             <td>
@@ -283,6 +294,7 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
               <h4>Academic Performance Summary</h4>
               <div className="m-summary-rows">
                 <div><span>Total Subjects Taken:</span> <strong>{grades?.length || 0}</strong></div>
+                <div><span>Total Score:</span> <strong>{activeTermGrandTotal}</strong></div>
                 <div>
                   <span>{is3rdTerm ? 'Annual Cumulative Average:' : 'Term Average Score:'}</span>
                   <strong style={{ fontSize: '1.05rem', color: '#1d4ed8' }}>
@@ -326,70 +338,136 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
 
           {/* AFFECTIVE & PSYCHOMOTOR DOMAINS GRID */}
           <div className="m-behavior-section">
-            <h4 style={{ margin: '0 0 8px 0', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1e293b' }}>
-              {behaviorMainHeading}
-            </h4>
-            <div className="m-behavior-grid">
-              <div className="m-behavior-col">
-                <div className="m-behavior-header">{affectiveColHeading}</div>
-                {(() => {
-                  const affectiveSkills = Array.isArray(behavioral)
-                    ? behavioral.filter(b => (b.category || '').toLowerCase() === 'affective')
-                    : [];
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
+              <h4 style={{ margin: 0, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1e293b' }}>
+                {behaviorMainHeading}
+              </h4>
+              <div style={{ display: 'flex', gap: '10px', fontSize: '0.65rem', color: '#475569', backgroundColor: '#fff', padding: '4px 8px', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#1e40af' }}>KEY:</strong>
+                <span><strong>5</strong> – Excellent</span>
+                <span><strong>4</strong> – High</span>
+                <span><strong>3</strong> – Acceptable</span>
+                <span><strong>2</strong> – Developing</span>
+                <span><strong>1</strong> – Needs Attention</span>
+              </div>
+            </div>
 
-                  const displayList = affectiveSkills.length > 0
-                    ? affectiveSkills.map(b => ({ name: b.name, val: b.rating || 4 }))
-                    : [
-                        { name: 'Punctuality', val: behavioral?.punctuality || 4 },
-                        { name: 'Neatness & Dressing', val: behavioral?.neatness || 4 },
-                        { name: 'Honesty & Integrity', val: behavioral?.honesty || 4 },
-                        { name: 'Self Control & Discipline', val: behavioral?.self_control || 4 },
-                        { name: 'Peer Relationship', val: behavioral?.peer_relationship || 4 }
-                      ];
+            <div className="m-behavior-grid" style={{ gridTemplateColumns: isSecondary ? 'repeat(5, 1fr)' : 'repeat(4, 1fr)' }}>
+              {(() => {
+                const expectedSection = isSecondary ? 'secondary' : 'primary';
+                const affectiveSkills = Array.isArray(behavioral)
+                  ? behavioral.filter(b => 
+                      (b.category || '').toLowerCase() === 'affective' &&
+                      (!b.target_section || b.target_section.toLowerCase() === 'all' || b.target_section.toLowerCase() === expectedSection)
+                    )
+                  : [];
 
-                  return displayList.map((item, idx) => (
-                    <div key={idx} className="m-behavior-row">
-                      <span>{item.name}</span>
-                      <strong>{item.val}</strong>
+                const hasDynamicSkills = Array.isArray(behavioral) && behavioral.length > 0;
+                const displayList = hasDynamicSkills
+                  ? affectiveSkills.map(b => ({ name: b.name, val: b.rating || 4 }))
+                  : (isSecondary ? [] : [
+                      { name: 'Punctuality', val: behavioral?.punctuality || 4 },
+                      { name: 'Neatness & Dressing', val: behavioral?.neatness || 4 },
+                      { name: 'Honesty & Integrity', val: behavioral?.honesty || 4 },
+                      { name: 'Self Control & Discipline', val: behavioral?.self_control || 4 },
+                      { name: 'Peer Relationship', val: behavioral?.peer_relationship || 4 }
+                    ]);
+
+                let col1, col2, col3;
+                if (isSecondary) {
+                  const itemsPerCol = Math.ceil(displayList.length / 3);
+                  col1 = displayList.slice(0, itemsPerCol);
+                  col2 = displayList.slice(itemsPerCol, itemsPerCol * 2);
+                  col3 = displayList.slice(itemsPerCol * 2);
+                } else {
+                  const midIndex = Math.ceil(displayList.length / 2);
+                  col1 = displayList.slice(0, midIndex);
+                  col2 = displayList.slice(midIndex);
+                  col3 = [];
+                }
+
+                return (
+                  <>
+                    <div className="m-behavior-col">
+                      <div className="m-behavior-header">{affectiveColHeading}</div>
+                      {col1.map((item, idx) => (
+                        <div key={idx} className="m-behavior-row">
+                          <span>{item.name}</span>
+                          <strong>{item.val}</strong>
+                        </div>
+                      ))}
                     </div>
-                  ));
-                })()}
-              </div>
-
-              <div className="m-behavior-col">
-                <div className="m-behavior-header">{psychomotorColHeading}</div>
-                {(() => {
-                  const psychomotorSkills = Array.isArray(behavioral)
-                    ? behavioral.filter(b => (b.category || '').toLowerCase() === 'psychomotor')
-                    : [];
-
-                  const displayList = psychomotorSkills.length > 0
-                    ? psychomotorSkills.map(b => ({ name: b.name, val: b.rating || 4 }))
-                    : [
-                        { name: 'Sports & Games', val: behavioral?.sports || 4 },
-                        { name: 'Craft & Manual Skills', val: behavioral?.manual_skills || 3 },
-                        { name: 'Verbal Fluency', val: behavioral?.verbal_fluency || 4 },
-                        { name: 'Musical Skills', val: behavioral?.musical_skills || 3 },
-                        { name: 'Handwriting & Neatness', val: 4 }
-                      ];
-
-                  return displayList.map((item, idx) => (
-                    <div key={idx} className="m-behavior-row">
-                      <span>{item.name}</span>
-                      <strong>{item.val}</strong>
+                    <div className="m-behavior-col">
+                      <div className="m-behavior-header">{affectiveColHeading}</div>
+                      {col2.map((item, idx) => (
+                        <div key={idx} className="m-behavior-row">
+                          <span>{item.name}</span>
+                          <strong>{item.val}</strong>
+                        </div>
+                      ))}
                     </div>
-                  ));
-                })()}
-              </div>
+                    {isSecondary && (
+                      <div className="m-behavior-col">
+                        <div className="m-behavior-header">{affectiveColHeading}</div>
+                        {col3.map((item, idx) => (
+                          <div key={idx} className="m-behavior-row">
+                            <span>{item.name}</span>
+                            <strong>{item.val}</strong>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
-              <div className="m-behavior-key">
-                <div className="m-key-title">RATING SCALE KEY</div>
-                <div><strong>5</strong> — Excellent / Outstanding</div>
-                <div><strong>4</strong> — High Level of Display</div>
-                <div><strong>3</strong> — Acceptable / Satisfactory</div>
-                <div><strong>2</strong> — Developing / Fair</div>
-                <div><strong>1</strong> — Needs Attention</div>
-              </div>
+              {(() => {
+                const expectedSection = isSecondary ? 'secondary' : 'primary';
+                const psychomotorSkills = Array.isArray(behavioral)
+                  ? behavioral.filter(b => 
+                      (b.category || '').toLowerCase() === 'psychomotor' &&
+                      (!b.target_section || b.target_section.toLowerCase() === 'all' || b.target_section.toLowerCase() === expectedSection)
+                    )
+                  : [];
+
+                const hasDynamicSkills = Array.isArray(behavioral) && behavioral.length > 0;
+                const displayList = hasDynamicSkills
+                  ? psychomotorSkills.map(b => ({ name: b.name, val: b.rating || 4 }))
+                  : (isSecondary ? [] : [
+                      { name: 'Sports & Games', val: behavioral?.sports || 4 },
+                      { name: 'Craft & Manual Skills', val: behavioral?.manual_skills || 3 },
+                      { name: 'Verbal Fluency', val: behavioral?.verbal_fluency || 4 },
+                      { name: 'Musical Skills', val: behavioral?.musical_skills || 3 },
+                      { name: 'Handwriting & Neatness', val: 4 }
+                    ]);
+
+                const midIndex = Math.ceil(displayList.length / 2);
+                const col3 = displayList.slice(0, midIndex);
+                const col4 = displayList.slice(midIndex);
+
+                return (
+                  <>
+                    <div className="m-behavior-col">
+                      <div className="m-behavior-header">{psychomotorColHeading}</div>
+                      {col3.map((item, idx) => (
+                        <div key={idx} className="m-behavior-row">
+                          <span>{item.name}</span>
+                          <strong>{item.val}</strong>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="m-behavior-col">
+                      <div className="m-behavior-header">{psychomotorColHeading}</div>
+                      {col4.map((item, idx) => (
+                        <div key={idx} className="m-behavior-row">
+                          <span>{item.name}</span>
+                          <strong>{item.val}</strong>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -643,7 +721,6 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
           }
           .m-behavior-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 0.9fr;
             gap: 12px;
           }
           .m-behavior-col {

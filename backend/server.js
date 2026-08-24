@@ -738,7 +738,9 @@ app.post('/api/class-subjects/assign', authenticateToken, requireRole('admin'), 
 app.get('/api/skills', authenticateToken, async (req, res) => {
   try {
     const { tier } = req.query;
-    let skills = await allQuery('SELECT * FROM BEHAVIORAL_SKILLS ORDER BY category, name');
+    const affective = await allQuery("SELECT id, name, target_section, 'affective' as category FROM AFFECTIVE_SKILLS ORDER BY name");
+    const psychomotor = await allQuery("SELECT id, name, target_section, 'psychomotor' as category FROM PSYCHOMOTOR_SKILLS ORDER BY name");
+    let skills = [...affective, ...psychomotor];
     
     if (tier) {
       const t = tier.toLowerCase();
@@ -758,7 +760,11 @@ app.post('/api/skills', authenticateToken, requireRole('admin'), async (req, res
   const cat = (category || 'affective').toLowerCase();
   const section = (target_section || 'secondary').toLowerCase();
   try {
-    await runQuery('INSERT INTO BEHAVIORAL_SKILLS (name, category, target_section) VALUES (?, ?, ?)', [name, cat, section]);
+    if (cat === 'psychomotor') {
+      await runQuery('INSERT INTO PSYCHOMOTOR_SKILLS (name, target_section) VALUES (?, ?)', [name, section]);
+    } else {
+      await runQuery('INSERT INTO AFFECTIVE_SKILLS (name, target_section) VALUES (?, ?)', [name, section]);
+    }
     res.status(201).json({ message: 'Skill created successfully' });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -771,7 +777,11 @@ app.put('/api/skills/:id', authenticateToken, requireRole('admin'), async (req, 
   const cat = (category || 'affective').toLowerCase();
   const section = (target_section || 'secondary').toLowerCase();
   try {
-    await runQuery('UPDATE BEHAVIORAL_SKILLS SET name = ?, category = ?, target_section = ? WHERE id = ?', [name, cat, section, req.params.id]);
+    if (cat === 'psychomotor') {
+      await runQuery('UPDATE PSYCHOMOTOR_SKILLS SET name = ?, target_section = ? WHERE id = ?', [name, section, req.params.id]);
+    } else {
+      await runQuery('UPDATE AFFECTIVE_SKILLS SET name = ?, target_section = ? WHERE id = ?', [name, section, req.params.id]);
+    }
     res.json({ message: 'Skill updated successfully' });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -780,8 +790,13 @@ app.put('/api/skills/:id', authenticateToken, requireRole('admin'), async (req, 
 
 // Delete Skill (Admin)
 app.delete('/api/skills/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  const cat = (req.query.category || 'affective').toLowerCase();
   try {
-    await runQuery('DELETE FROM BEHAVIORAL_SKILLS WHERE id = ?', [req.params.id]);
+    if (cat === 'psychomotor') {
+      await runQuery('DELETE FROM PSYCHOMOTOR_SKILLS WHERE id = ?', [req.params.id]);
+    } else {
+      await runQuery('DELETE FROM AFFECTIVE_SKILLS WHERE id = ?', [req.params.id]);
+    }
     res.json({ message: 'Skill deleted successfully' });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -809,12 +824,17 @@ app.get('/api/skills/students/:classId', authenticateToken, async (req, res) => 
       ORDER BY u.full_name
     `, [classId]);
 
-    const evaluations = await allQuery(`
-      SELECT DISTINCT student_id FROM STUDENT_SKILLS_EVALUATION 
-      WHERE term = ? AND academic_year = ? AND student_id IN (SELECT id FROM STUDENTS WHERE class_id = ?)
-    `, [term, session, classId]);
+      const evaluationsAffective = await allQuery(`
+        SELECT DISTINCT student_id FROM STUDENT_AFFECTIVE_EVAL 
+        WHERE term = ? AND academic_year = ? AND student_id IN (SELECT id FROM STUDENTS WHERE class_id = ?)
+      `, [term, session, classId]);
 
-    const ratedIds = evaluations.map(e => e.student_id);
+      const evaluationsPsychomotor = await allQuery(`
+        SELECT DISTINCT student_id FROM STUDENT_PSYCHOMOTOR_EVAL 
+        WHERE term = ? AND academic_year = ? AND student_id IN (SELECT id FROM STUDENTS WHERE class_id = ?)
+      `, [term, session, classId]);
+
+      const ratedIds = [...new Set([...evaluationsAffective.map(e => e.student_id), ...evaluationsPsychomotor.map(e => e.student_id)])];
     const rated = students.filter(s => ratedIds.includes(s.id));
     const unrated = students.filter(s => !ratedIds.includes(s.id));
 
@@ -829,11 +849,17 @@ app.get('/api/skills/evaluations/:studentId', authenticateToken, async (req, res
   const { studentId } = req.params;
   const { term, session } = req.query;
   try {
-    const ratings = await allQuery(`
-      SELECT skill_id, rating FROM STUDENT_SKILLS_EVALUATION
+    const affective = await allQuery(`
+      SELECT skill_id, rating, 'affective' as category FROM STUDENT_AFFECTIVE_EVAL
       WHERE student_id = ? AND term = ? AND academic_year = ?
     `, [studentId, term, session]);
-    res.json(ratings);
+    
+    const psychomotor = await allQuery(`
+      SELECT skill_id, rating, 'psychomotor' as category FROM STUDENT_PSYCHOMOTOR_EVAL
+      WHERE student_id = ? AND term = ? AND academic_year = ?
+    `, [studentId, term, session]);
+
+    res.json([...affective, ...psychomotor]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -841,14 +867,22 @@ app.get('/api/skills/evaluations/:studentId', authenticateToken, async (req, res
 
 // Save Student Skills Evaluation
 app.post('/api/skills/evaluate', authenticateToken, async (req, res) => {
-  const { student_id, term, session, ratings } = req.body; // ratings: [{ skill_id, rating }]
+  const { student_id, term, session, ratings } = req.body; // ratings: [{ skill_id, rating, category }]
   try {
     for (const r of ratings) {
-      await runQuery(`
-        INSERT INTO STUDENT_SKILLS_EVALUATION (student_id, skill_id, term, academic_year, rating)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT(student_id, skill_id, term, academic_year) DO UPDATE SET rating = excluded.rating
-      `, [student_id, r.skill_id, term, session, r.rating]);
+      if ((r.category || '').toLowerCase() === 'psychomotor') {
+        await runQuery(`
+          INSERT INTO STUDENT_PSYCHOMOTOR_EVAL (student_id, skill_id, term, academic_year, rating)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(student_id, skill_id, term, academic_year) DO UPDATE SET rating = excluded.rating
+        `, [student_id, r.skill_id, term, session, r.rating]);
+      } else {
+        await runQuery(`
+          INSERT INTO STUDENT_AFFECTIVE_EVAL (student_id, skill_id, term, academic_year, rating)
+          VALUES (?, ?, ?, ?, ?)
+          ON CONFLICT(student_id, skill_id, term, academic_year) DO UPDATE SET rating = excluded.rating
+        `, [student_id, r.skill_id, term, session, r.rating]);
+      }
     }
     res.json({ message: 'Skills evaluation saved successfully' });
   } catch (err) {
@@ -1113,27 +1147,71 @@ app.get('/api/broadsheet/:classId', authenticateToken, async (req, res) => {
       gradeMap[g.student_id][g.subject_id] = g;
     });
 
+    // If 3rd Term, fetch all year grades to calculate cumulative totals for the broadsheet
+    let allYearGradeMap = {};
+    if (term === '3rd Term') {
+      const allYearGrades = await allQuery(`
+        SELECT g.student_id, g.subject_id, g.term, g.total_score 
+        FROM GRADES g
+        JOIN STUDENTS s ON g.student_id = s.id
+        WHERE s.class_id = ? AND g.academic_year = ?
+      `, [classId, session]);
+      
+      allYearGrades.forEach(g => {
+        if (!allYearGradeMap[g.student_id]) allYearGradeMap[g.student_id] = {};
+        if (!allYearGradeMap[g.student_id][g.subject_id]) allYearGradeMap[g.student_id][g.subject_id] = {};
+        allYearGradeMap[g.student_id][g.subject_id][g.term] = g.total_score;
+      });
+    }
+
     // Format broadsheet lines
     const rows = students.map(student => {
       const studentGrades = {};
       let grandTotal = 0;
       let subjectCount = 0;
       
+      let cumGrandTotal = 0;
+      let cumSubjectCount = 0;
+      
+      let term1GrandTotal = 0;
+      let term2GrandTotal = 0;
+
       subjects.forEach(sub => {
         const g = gradeMap[student.id]?.[sub.id];
         if (g) {
+          let term1_total = 0;
+          let term2_total = 0;
+          let cum_average = 0;
+
+          if (term === '3rd Term') {
+            term1_total = allYearGradeMap[student.id]?.[sub.id]?.['1st Term'] || 0;
+            term2_total = allYearGradeMap[student.id]?.[sub.id]?.['2nd Term'] || 0;
+            term1GrandTotal += term1_total;
+            term2GrandTotal += term2_total;
+
+            cum_average = parseFloat(((term1_total + term2_total + g.total_score) / 3).toFixed(1));
+            cumGrandTotal += cum_average;
+            cumSubjectCount++;
+          }
+
           studentGrades[sub.id] = {
             ca1: g.ca1, ca2: g.ca2, ca3: g.ca3, ca4: g.ca4,
-            exam: g.exam_score, total: g.total_score, grade: g.grade_letter
+            exam: g.exam_score, total: g.total_score, grade: g.grade_letter,
+            term1_total, term2_total, cum_average
           };
           grandTotal += g.total_score;
           subjectCount++;
         } else {
-          studentGrades[sub.id] = { ca1: 0, ca2: 0, ca3: 0, ca4: 0, exam: 0, total: 0, grade: '-' };
+          studentGrades[sub.id] = { 
+            ca1: 0, ca2: 0, ca3: 0, ca4: 0, exam: 0, total: 0, grade: '-',
+            term1_total: 0, term2_total: 0, cum_average: 0
+          };
         }
       });
 
       const average = subjectCount > 0 ? (grandTotal / subjectCount) : 0;
+      const cumAverage = cumSubjectCount > 0 ? parseFloat((cumGrandTotal / cumSubjectCount).toFixed(1)) : 0;
+      const overallSum = term1GrandTotal + term2GrandTotal + grandTotal;
 
       return {
         student_id: student.id,
@@ -1141,7 +1219,11 @@ app.get('/api/broadsheet/:classId', authenticateToken, async (req, res) => {
         admission_number: student.admission_number,
         grades: studentGrades,
         grandTotal,
+        term1GrandTotal,
+        term2GrandTotal,
+        overallSum,
         average,
+        cumAverage,
         subjectCount
       };
     });
@@ -1335,16 +1417,29 @@ async function buildReportCardData(targetStudentId, reqTerm, reqYear) {
     });
   }
 
-  const behavioral = await allQuery(`
-    SELECT bs.name, bs.category, COALESCE(sse.rating, 4) as rating 
-    FROM BEHAVIORAL_SKILLS bs
-    LEFT JOIN STUDENT_SKILLS_EVALUATION sse 
+  const affectiveBehavioral = await allQuery(`
+    SELECT bs.name, 'affective' as category, bs.target_section, COALESCE(sse.rating, 4) as rating 
+    FROM AFFECTIVE_SKILLS bs
+    LEFT JOIN STUDENT_AFFECTIVE_EVAL sse 
       ON bs.id = sse.skill_id 
      AND sse.student_id = ? 
      AND sse.term = ? 
      AND sse.academic_year = ?
-    ORDER BY bs.category, bs.name
+    ORDER BY bs.name
   `, [targetStudentId, reqTerm, reqYear]);
+
+  const psychomotorBehavioral = await allQuery(`
+    SELECT bs.name, 'psychomotor' as category, bs.target_section, COALESCE(sse.rating, 4) as rating 
+    FROM PSYCHOMOTOR_SKILLS bs
+    LEFT JOIN STUDENT_PSYCHOMOTOR_EVAL sse 
+      ON bs.id = sse.skill_id 
+     AND sse.student_id = ? 
+     AND sse.term = ? 
+     AND sse.academic_year = ?
+    ORDER BY bs.name
+  `, [targetStudentId, reqTerm, reqYear]);
+
+  const behavioral = [...affectiveBehavioral, ...psychomotorBehavioral];
 
   let position = null;
   let total_students = 0;

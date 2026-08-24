@@ -337,7 +337,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
     try {
       const existing = await api.getStudentSkillsEvaluation(student.id, settings.active_term, settings.active_session);
       const ratingsMap = {};
-      existing.forEach(r => { ratingsMap[r.skill_id] = r.rating; });
+      existing.forEach(r => { ratingsMap[`${r.skill_id}_${r.category}`] = r.rating; });
       setSkillRatings(ratingsMap);
     } catch (err) {
       setErrorMsg('Failed to fetch existing ratings: ' + err.message);
@@ -352,7 +352,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
     
     // Validate all skills have a rating
     for (let skill of skillsList) {
-      if (!skillRatings[skill.id]) {
+      if (!skillRatings[`${skill.id}_${skill.category}`]) {
         setErrorMsg(`Please select a rating for ${skill.name}`);
         return;
       }
@@ -363,7 +363,11 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
         student_id: evaluatingStudent.id,
         term: settings.active_term,
         session: settings.active_session,
-        ratings: Object.keys(skillRatings).map(skill_id => ({ skill_id, rating: skillRatings[skill_id] }))
+        ratings: skillsList.map(skill => ({
+          skill_id: skill.id,
+          category: skill.category,
+          rating: skillRatings[`${skill.id}_${skill.category}`]
+        }))
       };
       await api.saveStudentSkillsEvaluation(payload);
       setNotify('Skills evaluation saved successfully!');
@@ -1254,13 +1258,13 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                           <label key={rating} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}>
                             <input
                               type="radio"
-                              name={`skill_${skill.id}`}
+                              name={`skill_${skill.id}_${skill.category}`}
                               value={rating}
-                              checked={skillRatings[skill.id] === rating}
-                              onChange={() => setSkillRatings(prev => ({ ...prev, [skill.id]: rating }))}
+                              checked={skillRatings[`${skill.id}_${skill.category}`] === rating}
+                              onChange={() => setSkillRatings(prev => ({ ...prev, [`${skill.id}_${skill.category}`]: rating }))}
                               required
                             />
-                            <span style={{ fontSize: '0.85rem', marginTop: '6px', fontWeight: skillRatings[skill.id] === rating ? 'bold' : 'normal' }}>{rating}</span>
+                            <span style={{ fontSize: '0.85rem', marginTop: '6px', fontWeight: skillRatings[`${skill.id}_${skill.category}`] === rating ? 'bold' : 'normal' }}>{rating}</span>
                           </label>
                         ))}
                       </div>

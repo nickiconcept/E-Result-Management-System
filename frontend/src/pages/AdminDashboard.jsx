@@ -799,10 +799,10 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
     }
   };
 
-  const handleSkillDelete = async (id) => {
+  const handleSkillDelete = async (id, category) => {
     if (!window.confirm('Are you sure you want to delete this skill?')) return;
     try {
-      await api.deleteSkill(id);
+      await api.deleteSkill(id, category);
       setNotify('Skill deleted successfully!');
       loadAllData();
     } catch (err) {
@@ -4054,7 +4054,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                                   >
                                     <Edit3 size={14} />
                                   </button>
-                                  <button className="btn btn-danger" title="Delete" style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => handleSkillDelete(s.id)}><Trash2 size={14} /></button>
+                                  <button className="btn btn-danger" title="Delete" style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => handleSkillDelete(s.id, s.category)}><Trash2 size={14} /></button>
                                 </td>
                               </tr>
                             ))

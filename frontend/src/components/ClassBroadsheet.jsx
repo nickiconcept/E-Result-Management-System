@@ -41,9 +41,28 @@ export default function ClassBroadsheet({ data, className, term, session, settin
     // Header row 1 (Subject labels)
     const headers1 = ['Student Name', 'Admission No'];
     subjects.forEach(sub => {
-      headers1.push(sub.name, '', '', '', '', '', '');
+      if (term === '3rd Term') {
+        let blanks = [];
+        let colCount = 4; // Exam, 3rd Term Total, Cumm Avg, Grade
+        if (!settings?.max_ca_count || settings.max_ca_count >= 1) colCount++;
+        if (!settings?.max_ca_count || settings.max_ca_count >= 2) colCount++;
+        if (!settings?.max_ca_count || settings.max_ca_count >= 3) colCount++;
+        if (!settings?.max_ca_count || settings.max_ca_count >= 4) colCount++;
+        colCount += 2; // 1st term, 2nd term
+        for(let i=1; i<colCount; i++) blanks.push('');
+        headers1.push(sub.name, ...blanks);
+      } else {
+        let blanks = [];
+        let colCount = 3; // Exam, Total, Grade
+        if (!settings?.max_ca_count || settings.max_ca_count >= 1) colCount++;
+        if (!settings?.max_ca_count || settings.max_ca_count >= 2) colCount++;
+        if (!settings?.max_ca_count || settings.max_ca_count >= 3) colCount++;
+        if (!settings?.max_ca_count || settings.max_ca_count >= 4) colCount++;
+        for(let i=1; i<colCount; i++) blanks.push('');
+        headers1.push(sub.name, ...blanks);
+      }
     });
-    headers1.push('Grand Total', 'Average (%)', 'Position');
+    headers1.push(term === '3rd Term' ? 'Cumm Average (%)' : 'Grand Total', term === '3rd Term' ? '' : 'Average (%)', 'Position');
     csv += headers1.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + '\r\n';
 
     // Header row 2 (Assessment component columns)
@@ -55,7 +74,17 @@ export default function ClassBroadsheet({ data, className, term, session, settin
 
     const headers2 = ['', ''];
     subjects.forEach(() => {
-      headers2.push(ca1Name, ca2Name, ca3Name, ca4Name, examName, 'Total', 'Grade');
+      if (!settings?.max_ca_count || settings.max_ca_count >= 1) headers2.push(ca1Name);
+      if (!settings?.max_ca_count || settings.max_ca_count >= 2) headers2.push(ca2Name);
+      if (!settings?.max_ca_count || settings.max_ca_count >= 3) headers2.push(ca3Name);
+      if (!settings?.max_ca_count || settings.max_ca_count >= 4) headers2.push(ca4Name);
+      headers2.push(examName);
+      
+      if (term === '3rd Term') {
+        headers2.push('3rd Term Total', '1st Term', '2nd Term', 'Cumm Avg', 'Grade');
+      } else {
+        headers2.push('Total', 'Grade');
+      }
     });
     headers2.push('', '', '');
     csv += headers2.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',') + '\r\n';
@@ -68,23 +97,43 @@ export default function ClassBroadsheet({ data, className, term, session, settin
       ];
 
       subjects.forEach(sub => {
-        const sg = (r.subject_grades || {})[sub.id] || {};
-        rowVals.push(
-          sg.ca1 !== undefined && sg.ca1 !== null ? sg.ca1 : '-',
-          sg.ca2 !== undefined && sg.ca2 !== null ? sg.ca2 : '-',
-          sg.ca3 !== undefined && sg.ca3 !== null ? sg.ca3 : '-',
-          sg.ca4 !== undefined && sg.ca4 !== null ? sg.ca4 : '-',
-          sg.exam !== undefined && sg.exam !== null ? sg.exam : '-',
-          sg.total_score !== undefined && sg.total_score !== null ? sg.total_score : '-',
-          sg.grade || '-'
-        );
+        const sg = (r.grades || {})[sub.id] || {};
+        
+        if (!settings?.max_ca_count || settings.max_ca_count >= 1) rowVals.push(sg.ca1 !== undefined && sg.ca1 !== null ? sg.ca1 : '-');
+        if (!settings?.max_ca_count || settings.max_ca_count >= 2) rowVals.push(sg.ca2 !== undefined && sg.ca2 !== null ? sg.ca2 : '-');
+        if (!settings?.max_ca_count || settings.max_ca_count >= 3) rowVals.push(sg.ca3 !== undefined && sg.ca3 !== null ? sg.ca3 : '-');
+        if (!settings?.max_ca_count || settings.max_ca_count >= 4) rowVals.push(sg.ca4 !== undefined && sg.ca4 !== null ? sg.ca4 : '-');
+        rowVals.push(sg.exam !== undefined && sg.exam !== null ? sg.exam : '-');
+
+        if (term === '3rd Term') {
+          rowVals.push(
+            sg.total !== undefined && sg.total !== null ? sg.total : '-',
+            sg.term1_total !== undefined && sg.term1_total !== null ? sg.term1_total : '-',
+            sg.term2_total !== undefined && sg.term2_total !== null ? sg.term2_total : '-',
+            sg.cum_average !== undefined && sg.cum_average !== null ? sg.cum_average : '-',
+            sg.grade || '-'
+          );
+        } else {
+          rowVals.push(
+            sg.total !== undefined && sg.total !== null ? sg.total : '-',
+            sg.grade || '-'
+          );
+        }
       });
 
-      rowVals.push(
-        r.grand_total !== undefined ? r.grand_total : '-',
-        r.average !== undefined ? r.average : '-',
-        r.position !== undefined ? r.position : '-'
-      );
+      if (term === '3rd Term') {
+        rowVals.push(
+          r.cumAverage !== undefined ? r.cumAverage.toFixed(1) : '-',
+          '', // No second average column for 3rd term
+          r.position !== undefined ? r.position : '-'
+        );
+      } else {
+        rowVals.push(
+          r.grandTotal !== undefined ? r.grandTotal : '-',
+          r.average !== undefined ? r.average : '-',
+          r.position !== undefined ? r.position : '-'
+        );
+      }
 
       csv += rowVals.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',') + '\r\n';
     });
@@ -141,7 +190,7 @@ export default function ClassBroadsheet({ data, className, term, session, settin
               <th rowSpan="2" style={{ minWidth: '150px' }}>Student Name</th>
               <th rowSpan="2" style={{ minWidth: '100px' }}>Admission No</th>
               {subjects.map((sub, idx) => {
-                let colSpan = 3;
+                let colSpan = term === '3rd Term' ? 6 : 3; // 3rd Term base: Exam, 3rd Total, 1st Tot, 2nd Tot, Cumm Avg, Grade. Other terms: Exam, Total, Grade.
                 if (!settings?.max_ca_count || settings.max_ca_count >= 1) colSpan++;
                 if (!settings?.max_ca_count || settings.max_ca_count >= 2) colSpan++;
                 if (!settings?.max_ca_count || settings.max_ca_count >= 3) colSpan++;
@@ -152,8 +201,20 @@ export default function ClassBroadsheet({ data, className, term, session, settin
                   </th>
                 );
               })}
-              <th rowSpan="2">Grand Total</th>
-              <th rowSpan="2">Average</th>
+              {term === '3rd Term' ? (
+                <>
+                  <th rowSpan="2">1st Term Total</th>
+                  <th rowSpan="2">2nd Term Total</th>
+                  <th rowSpan="2">3rd Term Total</th>
+                  <th rowSpan="2">Overall Sum</th>
+                  <th rowSpan="2">Cumm Avg (%)</th>
+                </>
+              ) : (
+                <>
+                  <th rowSpan="2">Grand Total</th>
+                  <th rowSpan="2">Average</th>
+                </>
+              )}
               <th rowSpan="2">Position</th>
             </tr>
             <tr>
@@ -164,7 +225,16 @@ export default function ClassBroadsheet({ data, className, term, session, settin
                   {(!settings?.max_ca_count || settings.max_ca_count >= 3) && <th className="sub-header">{settings?.ca3_name ? settings.ca3_name.substring(0, 3) : 'C3'}</th>}
                   {(!settings?.max_ca_count || settings.max_ca_count >= 4) && <th className="sub-header">{settings?.ca4_name ? settings.ca4_name.substring(0, 3) : 'C4'}</th>}
                   <th className="sub-header">{settings?.exam_name ? settings.exam_name.substring(0, 3) : 'Exm'}</th>
-                  <th className="sub-header">Tot</th>
+                  {term === '3rd Term' ? (
+                    <>
+                      <th className="sub-header">3rd Tot</th>
+                      <th className="sub-header">1st Tot</th>
+                      <th className="sub-header">2nd Tot</th>
+                      <th className="sub-header">Cumm Avg</th>
+                    </>
+                  ) : (
+                    <th className="sub-header">Tot</th>
+                  )}
                   <th className="sub-header">Grd</th>
                 </React.Fragment>
               ))}
@@ -184,20 +254,49 @@ export default function ClassBroadsheet({ data, className, term, session, settin
                     const g = row.grades[sub.id];
                     return (
                       <React.Fragment key={sIdx}>
-                        {(!settings?.max_ca_count || settings.max_ca_count >= 1) && <td>{g ? g.ca1 : 0}</td>}
-                        {(!settings?.max_ca_count || settings.max_ca_count >= 2) && <td>{g ? g.ca2 : 0}</td>}
-                        {(!settings?.max_ca_count || settings.max_ca_count >= 3) && <td>{g ? g.ca3 : 0}</td>}
-                        {(!settings?.max_ca_count || settings.max_ca_count >= 4) && <td>{g ? g.ca4 : 0}</td>}
-                        <td>{g ? g.exam : 0}</td>
-                        <td className="total-col">{g ? g.total : 0}</td>
-                        <td style={{ fontWeight: 'bold' }}>{g ? g.grade : '-'}</td>
-                      </React.Fragment>
-                    );
-                  })}
-                  <td style={{ fontWeight: 'bold', backgroundColor: 'var(--primary-light)' }}>
-                    {row.grandTotal}
-                  </td>
-                  <td style={{ fontWeight: 'bold' }}>{row.average.toFixed(1)}%</td>
+                          {(!settings?.max_ca_count || settings.max_ca_count >= 1) && <td>{g ? g.ca1 : 0}</td>}
+                          {(!settings?.max_ca_count || settings.max_ca_count >= 2) && <td>{g ? g.ca2 : 0}</td>}
+                          {(!settings?.max_ca_count || settings.max_ca_count >= 3) && <td>{g ? g.ca3 : 0}</td>}
+                          {(!settings?.max_ca_count || settings.max_ca_count >= 4) && <td>{g ? g.ca4 : 0}</td>}
+                          <td>{g ? g.exam : 0}</td>
+                          <td className="total-col">{g ? g.total : 0}</td>
+                          {term === '3rd Term' && (
+                            <>
+                              <td className="total-col">{g ? g.term1_total : 0}</td>
+                              <td className="total-col">{g ? g.term2_total : 0}</td>
+                              <td className="total-col" style={{ fontWeight: 'bold' }}>{g ? g.cum_average : 0}</td>
+                            </>
+                          )}
+                          <td style={{ fontWeight: 'bold' }}>{g ? (term === '3rd Term' && g.cum_grade ? g.cum_grade : g.grade) : '-'}</td>
+                        </React.Fragment>
+                      );
+                    })}
+                    {term === '3rd Term' ? (
+                      <>
+                        <td style={{ fontWeight: 'bold', backgroundColor: 'var(--primary-light)' }}>
+                          {row.term1GrandTotal}
+                        </td>
+                        <td style={{ fontWeight: 'bold', backgroundColor: 'var(--primary-light)' }}>
+                          {row.term2GrandTotal}
+                        </td>
+                        <td style={{ fontWeight: 'bold', backgroundColor: 'var(--primary-light)' }}>
+                          {row.grandTotal}
+                        </td>
+                        <td style={{ fontWeight: 'bold', backgroundColor: 'var(--primary-light)', color: 'var(--primary)' }}>
+                          {row.overallSum}
+                        </td>
+                        <td style={{ fontWeight: 'bold', backgroundColor: 'var(--primary-light)' }}>
+                          {row.cumAverage ? row.cumAverage.toFixed(1) : 0}%
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ fontWeight: 'bold', backgroundColor: 'var(--primary-light)' }}>
+                          {row.grandTotal}
+                        </td>
+                        <td style={{ fontWeight: 'bold' }}>{row.average ? row.average.toFixed(1) : 0}%</td>
+                      </>
+                    )}
                   <td style={{ fontWeight: 'bold', color: row.position <= 3 ? 'var(--success)' : 'inherit' }}>
                     {row.position}
                   </td>

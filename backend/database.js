@@ -286,30 +286,29 @@ async function initDB() {
     );
   `);
 
-  // Create BEHAVIORAL_SKILLS Table
+  // Create AFFECTIVE_SKILLS Table
   await runQuery(`
-    CREATE TABLE IF NOT EXISTS BEHAVIORAL_SKILLS (
+    CREATE TABLE IF NOT EXISTS AFFECTIVE_SKILLS (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
-      category TEXT NOT NULL CHECK(category IN ('affective', 'psychomotor')),
       target_section TEXT DEFAULT 'secondary' CHECK(target_section IN ('primary', 'secondary', 'all')),
-      UNIQUE(name, category, target_section)
+      UNIQUE(name, target_section)
     );
   `);
 
-  // Migration check to ensure all categories are lowercase
-  try {
-    await runQuery(`UPDATE BEHAVIORAL_SKILLS SET category = LOWER(category) WHERE category != LOWER(category)`);
-  } catch (err) {}
-
-  // Migration check to add target_section column
-  try {
-    await runQuery(`ALTER TABLE BEHAVIORAL_SKILLS ADD COLUMN target_section TEXT DEFAULT 'secondary' CHECK(target_section IN ('primary', 'secondary', 'all'))`);
-  } catch (err) {}
-
-  // Create STUDENT_SKILLS_EVALUATION Table
+  // Create PSYCHOMOTOR_SKILLS Table
   await runQuery(`
-    CREATE TABLE IF NOT EXISTS STUDENT_SKILLS_EVALUATION (
+    CREATE TABLE IF NOT EXISTS PSYCHOMOTOR_SKILLS (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      target_section TEXT DEFAULT 'secondary' CHECK(target_section IN ('primary', 'secondary', 'all')),
+      UNIQUE(name, target_section)
+    );
+  `);
+
+  // Create STUDENT_AFFECTIVE_EVAL Table
+  await runQuery(`
+    CREATE TABLE IF NOT EXISTS STUDENT_AFFECTIVE_EVAL (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       student_id INTEGER,
       skill_id INTEGER,
@@ -317,10 +316,72 @@ async function initDB() {
       academic_year TEXT NOT NULL,
       rating INTEGER CHECK(rating BETWEEN 1 AND 5),
       FOREIGN KEY(student_id) REFERENCES STUDENTS(id) ON DELETE CASCADE,
-      FOREIGN KEY(skill_id) REFERENCES BEHAVIORAL_SKILLS(id) ON DELETE CASCADE,
+      FOREIGN KEY(skill_id) REFERENCES AFFECTIVE_SKILLS(id) ON DELETE CASCADE,
       UNIQUE(student_id, skill_id, term, academic_year)
     );
   `);
+
+  // Create STUDENT_PSYCHOMOTOR_EVAL Table
+  await runQuery(`
+    CREATE TABLE IF NOT EXISTS STUDENT_PSYCHOMOTOR_EVAL (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER,
+      skill_id INTEGER,
+      term TEXT NOT NULL,
+      academic_year TEXT NOT NULL,
+      rating INTEGER CHECK(rating BETWEEN 1 AND 5),
+      FOREIGN KEY(student_id) REFERENCES STUDENTS(id) ON DELETE CASCADE,
+      FOREIGN KEY(skill_id) REFERENCES PSYCHOMOTOR_SKILLS(id) ON DELETE CASCADE,
+      UNIQUE(student_id, skill_id, term, academic_year)
+    );
+  `);
+
+  // Data Migration from BEHAVIORAL_SKILLS to the new tables
+  try {
+    const tableCheck = await getQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='BEHAVIORAL_SKILLS'");
+    if (tableCheck) {
+      console.log('Migrating BEHAVIORAL_SKILLS data to separated tables...');
+      
+      // Affective Skills Migration
+      const affectiveSkills = await allQuery("SELECT id, name, target_section FROM BEHAVIORAL_SKILLS WHERE category = 'affective'");
+      for (const skill of affectiveSkills) {
+        await runQuery("INSERT OR IGNORE INTO AFFECTIVE_SKILLS (name, target_section) VALUES (?, ?)", [skill.name, skill.target_section]);
+        const inserted = await getQuery("SELECT id FROM AFFECTIVE_SKILLS WHERE name = ? AND target_section = ?", [skill.name, skill.target_section]);
+        if (inserted) {
+          const newId = inserted.id;
+          // Migrate evaluations for this skill
+          const evals = await allQuery("SELECT * FROM STUDENT_SKILLS_EVALUATION WHERE skill_id = ?", [skill.id]);
+          for (const ev of evals) {
+            await runQuery("INSERT OR IGNORE INTO STUDENT_AFFECTIVE_EVAL (student_id, skill_id, term, academic_year, rating) VALUES (?, ?, ?, ?, ?)", 
+              [ev.student_id, newId, ev.term, ev.academic_year, ev.rating]);
+          }
+        }
+      }
+
+      // Psychomotor Skills Migration
+      const psychomotorSkills = await allQuery("SELECT id, name, target_section FROM BEHAVIORAL_SKILLS WHERE category = 'psychomotor'");
+      for (const skill of psychomotorSkills) {
+        await runQuery("INSERT OR IGNORE INTO PSYCHOMOTOR_SKILLS (name, target_section) VALUES (?, ?)", [skill.name, skill.target_section]);
+        const inserted = await getQuery("SELECT id FROM PSYCHOMOTOR_SKILLS WHERE name = ? AND target_section = ?", [skill.name, skill.target_section]);
+        if (inserted) {
+          const newId = inserted.id;
+          // Migrate evaluations for this skill
+          const evals = await allQuery("SELECT * FROM STUDENT_SKILLS_EVALUATION WHERE skill_id = ?", [skill.id]);
+          for (const ev of evals) {
+            await runQuery("INSERT OR IGNORE INTO STUDENT_PSYCHOMOTOR_EVAL (student_id, skill_id, term, academic_year, rating) VALUES (?, ?, ?, ?, ?)", 
+              [ev.student_id, newId, ev.term, ev.academic_year, ev.rating]);
+          }
+        }
+      }
+
+      // Drop old tables
+      await runQuery("DROP TABLE STUDENT_SKILLS_EVALUATION");
+      await runQuery("DROP TABLE BEHAVIORAL_SKILLS");
+      console.log('Migration completed and old tables dropped.');
+    }
+  } catch (err) {
+    console.error('Error during behavioral skills migration:', err);
+  }
 
   // Create FEE_INVOICES Table
   await runQuery(`
@@ -468,22 +529,28 @@ async function initDB() {
   }
 
   // 3. Seed Default Behavioral Skills
-  const skillsCount = await getQuery('SELECT COUNT(*) as count FROM BEHAVIORAL_SKILLS');
-  if (skillsCount.count === 0) {
+  const affectiveCount = await getQuery('SELECT COUNT(*) as count FROM AFFECTIVE_SKILLS');
+  if (affectiveCount.count === 0) {
     console.log('Seeding initial behavioral skills...');
-    const defaultSkills = [
-      { name: 'Punctuality', category: 'affective' },
-      { name: 'Neatness', category: 'affective' },
-      { name: 'Honesty', category: 'affective' },
-      { name: 'Self Control', category: 'affective' },
-      { name: 'Peer Relationship', category: 'affective' },
-      { name: 'Sports & Games', category: 'psychomotor' },
-      { name: 'Manual Skills', category: 'psychomotor' },
-      { name: 'Musical Skills', category: 'psychomotor' },
-      { name: 'Verbal Fluency', category: 'psychomotor' }
+    const defaultAffective = [
+      { name: 'Punctuality' },
+      { name: 'Neatness' },
+      { name: 'Honesty' },
+      { name: 'Self Control' },
+      { name: 'Peer Relationship' }
     ];
-    for (const skill of defaultSkills) {
-      await runQuery(`INSERT INTO BEHAVIORAL_SKILLS (name, category) VALUES (?, ?)`, [skill.name, skill.category]);
+    for (const skill of defaultAffective) {
+      await runQuery(`INSERT INTO AFFECTIVE_SKILLS (name) VALUES (?)`, [skill.name]);
+    }
+
+    const defaultPsychomotor = [
+      { name: 'Sports & Games' },
+      { name: 'Manual Skills' },
+      { name: 'Musical Skills' },
+      { name: 'Verbal Fluency' }
+    ];
+    for (const skill of defaultPsychomotor) {
+      await runQuery(`INSERT INTO PSYCHOMOTOR_SKILLS (name) VALUES (?)`, [skill.name]);
     }
   }
 

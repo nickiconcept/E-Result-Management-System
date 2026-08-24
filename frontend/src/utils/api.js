@@ -80,8 +80,10 @@ const api = {
     });
     return handleResponse(res);
   },
-  deleteSkill: async (id) => {
-    const res = await fetch(`${API_BASE}/skills/${id}`, {
+  deleteSkill: async (id, category) => {
+    let url = `${API_BASE}/skills/${id}`;
+    if (category) url += `?category=${category}`;
+    const res = await fetch(url, {
       method: 'DELETE',
       headers: getHeaders()
     });
