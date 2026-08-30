@@ -176,13 +176,25 @@ app.post('/api/settings', authenticateToken, requireRole('admin'), async (req, r
     principal_name,
     principal_signature,
     next_term_fee,
+    next_term_fee_nursery,
+    next_term_fee_primary,
+    next_term_fee_jss,
+    next_term_fee_sss,
     next_term_begins,
     next_term_ends,
     last_term_debit,
     allow_past_attendance,
     allow_fm_register_student,
     allow_fm_edit_student,
-    max_ca_count
+    max_ca_count,
+    global_pass_mark,
+    science_pass_mark,
+    arts_pass_mark,
+    commercial_pass_mark,
+    feature1_icon, feature1_title, feature1_desc,
+    feature2_icon, feature2_title, feature2_desc,
+    feature3_icon, feature3_title, feature3_desc,
+    feature4_icon, feature4_title, feature4_desc
   } = req.body;
   try {
     const settings = await getQuery('SELECT id FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1');
@@ -213,13 +225,25 @@ app.post('/api/settings', authenticateToken, requireRole('admin'), async (req, r
         principal_name = ?,
         principal_signature = ?,
         next_term_fee = ?,
+        next_term_fee_nursery = ?,
+        next_term_fee_primary = ?,
+        next_term_fee_jss = ?,
+        next_term_fee_sss = ?,
         next_term_begins = ?,
         next_term_ends = ?,
         last_term_debit = ?,
         allow_past_attendance = ?,
         allow_fm_register_student = ?,
         allow_fm_edit_student = ?,
-        max_ca_count = ?
+        max_ca_count = ?,
+        global_pass_mark = ?,
+        science_pass_mark = ?,
+        arts_pass_mark = ?,
+        commercial_pass_mark = ?,
+        feature1_icon = ?, feature1_title = ?, feature1_desc = ?,
+        feature2_icon = ?, feature2_title = ?, feature2_desc = ?,
+        feature3_icon = ?, feature3_title = ?, feature3_desc = ?,
+        feature4_icon = ?, feature4_title = ?, feature4_desc = ?
       WHERE id = ?
     `, [
       active_session, 
@@ -246,6 +270,10 @@ app.post('/api/settings', authenticateToken, requireRole('admin'), async (req, r
       principal_name || '',
       principal_signature || null,
       next_term_fee || '',
+      next_term_fee_nursery || '',
+      next_term_fee_primary || '',
+      next_term_fee_jss || '',
+      next_term_fee_sss || '',
       next_term_begins || '',
       next_term_ends || '',
       last_term_debit || '',
@@ -253,6 +281,22 @@ app.post('/api/settings', authenticateToken, requireRole('admin'), async (req, r
       allow_fm_register_student !== undefined ? allow_fm_register_student : 0,
       allow_fm_edit_student !== undefined ? allow_fm_edit_student : 0,
       max_ca_count || 4,
+      global_pass_mark || 40,
+      science_pass_mark || 60,
+      arts_pass_mark || 40,
+      commercial_pass_mark || 50,
+      feature1_icon || 'Award',
+      feature1_title || 'Check Results',
+      feature1_desc || 'View and print your report cards online, instantly and securely.',
+      feature2_icon || 'CreditCard',
+      feature2_title || 'View Fees',
+      feature2_desc || 'Check your fee balance and download official payment receipts.',
+      feature3_icon || 'ShieldCheck',
+      feature3_title || 'Result PIN Codes',
+      feature3_desc || 'Secure scratch card codes — limited to 5 checks per term.',
+      feature4_icon || 'BookOpen',
+      feature4_title || 'Rules & Guidelines',
+      feature4_desc || 'Read school requirements and sign parent undertakings online.',
       settings.id
     ]);
     res.json({ message: 'Settings updated successfully' });
@@ -325,6 +369,20 @@ app.post('/api/users/register-student', authenticateToken, async (req, res) => {
         INSERT INTO FEE_INVOICES (student_id, title, category, amount_due, amount_paid, status)
         VALUES (?, 'Outstanding Offline Debt', 'Outstanding Debt', ?, 0, 'unpaid')
       `, [studentId, Number(offline_debt_amount)]);
+    }
+
+    // Auto-generate standard school fees for the student's class tier
+    if (class_id) {
+      const classData = await getQuery('SELECT tier FROM CLASSES WHERE id = ?', [class_id]);
+      if (classData && classData.tier) {
+        const feeStructures = await allQuery('SELECT * FROM FEE_STRUCTURES WHERE tier = ?', [classData.tier]);
+        for (const fee of feeStructures) {
+          await runQuery(`
+            INSERT INTO FEE_INVOICES (student_id, title, category, amount_due, amount_paid, status)
+            VALUES (?, ?, ?, ?, 0, 'unpaid')
+          `, [studentId, fee.title, fee.category, fee.amount]);
+        }
+      }
     }
 
     res.status(201).json({ message: 'Student registered successfully', admission_number, studentId });
@@ -508,6 +566,43 @@ app.get('/api/students', authenticateToken, async (req, res) => {
   }
 });
 
+// Get all graduated students
+app.get('/api/students/graduated', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const students = await allQuery(`
+      SELECT s.*, u.full_name, u.username 
+      FROM STUDENTS s
+      JOIN USERS u ON s.id = u.id
+      WHERE s.status = 'graduated'
+      ORDER BY u.full_name
+    `);
+    res.json(students);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Transition graduated students to new class
+app.post('/api/students/transition', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { student_ids, target_class_id } = req.body;
+  
+  if (!student_ids || !Array.isArray(student_ids) || student_ids.length === 0) {
+    return res.status(400).json({ error: 'No students selected for transition.' });
+  }
+  if (!target_class_id) {
+    return res.status(400).json({ error: 'Target class is required.' });
+  }
+
+  try {
+    for (const studId of student_ids) {
+      await runQuery("UPDATE STUDENTS SET status = 'active', class_id = ? WHERE id = ?", [target_class_id, studId]);
+    }
+    res.json({ message: `Successfully transitioned ${student_ids.length} students.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // List all Teachers
 app.get('/api/teachers', authenticateToken, async (req, res) => {
   try {
@@ -543,6 +638,22 @@ app.post('/api/users/update-status', authenticateToken, requireRole('admin'), as
     }
 
     res.json({ message: 'User status updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get student cumulative averages for a session
+app.get('/api/students/averages', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { year } = req.query;
+  try {
+    const averages = await allQuery(`
+      SELECT student_id, AVG(total_score) as average
+      FROM GRADES
+      WHERE academic_year = ?
+      GROUP BY student_id
+    `, [year]);
+    res.json(averages);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -919,6 +1030,28 @@ app.get('/api/teacher/assignments', authenticateToken, requireRole('teacher', 'f
 // ==========================================
 
 // Get Attendance Summary Report (Admin & Form Masters)
+// Get individual student attendance (last 90 days for current term proxy)
+app.get('/api/attendance/student/:studentId', authenticateToken, async (req, res) => {
+  const { studentId } = req.params;
+
+  if (req.user.role === 'student' && req.user.id !== parseInt(studentId)) {
+    return res.status(403).json({ error: 'Unauthorized access.' });
+  }
+
+  try {
+    const attendance = await allQuery(`
+      SELECT date, status 
+      FROM ATTENDANCE 
+      WHERE student_id = ? 
+      ORDER BY date DESC 
+      LIMIT 90
+    `, [studentId]);
+    res.json(attendance);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/attendance/report/:classId', authenticateToken, async (req, res) => {
   const { classId } = req.params;
   const { start_date, end_date } = req.query;
@@ -1554,6 +1687,16 @@ app.get('/api/report-card/:studentId', authenticateToken, async (req, res) => {
 
   try {
     if (req.user.role === 'student') {
+      // Enforce Term-Specific Fee Payment
+      const unpaidTermFees = await getQuery(`
+        SELECT id FROM FEE_INVOICES 
+        WHERE student_id = ? AND status != 'paid' AND title LIKE ?
+      `, [studentId, `%${term} ${year}%`]);
+
+      if (unpaidTermFees) {
+        return res.status(403).json({ error: 'Access Denied: Outstanding school fees for this term must be cleared before viewing this result.' });
+      }
+
       const boundPin = await getQuery(`
         SELECT * FROM RESULT_PINS 
         WHERE student_id = ? AND term = ? AND academic_year = ?
@@ -1899,6 +2042,53 @@ app.delete('/api/schemes/:id', authenticateToken, requireRole('admin'), async (r
 // ==========================================
 // 10. FINANCE & FEES SYSTEM (OFFLINE LOGGING)
 // ==========================================
+// Generate Termly Fees for all students based on Fee Structures
+app.post('/api/fees/generate-termly', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const settings = await getQuery("SELECT * FROM SYSTEM_SETTINGS ORDER BY id DESC LIMIT 1");
+    if (!settings || !settings.active_term || !settings.active_session) {
+      return res.status(400).json({ error: 'School Term or Session is not properly configured in settings' });
+    }
+
+    const termLabel = `${settings.active_term} ${settings.active_session}`;
+
+    // Get all active students with their class tiers
+    const students = await allQuery(`
+      SELECT s.id, c.tier 
+      FROM STUDENTS s
+      JOIN CLASSES c ON s.class_id = c.id
+      JOIN USERS u ON s.id = u.id
+      WHERE u.status = 'active'
+    `);
+
+    let generatedCount = 0;
+
+    for (const student of students) {
+      if (!student.tier) continue;
+      
+      const structures = await allQuery('SELECT * FROM FEE_STRUCTURES WHERE tier = ?', [student.tier]);
+      
+      for (const structure of structures) {
+        const invoiceTitle = `${structure.title} - ${termLabel}`;
+        
+        // Prevent duplicates
+        const existing = await getQuery('SELECT id FROM FEE_INVOICES WHERE student_id = ? AND title = ?', [student.id, invoiceTitle]);
+        
+        if (!existing) {
+          await runQuery(`
+            INSERT INTO FEE_INVOICES (student_id, title, category, amount_due, amount_paid, status)
+            VALUES (?, ?, ?, ?, 0, 'unpaid')
+          `, [student.id, invoiceTitle, structure.category, structure.amount]);
+          generatedCount++;
+        }
+      }
+    }
+
+    res.json({ message: `Successfully generated ${generatedCount} new termly invoices.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Add Invoice to specific class OR whole tier
 app.post('/api/fees/add', authenticateToken, requireRole('admin'), async (req, res) => {
@@ -1931,6 +2121,31 @@ app.post('/api/fees/add', authenticateToken, requireRole('admin'), async (req, r
     }
 
     res.status(201).json({ message: `Invoice successfully created for ${studentIds.length} students.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update Fee Invoice (Admin Only)
+app.put('/api/fees/invoice/:id', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { id } = req.params;
+  const { title, category, amount_due } = req.body;
+  
+  try {
+    const invoice = await getQuery('SELECT * FROM FEE_INVOICES WHERE id = ?', [id]);
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found.' });
+    
+    let status = 'unpaid';
+    if (invoice.amount_paid >= amount_due) status = 'paid';
+    else if (invoice.amount_paid > 0) status = 'partial';
+    
+    await runQuery(`
+      UPDATE FEE_INVOICES 
+      SET title = ?, category = ?, amount_due = ?, status = ?
+      WHERE id = ?
+    `, [title, category || 'School Fees', parseFloat(amount_due), status, id]);
+    
+    res.json({ message: 'Invoice updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -2306,15 +2521,104 @@ app.delete('/api/fees/structures/:id', authenticateToken, requireRole('admin'), 
 // Get School Fees Paid Audit Report (Admin Only)
 app.get('/api/fees/report', authenticateToken, requireRole('admin'), async (req, res) => {
   try {
-    const report = await allQuery(`
-      SELECT f.*, u.full_name, s.admission_number, c.name as class_name
-      FROM FEE_INVOICES f
-      JOIN STUDENTS s ON f.student_id = s.id
-      JOIN USERS u ON s.id = u.id
+    const data = await allQuery(`
+      SELECT 
+        s.id as student_id,
+        u.full_name,
+        c.name as class_name,
+        SUM(i.amount_due) as amount_due,
+        SUM(i.amount_paid) as amount_paid,
+        SUM(i.amount_due) - SUM(i.amount_paid) as balance
+      FROM STUDENTS s
+      LEFT JOIN USERS u ON s.id = u.id
+      LEFT JOIN FEE_INVOICES i ON s.id = i.student_id
       LEFT JOIN CLASSES c ON s.class_id = c.id
-      ORDER BY c.name, u.full_name, f.title
+      GROUP BY s.id
     `);
-    res.json(report);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get Custom Invoices (Grouped)
+app.get('/api/fees/custom-invoices', authenticateToken, requireRole('admin'), async (req, res) => {
+  try {
+    const data = await allQuery(`
+      SELECT 
+        MIN(i.id) as id,
+        i.title,
+        i.category,
+        i.amount_due,
+        c.id as class_id,
+        c.name as class_name,
+        c.tier,
+        COUNT(i.id) as student_count,
+        SUM(i.amount_paid) as total_paid
+      FROM FEE_INVOICES i
+      JOIN STUDENTS s ON i.student_id = s.id
+      LEFT JOIN CLASSES c ON s.class_id = c.id
+      WHERE i.category != 'School Fees'
+      GROUP BY i.title, i.category, c.id, c.name, c.tier, i.amount_due
+      ORDER BY c.name, i.title
+    `);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update Custom Invoice Group (Admin Only)
+app.put('/api/fees/custom-invoices-group', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { old_title, old_category, old_class_id, old_amount_due, new_title, new_category, new_amount_due } = req.body;
+  try {
+    let query = `
+      UPDATE FEE_INVOICES 
+      SET title = ?, category = ?, amount_due = ?
+      WHERE title = ? AND category = ? AND amount_due = ? AND student_id IN (
+        SELECT id FROM STUDENTS WHERE class_id = ?
+      )
+    `;
+    const params = [
+      new_title, new_category, parseFloat(new_amount_due),
+      old_title, old_category, parseFloat(old_amount_due), old_class_id
+    ];
+    
+    // If it was assigned without class_id (e.g. tier-based without class mapping if that happens, but our grouped query groups by class_id).
+    // Actually, students always have a class_id.
+    
+    await runQuery(query, params);
+    res.json({ message: 'Custom invoices updated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete Custom Invoice Group (Admin Only)
+app.post('/api/fees/custom-invoices-group/delete', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { title, category, class_id, amount_due, tier } = req.body;
+  try {
+    let query = '';
+    let params = [];
+    if (class_id) {
+      query = `
+        DELETE FROM FEE_INVOICES 
+        WHERE title = ? AND category = ? AND amount_due = ? AND student_id IN (
+          SELECT id FROM STUDENTS WHERE class_id = ?
+        )
+      `;
+      params = [title, category, parseFloat(amount_due), class_id];
+    } else {
+      query = `
+        DELETE FROM FEE_INVOICES 
+        WHERE title = ? AND category = ? AND amount_due = ? AND student_id IN (
+          SELECT s.id FROM STUDENTS s JOIN CLASSES c ON s.class_id = c.id WHERE c.tier = ?
+        )
+      `;
+      params = [title, category, parseFloat(amount_due), tier];
+    }
+    await runQuery(query, params);
+    res.json({ message: 'Custom invoice group deleted successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

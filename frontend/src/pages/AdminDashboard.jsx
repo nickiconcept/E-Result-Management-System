@@ -88,6 +88,7 @@ function ModernBarChart({ title, subtitle, data, height = 240 }) {
   );
 }
 
+
 // Modern Pie Chart Component
 function ModernPieChart({ title, subtitle, data, size = 220 }) {
   if (!data || data.length === 0) return null;
@@ -170,6 +171,52 @@ function ModernPieChart({ title, subtitle, data, size = 220 }) {
   );
 }
 
+
+
+
+  // Strict Promotion Hierarchy Mapping
+  const getValidTargets = (sourceId, allClasses) => {
+    if (!sourceId || !allClasses.length) return [];
+    
+    // Find class names to build logic dynamically or use hardcoded IDs
+    const sourceClass = allClasses.find(c => c.id == sourceId);
+    if (!sourceClass) return [];
+    const sName = sourceClass.name;
+
+    // Graduate Lock
+    if (sName.includes('Graduate')) return [];
+
+    let targetNames = [];
+    
+    // Nursery 1 -> Nursery 2 -> Nursery 3 -> Nursery Graduates
+    if (sName === 'Nursery 1') targetNames = ['Nursery 2'];
+    if (sName === 'Nursery 2') targetNames = ['Nursery 3'];
+    if (sName === 'Nursery 3') targetNames = ['Nursery Graduates Waiting Room'];
+    
+    // Primary 1 -> 2 -> 3 -> 4 -> 5 -> Primary Graduates
+    if (sName === 'Primary 1') targetNames = ['Primary 2'];
+    if (sName === 'Primary 2') targetNames = ['Primary 3'];
+    if (sName === 'Primary 3') targetNames = ['Primary 4'];
+    if (sName === 'Primary 4') targetNames = ['Primary 5'];
+    if (sName === 'Primary 5') targetNames = ['Primary Graduates Waiting Room'];
+    
+    // JSS
+    if (sName === 'JSS 1A') targetNames = ['JSS 2A'];
+    if (sName === 'JSS 1B') targetNames = ['JSS 2B'];
+    if (sName === 'JSS 2A') targetNames = ['JSS 3A'];
+    if (sName === 'JSS 2B') targetNames = ['JSS 3B'];
+    if (sName === 'JSS 3A') targetNames = ['JSS Graduates Waiting Room'];
+    if (sName === 'JSS 3B') targetNames = ['JSS Graduates Waiting Room'];
+    
+    // SSS (1A/1B -> 2A/2B/2C -> 3A/3B/3C)
+    if (sName === 'SSS 1A' || sName === 'SSS 1B') targetNames = ['SSS 2A', 'SSS 2B', 'SSS 2C'];
+    if (sName === 'SSS 2A') targetNames = ['SSS 3A'];
+    if (sName === 'SSS 2B') targetNames = ['SSS 3B'];
+    if (sName === 'SSS 2C') targetNames = ['SSS 3C'];
+    if (sName === 'SSS 3A' || sName === 'SSS 3B' || sName === 'SSS 3C') targetNames = ['SSS Graduates Waiting Room']; // If it exists, or just Alumni
+
+    return allClasses.filter(c => targetNames.includes(c.name));
+  };
 
 export default function AdminDashboard({ settings, fetchSettings, activeTab, subTab, onSelectTab }) {
   const [activeSubTab, setActiveSubTab] = useState('overview');
@@ -273,7 +320,12 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [selectedTeacherForProfile, setSelectedTeacherForProfile] = useState(null);
   
   // Form input states
-  const [studentForm, setStudentForm] = useState({
+  
+    const [isReturningStudent, setIsReturningStudent] = useState(false);
+    const [selectedGraduateId, setSelectedGraduateId] = useState('');
+    const [graduateStudents, setGraduateStudents] = useState([]);
+
+    const [studentForm, setStudentForm] = useState({
     surname: '', first_name: '', other_names: '', full_name: '', class_id: '',
     date_of_birth: '', class_of_entry: '', term_year_of_entry: '',
     last_school_attended: '', address_residence: '', sex: 'Male', religion: 'Islam',
@@ -308,6 +360,21 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [promotedClassIds, setPromotedClassIds] = useState([]);
   const [selectedStudentIdsForPromo, setSelectedStudentIdsForPromo] = useState([]);
   const [promoStudentSearch, setPromoStudentSearch] = useState('');
+  
+  const [showAutoPromoteModal, setShowAutoPromoteModal] = useState(false);
+  const [autoPromoForm, setAutoPromoForm] = useState({
+    source_class_id: '',
+    mode: 'standard',
+    global_passmark: 50,
+    global_target_id: '',
+    science_passmark: 50,
+    science_target_id: '',
+    arts_passmark: 50,
+    arts_target_id: '',
+    commercial_passmark: 50,
+    commercial_target_id: ''
+  });
+
   const [showAllClassesInPromo, setShowAllClassesInPromo] = useState(false);
 
   // PIN Generator options
@@ -384,6 +451,9 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [newFeeStructureForm, setNewFeeStructureForm] = useState({ title: '', category: 'School Fees', amount: '', tier: 'jss' });
   const [feesReport, setFeesReport] = useState([]);
   const [activeFeesSubTab, setActiveFeesSubTab] = useState('invoices'); // 'invoices' or 'structures' or 'report'
+  const [customInvoices, setCustomInvoices] = useState([]);
+  const [showEditCustomInvoiceModal, setShowEditCustomInvoiceModal] = useState(false);
+  const [editingCustomInvoice, setEditingCustomInvoice] = useState(null);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
 
   // Payment Report filter & history states
@@ -397,6 +467,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
   // Admin Result Progress Tracker
   const [adminResultProgress, setAdminResultProgress] = useState(null);
+  const [showUploadDetails, setShowUploadDetails] = useState(false);
   const [adminProgressFilter, setAdminProgressFilter] = useState('all');
   const [adminProgressSearch, setAdminProgressSearch] = useState('');
 
@@ -562,6 +633,15 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
     }
   };
 
+    const loadCustomInvoices = async () => {
+    try {
+      const data = await api.getCustomInvoices();
+      setCustomInvoices(data);
+    } catch (err) {
+      console.error('Failed to load custom invoices:', err);
+    }
+  };
+
   const loadFeeStructures = async () => {
     try {
       const data = await api.getFeeStructures();
@@ -633,13 +713,15 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
   const loadAllData = async () => {
     try {
-      const studList = await api.getStudents();
-      const teachList = await api.getTeachers();
-      const clsList = await api.getClasses();
-      const subList = await api.getSubjects();
-      const csList = await api.getClassSubjects();
-      const pinList = await api.getPins();
-      const skillsList = await api.getSkills();
+      const [studList, teachList, clsList, subList, csList, pinList, skillsList] = await Promise.all([
+        api.getStudents(),
+        api.getTeachers(),
+        api.getClasses(),
+        api.getSubjects(),
+        api.getClassSubjects(),
+        api.getPins(),
+        api.getSkills()
+      ]);
       
       setStudents([...studList].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '')));
       setTeachers([...teachList].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || '')));
@@ -651,6 +733,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
       loadSessions();
       loadFeeStructures();
+      loadCustomInvoices();
       loadFeesReport();
       loadAdminResultProgress();
     } catch (err) {
@@ -658,7 +741,76 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
     }
   };
 
-  const handleStudentRegister = async (e) => {
+  
+    // Fast-Track Helpers
+    const handleClassSelectionForRegistration = (classId) => {
+      let finalClassId = classId;
+      
+      // Auto-balancing logic for JSS 1 and SSS 1
+      const targetClass = classes.find(c => c.id == classId);
+      if (targetClass && (targetClass.name.startsWith('JSS 1') || targetClass.name.startsWith('SSS 1'))) {
+         const prefix = targetClass.name.startsWith('JSS 1') ? 'JSS 1' : 'SSS 1';
+         const armA = classes.find(c => c.name === `${prefix}A`);
+         const armB = classes.find(c => c.name === `${prefix}B`);
+         if (armA && armB) {
+             const countA = students.filter(s => s.class_id == armA.id).length;
+             const countB = students.filter(s => s.class_id == armB.id).length;
+             // If A has more students than B, strictly assign to B to balance. Otherwise A.
+             if (countA > countB) {
+                 finalClassId = armB.id;
+             } else {
+                 finalClassId = armA.id;
+             }
+         }
+      }
+      
+      setStudentForm(prev => ({ ...prev, class_id: finalClassId }));
+      
+      // Contextual Graduate Pulling
+      if (isReturningStudent) {
+         const finalClass = classes.find(c => c.id == finalClassId);
+         if (finalClass) {
+             let gradClassName = '';
+             if (finalClass.tier === 'jss') gradClassName = 'Primary Graduates Waiting Room';
+             else if (finalClass.tier === 'sss') gradClassName = 'JSS Graduates Waiting Room';
+             else if (finalClass.tier === 'primary') gradClassName = 'Nursery Graduates Waiting Room';
+             
+             const gradClass = classes.find(c => c.name === gradClassName);
+             if (gradClass) {
+                 const grads = students.filter(s => s.class_id == gradClass.id);
+                 setGraduateStudents(grads);
+             } else {
+                 setGraduateStudents([]);
+             }
+         }
+      }
+    };
+    
+    const handleGraduateSelect = (studentId) => {
+       const grad = students.find(s => s.id == studentId);
+       if (grad) {
+           setSelectedGraduateId(grad.id);
+           setStudentForm(prev => ({
+               ...prev,
+               surname: grad.surname || '',
+               first_name: grad.first_name || '',
+               other_names: grad.other_names || '',
+               full_name: grad.full_name || '',
+               date_of_birth: grad.date_of_birth || '',
+               sex: grad.sex || 'Male',
+               religion: grad.religion || 'Islam',
+               parent_name: grad.parent_name || '',
+               parent_phone: grad.parent_phone || '',
+               parent_address: grad.parent_address || '',
+               address_residence: grad.address_residence || '',
+               state_of_origin: grad.state_of_origin || '',
+               local_government: grad.local_government || '',
+               passport_photo: grad.passport_photo || ''
+           }));
+       }
+    };
+
+    const handleStudentRegister = async (e) => {
     e.preventDefault();
     try {
       const res = await api.registerStudent(studentForm);
@@ -858,7 +1010,28 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
     }
   };
 
+
+  const handleAutoPromoteSubmit = async () => {
+    try {
+      if (!autoPromoForm.source_class_id) {
+        setErrorMsg("Please select a source class.");
+        return;
+      }
+      setLoading(true);
+      const res = await api.autoPromote(autoPromoForm);
+      setNotify(res.message || "Auto-promotion successful!");
+      setShowAutoPromoteModal(false);
+      loadAllData();
+      fetchPromotedClasses();
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handlePromotionBulk = async (e) => {
+
     e.preventDefault();
     if (!promoSource || !promoTarget) {
       setErrorMsg('Select both current and target class streams.');
@@ -1029,6 +1202,41 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   // ==========================================
   // FEE STRUCTURE CRUD LOGIC
   // ==========================================
+    const handleDeleteCustomInvoiceGroup = async (group) => {
+    if (!window.confirm(`Are you sure you want to delete all invoices for ${group.title}?`)) return;
+    try {
+      await api.deleteCustomInvoiceGroup(group);
+      loadCustomInvoices();
+      loadFeesReport();
+      setNotify('Custom invoices deleted successfully.');
+    } catch (err) {
+      setErrorMsg('Failed to delete custom invoices: ' + err.message);
+    }
+  };
+
+  const handleEditCustomInvoiceGroupSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await api.updateCustomInvoiceGroup({
+        old_title: editingCustomInvoice.old_title,
+        old_category: editingCustomInvoice.old_category,
+        old_amount_due: editingCustomInvoice.old_amount_due,
+        class_id: editingCustomInvoice.class_id,
+        tier: editingCustomInvoice.tier,
+        title: editingCustomInvoice.title,
+        category: editingCustomInvoice.category,
+        amount: editingCustomInvoice.amount
+      });
+      setShowEditCustomInvoiceModal(false);
+      setEditingCustomInvoice(null);
+      loadCustomInvoices();
+      loadFeesReport();
+      setNotify('Custom invoice group updated successfully.');
+    } catch (err) {
+      setErrorMsg('Failed to update custom invoice group: ' + err.message);
+    }
+  };
+
   const handleCreateFeeStructure = async (e) => {
     e.preventDefault();
     setNotify('');
@@ -1453,6 +1661,13 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     Marks submission overview for <strong>{adminResultProgress?.term || 'Current Term'} ({adminResultProgress?.academic_year || 'Session'})</strong>
                   </p>
                 </div>
+                <button 
+                  className="btn btn-outline"
+                  onClick={() => setShowUploadDetails(!showUploadDetails)}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  {showUploadDetails ? 'Collapse Details' : 'View Details'}
+                </button>
               </div>
 
               {/* Donut + Counters Row */}
@@ -1523,7 +1738,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               </div>
 
               {/* Detailed Roster Table */}
-              {adminResultProgress?.details && adminResultProgress.details.length > 0 && (
+              {showUploadDetails && adminResultProgress?.details && adminResultProgress.details.length > 0 && (
                 <div style={{ overflowX: 'auto', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
                   {/* Filter Bar */}
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '14px', padding: '14px 14px 0' }}>
@@ -1909,64 +2124,6 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             </div>
           </div>
 
-          {/* Subject Assignments */}
-          <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
-                  <BookOpen size={24} color="white" />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Subject Assignments</h3>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <button className="btn btn-secondary" onClick={() => setShowSubjectModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
-                  <Plus size={16} /> Register Subject
-                </button>
-                <button className="btn btn-primary" onClick={() => { setIsEditingAssignment(false); setAssignForm({ class_ids: [], subject_id: '', teacher_id: '' }); setShowAssignModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.3)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
-                  <Users size={16} /> Assign Teacher
-                </button>
-              </div>
-            </div>
-
-            <div className="table-container">
-              <table className="school-table">
-                <thead>
-                  <tr>
-                    <th>Class</th>
-                    <th>Subject</th>
-                    <th>Subject Teacher</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {classSubjects.map((cs, idx) => (
-                    <tr key={idx}>
-                      <td style={{ fontWeight: '600' }}>{cs.class_name}</td>
-                      <td>{cs.subject_name}</td>
-                      <td>
-                        <span style={{ fontWeight: '500', color: cs.teacher_name ? 'inherit' : 'var(--danger)' }}>
-                          {cs.teacher_name || '🚨 Unassigned'}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
-                          title="Edit Teacher"
-                          onClick={() => handleEditClassSubjectClick(cs)}
-                        >
-                          <Edit3 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
         </div>
       )}
 
@@ -2041,7 +2198,72 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
         </div>
       )}
 
-      {subjectsSubTab === 'schemes' && (
+          {subjectsSubTab === 'assignments' && (
+            <>
+              {/* Subject Assignments */}
+              <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+                  <BookOpen size={24} color="white" />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Subject Assignments</h3>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                <button className="btn btn-secondary" onClick={() => setShowSubjectModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+                  <Plus size={16} /> Register Subject
+                </button>
+                <button className="btn btn-primary" onClick={() => { setIsEditingAssignment(false); setAssignForm({ class_ids: [], subject_id: '', teacher_id: '' }); setShowAssignModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.3)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+                  <Users size={16} /> Assign Teacher
+                </button>
+              </div>
+            </div>
+
+            <div className="table-container">
+              <table className="school-table">
+                <thead>
+                  <tr>
+                    <th>Class</th>
+                    <th>Subject</th>
+                    <th>Subject Teacher</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {classSubjects.map((cs, idx) => (
+                    <tr key={idx}>
+                      <td style={{ fontWeight: '600' }}>{cs.class_name}</td>
+                      <td>{cs.subject_name}</td>
+                      <td>
+                        <span style={{ fontWeight: '500', color: cs.teacher_name ? 'inherit' : 'var(--danger)' }}>
+                          {cs.teacher_name || '🚨 Unassigned'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '6px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                          title="Edit Teacher"
+                          onClick={() => handleEditClassSubjectClick(cs)}
+                        >
+                          <Edit3 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          </>
+
+
+          )}
+
+        {subjectsSubTab === 'schemes' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
           {/* Filter Bar */}
@@ -2410,6 +2632,66 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               </>
             );
           })()}
+
+                    {activeFeesSubTab === 'custom' && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div>
+                  <h3>Custom Invoices</h3>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Manage ad-hoc invoices assigned to classes or cohorts.</p>
+                </div>
+                <button className="btn btn-primary" onClick={() => { setNewFeeStructureForm({ title: '', category: 'Uniform/Books', amount: '', tier: 'jss' }); setShowFeeModal(true); }}>+ Bill Students</button>
+              </div>
+
+              <div className="table-container">
+                <table className="school-table">
+                  <thead>
+                    <tr>
+                      <th>Title</th>
+                      <th>Category</th>
+                      <th>Billed Amount</th>
+                      <th>Target Cohort</th>
+                      <th>Total Assigned</th>
+                      <th>Fully Paid</th>
+                      <th style={{ textAlign: 'right' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customInvoices.length === 0 ? (
+                      <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No custom invoices found.</td></tr>
+                    ) : (
+                      customInvoices.map((inv, idx) => (
+                        <tr key={idx}>
+                          <td style={{ fontWeight: '600' }}>{inv.title}</td>
+                          <td><span className="badge badge-outline">{inv.category}</span></td>
+                          <td style={{ color: '#10b981', fontWeight: '700' }}>₦{Number(inv.amount_due).toLocaleString()}</td>
+                          <td>{inv.class_name ? `Class: ${inv.class_name}` : `Tier: ${inv.tier ? inv.tier.toUpperCase() : 'N/A'}`}</td>
+                          <td>{inv.assigned_students} Students</td>
+                          <td>{inv.fully_paid} Paid</td>
+                          <td style={{ textAlign: 'right' }}>
+                            <button className="btn btn-outline" style={{ padding: '4px 8px', marginRight: '5px' }} onClick={() => {
+                              setEditingCustomInvoice({
+                                old_title: inv.title,
+                                old_category: inv.category,
+                                old_amount_due: inv.amount_due,
+                                class_id: inv.class_id,
+                                tier: inv.tier,
+                                title: inv.title,
+                                category: inv.category,
+                                amount: inv.amount_due
+                              });
+                              setShowEditCustomInvoiceModal(true);
+                            }}>Edit</button>
+                            <button className="btn btn-danger" style={{ padding: '4px 8px' }} onClick={() => handleDeleteCustomInvoiceGroup(inv)}>Delete</button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
 
           {/* SUBTAB 2: FEE STRUCTURES */}
           {activeFeesSubTab === 'structures' && (
@@ -3433,6 +3715,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 >
                   Reset Session Promotion Status
                 </button>
+                  <button className="btn btn-warning" style={{ fontSize: "0.82rem", padding: "6px 12px", display: "flex", alignItems: "center", gap: "6px", color: "#000", fontWeight: "bold" }} onClick={() => setShowAutoPromoteModal(true)}><Star size={14} /> Auto-Promote by Passmark</button>
               </div>
             </div>
           )}
@@ -5262,6 +5545,56 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
         </div>
       )}
 
+            {/* =======================================================
+          MODAL: EDIT CUSTOM INVOICE
+          ======================================================= */}
+      {showEditCustomInvoiceModal && editingCustomInvoice && (
+        <div className="modal-overlay">
+          <div className="modal-content glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
+            <button className="modal-close" onClick={() => setShowEditCustomInvoiceModal(false)}>×</button>
+            <h3>Edit Custom Invoice Group</h3>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>This updates the invoice for all {editingCustomInvoice.assigned_students} students assigned to it.</p>
+            <form onSubmit={handleEditCustomInvoiceGroupSubmit} style={{ marginTop: '20px' }}>
+              <div className="form-group">
+                <label>Invoice Title</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  required 
+                  value={editingCustomInvoice.title} 
+                  onChange={(e) => setEditingCustomInvoice({ ...editingCustomInvoice, title: e.target.value })} 
+                />
+              </div>
+              <div className="form-group">
+                <label>Category</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  required 
+                  value={editingCustomInvoice.category} 
+                  onChange={(e) => setEditingCustomInvoice({ ...editingCustomInvoice, category: e.target.value })} 
+                />
+              </div>
+              <div className="form-group">
+                <label>Amount Due (₦)</label>
+                <input 
+                  type="number" 
+                  className="form-control" 
+                  required 
+                  min="0"
+                  step="0.01"
+                  value={editingCustomInvoice.amount} 
+                  onChange={(e) => setEditingCustomInvoice({ ...editingCustomInvoice, amount: e.target.value })} 
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>
+                Save Changes
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* =======================================================
           MODAL: ADD / EDIT FEE STRUCTURE
           ======================================================= */}
@@ -5577,6 +5910,107 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           onClose={() => setShowBulkPrintModal(false)}
         />
       )}
+
+      {/* AUTO-PROMOTE MODAL */}
+      {showAutoPromoteModal && (
+        <div className="modal-overlay no-print" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div className="glass-panel" style={{ padding: '30px', width: '90%', maxWidth: '600px', backgroundColor: 'var(--bg-surface)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Auto-Promote by Passmark</h3>
+            
+            <div style={{ backgroundColor: 'rgba(0,0,0,0.03)', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
+              <h4 style={{ margin: '0 0 10px 0', color: 'var(--primary)' }}>Current Global Passmarks</h4>
+              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.9rem' }}>
+                <li>Global: <strong>{settings?.global_pass_mark || 50}%</strong></li>
+                <li>Science (Arm A): <strong>{settings?.science_pass_mark || 50}%</strong></li>
+                <li>Arts (Arm B): <strong>{settings?.arts_pass_mark || 50}%</strong></li>
+                <li>Commercial (Arm C): <strong>{settings?.commercial_pass_mark || 50}%</strong></li>
+              </ul>
+              <p style={{ margin: '10px 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Note: You can change these values in Settings &gt; Grading & Reports.</p>
+            </div>
+
+            <div className="form-group">
+              <label>Source Class</label>
+              <select className="form-control" value={autoPromoForm.source_class_id} onChange={(e) => {
+                setAutoPromoForm({...autoPromoForm, source_class_id: e.target.value, global_target_id: '', science_target_id: '', arts_target_id: '', commercial_target_id: ''});
+              }}>
+                <option value="">-- Select Class --</option>
+                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            
+            {autoPromoForm.source_class_id && classes.find(c => c.id == autoPromoForm.source_class_id)?.name.includes('Graduate') ? (
+               <div style={{ padding: '15px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px', marginBottom: '20px' }}>
+                 <strong>Graduate Lock Active:</strong> You cannot auto-promote students out of a Graduate Waiting Room here. Please use the "Returning Student" feature on the Registration page.
+               </div>
+            ) : (
+              <>
+                <div className="form-group">
+                  <label>Promotion Mode</label>
+                  <select className="form-control" value={autoPromoForm.mode} onChange={(e) => setAutoPromoForm({...autoPromoForm, mode: e.target.value})}>
+                    <option value="standard">Standard (All pass to 1 target class)</option>
+                    <option value="split">Split (A-Science, B-Arts, C-Commercial)</option>
+                  </select>
+                </div>
+                
+                {autoPromoForm.mode === 'standard' ? (
+                  <div className="form-group">
+                    <label>Target Class (If Passed)</label>
+                    <select className="form-control" value={autoPromoForm.global_target_id} onChange={(e) => setAutoPromoForm({...autoPromoForm, global_target_id: e.target.value})}>
+                      <option value="">-- Select Target --</option>
+                      {getValidTargets(autoPromoForm.source_class_id, classes).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ padding: '15px', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '8px', marginBottom: '15px' }}>
+                      <h4 style={{ margin: '0 0 10px 0' }}>Science (Arm A)</h4>
+                      <div className="form-group mb-0">
+                        <label>Target Class</label>
+                        <select className="form-control" value={autoPromoForm.science_target_id} onChange={(e) => setAutoPromoForm({...autoPromoForm, science_target_id: e.target.value})}>
+                          <option value="">-- Select Target --</option>
+                          {getValidTargets(autoPromoForm.source_class_id, classes).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ padding: '15px', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '8px', marginBottom: '15px' }}>
+                      <h4 style={{ margin: '0 0 10px 0' }}>Arts (Arm B)</h4>
+                      <div className="form-group mb-0">
+                        <label>Target Class</label>
+                        <select className="form-control" value={autoPromoForm.arts_target_id} onChange={(e) => setAutoPromoForm({...autoPromoForm, arts_target_id: e.target.value})}>
+                          <option value="">-- Select Target --</option>
+                          {getValidTargets(autoPromoForm.source_class_id, classes).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div style={{ padding: '15px', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '8px', marginBottom: '15px' }}>
+                      <h4 style={{ margin: '0 0 10px 0' }}>Commercial (Arm C)</h4>
+                      <div className="form-group mb-0">
+                        <label>Target Class</label>
+                        <select className="form-control" value={autoPromoForm.commercial_target_id} onChange={(e) => setAutoPromoForm({...autoPromoForm, commercial_target_id: e.target.value})}>
+                          <option value="">-- Select Target --</option>
+                          {getValidTargets(autoPromoForm.source_class_id, classes).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </>
+                )}
+                
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Note: Students who do not meet the passmark will automatically Repeat the source class.</p>
+                
+                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowAutoPromoteModal(false)}>Cancel</button>
+                  <button type="button" className="btn btn-primary" onClick={handleAutoPromoteSubmit} disabled={
+                    autoPromoForm.mode === 'standard' ? !autoPromoForm.global_target_id : 
+                    (!autoPromoForm.science_target_id || !autoPromoForm.arts_target_id || !autoPromoForm.commercial_target_id)
+                  }>Run Auto-Promote</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+

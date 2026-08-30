@@ -39,9 +39,8 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
   };
 
   const is3rdTerm = term === '3rd Term';
-  const classTier = (student?.tier || 'jss').toLowerCase(); // 'nursery', 'primary', 'jss', 'sss'
-  const isNursery = classTier.includes('nursery') || classTier.includes('kindergarten') || classTier.includes('early');
-  const isPrimary = classTier.includes('primary');
+  const classTier = (student?.tier || 'jss').toLowerCase();
+    const isPrimary = classTier.includes('primary');
 
   // Term Average score
   const activeTermAverage = grades && grades.length > 0 
@@ -109,7 +108,7 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
             <div style={{ display: 'flex', gap: '10px' }}>
               <span className="badge badge-success" style={{ padding: '6px 12px', textTransform: 'uppercase', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 <Award size={14} />
-                {isNursery ? 'Nursery Template' : isPrimary ? 'Primary Template' : 'Secondary Template'}
+                {isPrimary ? 'Primary Template' : 'Secondary Template'}
               </span>
 
               <button className="btn btn-secondary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 20px', fontWeight: 'bold', backgroundColor: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1' }} title="Download as PDF">
@@ -160,8 +159,6 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
           </div>
 
           {/* ACADEMIC MARKS MATRIX */}
-          {!isNursery ? (
-            /* PRIMARY & SECONDARY MATRIX (CA 1-4 + EXAM) */
             <div className="m-table-wrapper">
               <table className="m-matrix-table">
                 <thead>
@@ -255,38 +252,6 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
                 </tbody>
               </table>
             </div>
-          ) : (
-            /* NURSERY / EARLY CHILDHOOD MATRIX */
-            <div className="m-table-wrapper">
-              <table className="m-matrix-table">
-                <thead>
-                  <tr>
-                    <th style={{ textAlign: 'left' }}>Early Learning Domain</th>
-                    <th>Teacher Evaluation / Skill Mastery</th>
-                    <th>Rating Scale (1 - 5)</th>
-                    <th>Comments & Recommendations</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { domain: 'Literacy & Phonics Basics', eval: 'Recognizes letters, sounds out basic words', rating: 5, note: 'Excellent phonetic pronunciation' },
-                    { domain: 'Numeracy & Shapes', eval: 'Identifies numbers, counts objects & basic shapes', rating: 4, note: 'Very good number recognition' },
-                    { domain: 'Creative Arts & Colors', eval: 'Coloring within boundaries, hand-eye craft', rating: 5, note: 'Enthusiastic and creative' },
-                    { domain: 'Physical & Motor Skills', eval: 'Outdoor games, pencil grip, coordination', rating: 4, note: 'Active and energetic' },
-                    { domain: 'Health & Personal Habits', eval: 'Cleanliness, hand washing, table manners', rating: 5, note: 'Neat and well-mannered' },
-                    { domain: 'Social & Emotional Growth', eval: 'Sharing toys, politeness, peer friendship', rating: 4, note: 'Friendly with classmates' }
-                  ].map((row, idx) => (
-                    <tr key={idx}>
-                      <td className="subject-name">{row.domain}</td>
-                      <td>{row.eval}</td>
-                      <td style={{ fontWeight: 'bold', textAlign: 'center', fontSize: '1rem', color: '#1e40af' }}>{row.rating} / 5</td>
-                      <td className="remark-cell">{row.note}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
 
           {/* ACADEMIC SUMMARY & ATTENDANCE BOX */}
           <div className="m-summary-grid">

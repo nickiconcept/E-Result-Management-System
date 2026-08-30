@@ -15,6 +15,10 @@ export default function TeacherProfileCard({ teacher, onClose, onUpdate }) {
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 150 * 1024) {
+        setError('Passport photo must be less than 150KB.');
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => ({ ...prev, passport_photo: reader.result }));

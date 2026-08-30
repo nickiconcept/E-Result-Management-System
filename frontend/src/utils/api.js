@@ -4,6 +4,7 @@ function getHeaders() {
   const token = localStorage.getItem('jma_token');
   return {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   };
 }
@@ -13,9 +14,27 @@ async function handleResponse(response) {
   if (contentType && contentType.includes('application/json')) {
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error || 'Something went wrong');
+      throw new Error(data.error || data.message || 'Something went wrong');
     }
-    return data;
+    // Auto-cast Laravel decimal strings to Numbers to prevent string concatenation math bugs in React
+    const numericKeys = ['amount_due', 'amount_paid', 'amount', 'score', 'total_billed', 'total_paid', 'balance', 'fee_amount'];
+    
+    const castNumerics = (obj) => {
+      if (Array.isArray(obj)) {
+        obj.forEach(castNumerics);
+      } else if (obj !== null && typeof obj === 'object') {
+        for (let key in obj) {
+          if (numericKeys.includes(key) && typeof obj[key] === 'string' && !isNaN(Number(obj[key]))) {
+            obj[key] = Number(obj[key]);
+          } else if (typeof obj[key] === 'object') {
+            castNumerics(obj[key]);
+          }
+        }
+      }
+      return obj;
+    };
+    
+    return castNumerics(data);
   } else {
     const text = await response.text();
     if (!response.ok) {
@@ -30,7 +49,7 @@ const api = {
   login: async (identifier, password) => {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ identifier, password })
     });
     const data = await handleResponse(res);
@@ -121,6 +140,16 @@ const api = {
 
   getTeachers: async () => {
     const res = await fetch(`${API_BASE}/teachers`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+
+  
+  fastTrackGraduate: async (data) => {
+    const res = await fetch(`${API_BASE}/students/fast-track-graduate`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data)
+    });
     return handleResponse(res);
   },
 
@@ -332,10 +361,55 @@ const api = {
   },
 
   addFeeInvoice: async (feeInvoiceData) => {
+    // Used by "Bill Students" modal — posts a custom fee to a whole class or tier
     const res = await fetch(`${API_BASE}/fees/add`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(feeInvoiceData)
+    });
+    return handleResponse(res);
+  },
+
+  // Generate termly school fees for ALL active students based on fee structures
+  generateTermlyFees: async () => {
+    const res = await fetch(`${API_BASE}/fees/generate-termly`, {
+      method: 'POST',
+      headers: getHeaders()
+    });
+    return handleResponse(res);
+  },
+
+  // Custom class-based invoices (NOT per-student — assigned to a whole class or tier)
+  getCustomInvoices: async () => {
+    const res = await fetch(`${API_BASE}/fees/custom-invoices`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+
+  // Add a custom invoice to a class or tier (same endpoint as addFeeInvoice but semantically separate)
+  createCustomInvoice: async (invoiceData) => {
+    const res = await fetch(`${API_BASE}/fees/add`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(invoiceData)
+    });
+    return handleResponse(res);
+  },
+
+  // Delete an entire group of custom invoices by class/title/category
+  deleteCustomInvoiceGroup: async (groupData) => {
+    const res = await fetch(`${API_BASE}/fees/custom-invoices-group/delete`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(groupData)
+    });
+    return handleResponse(res);
+  },
+  
+  updateCustomInvoiceGroup: async (groupData) => {
+    const res = await fetch(`${API_BASE}/fees/custom-invoices-group/update`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(groupData)
     });
     return handleResponse(res);
   },
@@ -350,6 +424,14 @@ const api = {
   },
 
   // Student Promotion (Admin)
+  autoPromote: async (payload) => {
+    const res = await fetch(`${API_BASE}/students/auto-promote`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(payload)
+    });
+    return handleResponse(res);
+  },
   promoteBulk: async (source_class_id, target_class_id, selected_student_ids = []) => {
     const res = await fetch(`${API_BASE}/students/promote-bulk`, {
       method: 'POST',

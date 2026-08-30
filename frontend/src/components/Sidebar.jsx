@@ -48,6 +48,7 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
         icon: BookOpen,
         subItems: [
           { id: 'list', label: 'All Subjects', icon: Book },
+          { id: 'assignments', label: 'Assign to Teacher', icon: Users },
           { id: 'schemes', label: 'Scheme of Work', icon: FileText }
         ]
       },
@@ -80,9 +81,9 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
         icon: CreditCard,
         subItems: [
           { id: 'invoices', label: 'Invoices & Billing', icon: Receipt },
+          { id: 'custom', label: 'Custom Invoice', icon: Edit3 },
           { id: 'structures', label: 'Fee Structures', icon: Layers },
-          { id: 'report', label: 'Payment Records', icon: History },
-          { id: 'summary', label: 'Debtors Summary', icon: AlertCircle }
+          { id: 'report', label: 'Payment Records', icon: History }
         ]
       },
       {

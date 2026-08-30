@@ -349,6 +349,7 @@ body.dark .skeleton {
   flex-grow: 1;
   padding: 28px 32px;
   overflow-y: auto;
+  overflow-x: hidden;
   max-height: 100vh;
 }
 

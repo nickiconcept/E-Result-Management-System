@@ -42,7 +42,9 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
   
   // Teacher metadata
   const [assignments, setAssignments] = useState({ subjects: [], formClass: null });
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
   const [resultProgress, setResultProgress] = useState(null);
+  const [showUploadDetails, setShowUploadDetails] = useState(false);
   
   // Marks Entry States
   const [selectedClassSubject, setSelectedClassSubject] = useState(null); // {class_id, class_name, subject_id, subject_name}
@@ -500,6 +502,13 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                   Marks submission overview for <strong>{resultProgress?.term || 'Current Term'} ({resultProgress?.academic_year || 'Session'})</strong>
                 </p>
               </div>
+              <button 
+                className="btn btn-outline"
+                onClick={() => setShowUploadDetails(!showUploadDetails)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                {showUploadDetails ? 'Collapse Details' : 'View Details'}
+              </button>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(200px, 1fr) 2fr', gap: '30px', alignItems: 'center' }}>
@@ -569,7 +578,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
             </div>
 
             {/* Detailed Table */}
-            {resultProgress?.details && resultProgress.details.length > 0 && (
+                        {showUploadDetails && resultProgress?.details && resultProgress.details.length > 0 && (
               <div style={{ overflowX: 'auto', marginTop: '10px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
                 <table className="school-table" style={{ width: '100%', fontSize: '0.9rem', margin: 0 }}>
                   <thead style={{ backgroundColor: '#f8fafc' }}>
@@ -626,6 +635,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                 </table>
               </div>
             )}
+
           </div>
           
           <div className="glass-panel" style={{ padding: '28px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '16px' }}>

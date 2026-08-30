@@ -27,14 +27,42 @@ export default function App() {
     verifySession();
   }, []);
 
+  // Hash Routing for Browser Back/Forward Buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const hash = window.location.hash.replace('#/', '').replace('#', '');
+      if (hash) {
+        const parts = hash.split('/');
+        setActiveTab(parts[0]);
+        setSubTab(parts[1] || null);
+      } else {
+        const savedTab = localStorage.getItem('jma_active_tab') || 'dashboard';
+        const savedSubTab = localStorage.getItem('jma_active_subtab') || null;
+        setActiveTab(savedTab);
+        setSubTab(savedSubTab);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    if (window.location.hash) {
+      handlePopState();
+    } else {
+      const initialHash = subTab ? `#/${activeTab}/${subTab}` : `#/${activeTab}`;
+      window.history.replaceState(null, '', initialHash);
+    }
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const handleSelectTab = (tabId, subTabId = null) => {
     setActiveTab(tabId);
     setSubTab(subTabId);
     localStorage.setItem('jma_active_tab', tabId);
     if (subTabId) {
       localStorage.setItem('jma_active_subtab', subTabId);
+      window.history.pushState(null, '', `#/${tabId}/${subTabId}`);
     } else {
       localStorage.removeItem('jma_active_subtab');
+      window.history.pushState(null, '', `#/${tabId}`);
     }
   };
 
@@ -44,20 +72,6 @@ export default function App() {
       setSettings(data);
     } catch (err) {
       console.error('Failed to load system settings:', err);
-      setSettings({
-        active_session: '2025/2025',
-        active_term: '3rd Term',
-        landing_school_name: 'Jere Model Academy',
-        landing_tagline: 'JERE, KADUNA STATE',
-        landing_hero_title: 'Shaping Minds, Building the Future.',
-        landing_hero_desc: 'Welcome to the Jere Model Academy online school portal.',
-        landing_address: 'Opposite Jabal-Annur Mosque, New Abuja Road, Jere Kagarko LGA, Kaduna State.',
-        ca1_name: 'CA 1',
-        ca2_name: 'CA 2',
-        ca3_name: 'CA 3',
-        ca4_name: 'CA 4',
-        exam_name: 'Exam'
-      });
     }
   };
 
@@ -99,6 +113,7 @@ export default function App() {
     setSubTab(null);
     localStorage.removeItem('jma_active_tab');
     localStorage.removeItem('jma_active_subtab');
+    window.history.pushState(null, '', `#/dashboard`);
   };
 
   if (loading || !settings) {

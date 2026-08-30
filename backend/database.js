@@ -113,8 +113,13 @@ async function initDB() {
     'result_show_position', 'result_show_average', 'contact_phone', 'contact_email', 
     'ca1_name', 'ca2_name', 'ca3_name', 'ca4_name', 'exam_name',
     'games_master_name', 'games_master_remark', 'house_master_name', 'house_master_remark', 'principal_name', 'principal_signature',
-    'next_term_fee', 'next_term_begins', 'next_term_ends', 'last_term_debit',
-    'allow_past_attendance', 'allow_fm_register_student', 'allow_fm_edit_student', 'max_ca_count'
+    'next_term_fee', 'next_term_fee_nursery', 'next_term_fee_primary', 'next_term_fee_jss', 'next_term_fee_sss', 'next_term_begins', 'next_term_ends', 'last_term_debit',
+    'allow_past_attendance', 'allow_fm_register_student', 'allow_fm_edit_student', 'max_ca_count',
+    'global_pass_mark', 'science_pass_mark', 'arts_pass_mark', 'commercial_pass_mark',
+    'feature1_icon', 'feature1_title', 'feature1_desc',
+    'feature2_icon', 'feature2_title', 'feature2_desc',
+    'feature3_icon', 'feature3_title', 'feature3_desc',
+    'feature4_icon', 'feature4_title', 'feature4_desc'
   ];
   for (const col of checkCols) {
     try {
@@ -124,6 +129,14 @@ async function initDB() {
         await runQuery(`ALTER TABLE SYSTEM_SETTINGS ADD COLUMN ${col} INTEGER DEFAULT 0`);
       } else if (col === 'max_ca_count') {
         await runQuery(`ALTER TABLE SYSTEM_SETTINGS ADD COLUMN ${col} INTEGER DEFAULT 4`);
+      } else if (col === 'global_pass_mark') {
+        await runQuery(`ALTER TABLE SYSTEM_SETTINGS ADD COLUMN ${col} INTEGER DEFAULT 40`);
+      } else if (col === 'science_pass_mark') {
+        await runQuery(`ALTER TABLE SYSTEM_SETTINGS ADD COLUMN ${col} INTEGER DEFAULT 60`);
+      } else if (col === 'arts_pass_mark') {
+        await runQuery(`ALTER TABLE SYSTEM_SETTINGS ADD COLUMN ${col} INTEGER DEFAULT 40`);
+      } else if (col === 'commercial_pass_mark') {
+        await runQuery(`ALTER TABLE SYSTEM_SETTINGS ADD COLUMN ${col} INTEGER DEFAULT 50`);
       } else {
         await runQuery(`ALTER TABLE SYSTEM_SETTINGS ADD COLUMN ${col} TEXT`);
       }
@@ -479,8 +492,8 @@ async function initDB() {
   if (settings.count === 0) {
     console.log('Seeding initial system settings...');
     await runQuery(`
-      INSERT INTO SYSTEM_SETTINGS (active_session, active_term, result_entry_open, landing_school_name, landing_tagline, landing_hero_title, landing_hero_desc, landing_address, result_show_position, result_show_average, contact_phone, contact_email, ca1_name, ca2_name, ca3_name, ca4_name, exam_name, allow_past_attendance, allow_fm_register_student, allow_fm_edit_student, max_ca_count) 
-      VALUES ('2026/2027', '3rd Term', 1, 'Jere Model Academy', 'KADUNA STATE, NIGERIA', 'Shaping Minds, Building the Future.', 'Welcome to the Jere Model Academy online school portal. We provide high-quality education from Nursery, Primary, Junior Secondary to Senior Secondary School levels. Our portal makes result checking, fee logging, and attendance tracking simple, fast, and completely digital.', 'Opposite Jabal-Annur Mosque, New Abuja Road, Jere Kagarko LGA, Kaduna State.', 1, 1, '08031234567', 'admin@jeremodel.com', 'CA 1', 'CA 2', 'CA 3', 'CA 4', 'Exam', 0, 0, 0, 4)
+      INSERT INTO SYSTEM_SETTINGS (active_session, active_term, result_entry_open, landing_school_name, landing_tagline, landing_hero_title, landing_hero_desc, landing_address, result_show_position, result_show_average, contact_phone, contact_email, ca1_name, ca2_name, ca3_name, ca4_name, exam_name, allow_past_attendance, allow_fm_register_student, allow_fm_edit_student, max_ca_count, feature1_icon, feature1_title, feature1_desc, feature2_icon, feature2_title, feature2_desc, feature3_icon, feature3_title, feature3_desc, feature4_icon, feature4_title, feature4_desc) 
+      VALUES ('2026/2027', '3rd Term', 1, 'Jere Model Academy', 'KADUNA STATE, NIGERIA', 'Shaping Minds, Building the Future.', 'Welcome to the Jere Model Academy online school portal. We provide high-quality education from Nursery, Primary, Junior Secondary to Senior Secondary School levels. Our portal makes result checking, fee logging, and attendance tracking simple, fast, and completely digital.', 'Opposite Jabal-Annur Mosque, New Abuja Road, Jere Kagarko LGA, Kaduna State.', 1, 1, '08031234567', 'admin@jeremodel.com', 'CA 1', 'CA 2', 'CA 3', 'CA 4', 'Exam', 0, 0, 0, 4, 'Award', 'Check Results', 'View and print your report cards online, instantly and securely.', 'CreditCard', 'View Fees', 'Check your fee balance and download official payment receipts.', 'ShieldCheck', 'Result PIN Codes', 'Secure scratch card codes — limited to 5 checks per term.', 'BookOpen', 'Rules & Guidelines', 'Read school requirements and sign parent undertakings online.')
     `);
   } else {
     // If already seeded, ensure new columns are updated if they contain NULL
@@ -622,6 +635,10 @@ async function initDB() {
     const sss3a = (await runQuery(`INSERT INTO CLASSES (name, tier, form_master_id) VALUES ('SSS 3A', 'sss', NULL)`)).lastID;
     const sss3b = (await runQuery(`INSERT INTO CLASSES (name, tier, form_master_id) VALUES ('SSS 3B', 'sss', NULL)`)).lastID;
     const sss3c = (await runQuery(`INSERT INTO CLASSES (name, tier, form_master_id) VALUES ('SSS 3C', 'sss', NULL)`)).lastID;
+
+    // Virtual Waiting Rooms for Graduates
+    await runQuery(`INSERT INTO CLASSES (name, tier, form_master_id) VALUES ('Primary Graduates Waiting Room', 'primary', NULL)`);
+    await runQuery(`INSERT INTO CLASSES (name, tier, form_master_id) VALUES ('JSS Graduates Waiting Room', 'jss', NULL)`);
 
     // Assign form masters in DB
     await runQuery(`UPDATE CLASSES SET form_master_id = ? WHERE name = 'JSS 1A'`, [johnId]);

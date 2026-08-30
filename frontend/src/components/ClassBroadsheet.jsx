@@ -3,7 +3,9 @@ import { ArrowLeft, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
 export default function ClassBroadsheet({ data, className, term, session, settings, onBack }) {
-  if (!data) return <p>Loading broadsheet data...</p>;
+  if (!data || !Array.isArray(data.subjects) || !Array.isArray(data.rows)) {
+    return <p style={{ padding: '20px', color: 'var(--text-secondary)' }}>Loading broadsheet data...</p>;
+  }
 
   const { subjects, rows } = data;
 

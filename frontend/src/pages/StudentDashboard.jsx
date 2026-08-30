@@ -168,7 +168,7 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
 
   const unpaidInvoices = invoices.filter(inv => inv.status !== 'paid');
   const outstandingDebt = unpaidInvoices.reduce((sum, inv) => sum + (inv.amount_due - inv.amount_paid), 0);
-  const totalPaid = receipts.reduce((sum, r) => sum + r.amount_paid, 0);
+  const totalPaid = receipts.reduce((sum, r) => sum + Number(r.amount_paid), 0);
 
   // Hero header component shared across tabs
   const HeroHeader = ({ icon: Icon, title, subtitle, right }) => (
@@ -226,7 +226,7 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
                 overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.1)', flexShrink: 0
               }}>
                 {user.passport_photo ? (
-                  <img src={user.passport_photo.startsWith('data:') ? user.passport_photo : `http://localhost:5000${user.passport_photo}`} alt="Student Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={user.passport_photo.startsWith('data:') ? user.passport_photo : `http://localhost:8000${user.passport_photo}`} alt="Student Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                     <User size={36} style={{ opacity: 0.6 }} color="white" />
@@ -434,7 +434,7 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
           {/* Summary Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
             {[
-              { label: 'Total Charged', value: `₦${invoices.reduce((s, i) => s + i.amount_due, 0).toLocaleString()}`, icon: FileText, color: '#2563eb', bg: 'rgba(37,99,235,0.08)', border: 'rgba(37,99,235,0.2)' },
+              { label: 'Total Charged', value: `₦${invoices.reduce((s, i) => s + Number(i.amount_due), 0).toLocaleString()}`, icon: FileText, color: '#2563eb', bg: 'rgba(37,99,235,0.08)', border: 'rgba(37,99,235,0.2)' },
               { label: 'Total Paid', value: `₦${totalPaid.toLocaleString()}`, icon: CheckCircle, color: '#16a34a', bg: 'rgba(22,163,74,0.08)', border: 'rgba(22,163,74,0.2)' },
               { label: 'Outstanding', value: `₦${outstandingDebt.toLocaleString()}`, icon: outstandingDebt > 0 ? AlertTriangle : CheckCircle, color: outstandingDebt > 0 ? '#dc2626' : '#16a34a', bg: outstandingDebt > 0 ? 'rgba(220,38,38,0.08)' : 'rgba(22,163,74,0.08)', border: outstandingDebt > 0 ? 'rgba(220,38,38,0.2)' : 'rgba(22,163,74,0.2)' },
               { label: 'Payment Receipts', value: receipts.length, icon: Receipt, color: '#7c3aed', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.2)' },
@@ -483,8 +483,8 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
                               {inv.category || 'School Fees'}
                             </span>
                           </td>
-                          <td style={{ padding: '12px 14px' }}>₦{inv.amount_due.toLocaleString()}</td>
-                          <td style={{ padding: '12px 14px' }}>₦{inv.amount_paid.toLocaleString()}</td>
+                          <td style={{ padding: '12px 14px' }}>₦{Number(inv.amount_due).toLocaleString()}</td>
+                          <td style={{ padding: '12px 14px' }}>₦{Number(inv.amount_paid).toLocaleString()}</td>
                           <td style={{ padding: '12px 14px' }}>
                             <span className={`badge ${inv.status === 'paid' ? 'badge-success' : 'badge-danger'}`}>
                               {inv.status === 'paid' ? 'Paid' : inv.status === 'partial' ? 'Partial' : 'Unpaid'}
@@ -523,7 +523,7 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
                         <tr key={idx}>
                           <td style={{ padding: '12px 14px', fontWeight: 'bold' }}>{rec.receipt_number}</td>
                           <td style={{ padding: '12px 14px' }}>{rec.title}</td>
-                          <td style={{ padding: '12px 14px' }}>₦{rec.amount_paid.toLocaleString()}</td>
+                          <td style={{ padding: '12px 14px' }}>₦{Number(rec.amount_paid).toLocaleString()}</td>
                           <td style={{ padding: '12px 14px', textAlign: 'center' }}>
                             <button
                               className="btn"
@@ -824,7 +824,7 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
                 <div style={{ borderBottom: '1px dashed #000', margin: '5px 0' }}></div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.05rem', fontWeight: 'bold' }}>
                   <span>AMOUNT PAID:</span>
-                  <span>₦{activeReceipt.amount_paid.toLocaleString()}</span>
+                  <span>₦{Number(activeReceipt.amount_paid).toLocaleString()}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                   <span>METHOD:</span>

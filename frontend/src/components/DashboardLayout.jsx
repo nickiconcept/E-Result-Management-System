@@ -195,7 +195,7 @@ export default function DashboardLayout({ children, user, activeTab, setActiveTa
               {/* Avatar */}
               {user.passport_photo ? (
                 <img
-                  src={user.passport_photo.startsWith('data:') ? user.passport_photo : `http://localhost:5000${user.passport_photo}`}
+                  src={user.passport_photo.startsWith('data:') ? user.passport_photo : `http://localhost:8000${user.passport_photo}`}
                   alt="Profile"
                   style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--primary)' }}
                 />
@@ -274,7 +274,7 @@ export default function DashboardLayout({ children, user, activeTab, setActiveTa
               <div style={{ display: 'inline-block', position: 'relative', marginBottom: '14px' }}>
                 {user.passport_photo ? (
                   <img
-                    src={user.passport_photo.startsWith('data:') ? user.passport_photo : `http://localhost:5000${user.passport_photo}`}
+                    src={user.passport_photo.startsWith('data:') ? user.passport_photo : `http://localhost:8000${user.passport_photo}`}
                     alt="Passport"
                     style={{ width: '90px', height: '90px', borderRadius: '50%', objectFit: 'cover', border: '3px solid var(--primary)', boxShadow: '0 6px 20px var(--primary-glow)' }}
                   />
