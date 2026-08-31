@@ -54,7 +54,8 @@ import {
   Clock,
   CheckCircle2,
   Hourglass,
-  UploadCloud
+  UploadCloud,
+  Star
 } from 'lucide-react';
 
 // Modern Bar Chart Component
@@ -187,6 +188,7 @@ function ModernPieChart({ title, subtitle, data, size = 220 }) {
     if (sName.includes('Graduate')) return [];
 
     let targetNames = [];
+    let isGraduating = false;
     
     // Nursery 1 -> Nursery 2 -> Nursery 3 -> Nursery Graduates
     if (sName === 'Nursery 1') targetNames = ['Nursery 2'];
@@ -213,9 +215,15 @@ function ModernPieChart({ title, subtitle, data, size = 220 }) {
     if (sName === 'SSS 2A') targetNames = ['SSS 3A'];
     if (sName === 'SSS 2B') targetNames = ['SSS 3B'];
     if (sName === 'SSS 2C') targetNames = ['SSS 3C'];
-    if (sName === 'SSS 3A' || sName === 'SSS 3B' || sName === 'SSS 3C') targetNames = ['SSS Graduates Waiting Room']; // If it exists, or just Alumni
+    if (sName === 'SSS 3A' || sName === 'SSS 3B' || sName === 'SSS 3C') {
+        isGraduating = true;
+    }
 
-    return allClasses.filter(c => targetNames.includes(c.name));
+    let filtered = allClasses.filter(c => targetNames.includes(c.name));
+    if (isGraduating) {
+      filtered.push({ id: 'graduate', name: '🎓 Graduated Alumni (Complete Schooling)' });
+    }
+    return filtered;
   };
 
 export default function AdminDashboard({ settings, fetchSettings, activeTab, subTab, onSelectTab }) {
@@ -583,7 +591,11 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
         allow_past_attendance: settings.allow_past_attendance || 0,
         allow_fm_register_student: settings.allow_fm_register_student || 0,
         allow_fm_edit_student: settings.allow_fm_edit_student || 0,
-        max_ca_count: settings.max_ca_count || 4
+        max_ca_count: settings.max_ca_count || 4,
+        global_pass_mark: settings.global_pass_mark || 40,
+        science_pass_mark: settings.science_pass_mark || 60,
+        arts_pass_mark: settings.arts_pass_mark || 40,
+        commercial_pass_mark: settings.commercial_pass_mark || 50
       });
     }
   }, [settings]);
@@ -813,8 +825,16 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
     const handleStudentRegister = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.registerStudent(studentForm);
-      setNotify(`Student registered successfully! Auto-Admission Number: ${res.admission_number}`);
+      if (isReturningStudent && selectedGraduateId) {
+          const res = await api.fastTrackGraduate({
+              student_id: selectedGraduateId,
+              class_id: studentForm.class_id
+          });
+          setNotify(res.message || 'Student successfully re-enrolled from graduate list!');
+      } else {
+          const res = await api.registerStudent(studentForm);
+          setNotify(`Student registered successfully! Auto-Admission Number: ${res.admission_number}`);
+      }
       setShowStudentModal(false);
       loadAllData();
       // Reset form
@@ -4073,12 +4093,31 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
-                  <button type="submit" className="btn btn-primary" style={{ padding: '12px 28px', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Save size={18} />
-                    Save Academic Settings
-                  </button>
-                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Global Passmark (%)</label>
+                      <input type="number" className="form-control" value={settingsForm.global_pass_mark} onChange={e => setSettingsForm({ ...settingsForm, global_pass_mark: parseInt(e.target.value) })} min="0" max="100" />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Science Passmark (%)</label>
+                      <input type="number" className="form-control" value={settingsForm.science_pass_mark} onChange={e => setSettingsForm({ ...settingsForm, science_pass_mark: parseInt(e.target.value) })} min="0" max="100" />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Arts Passmark (%)</label>
+                      <input type="number" className="form-control" value={settingsForm.arts_pass_mark} onChange={e => setSettingsForm({ ...settingsForm, arts_pass_mark: parseInt(e.target.value) })} min="0" max="100" />
+                    </div>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Commercial Passmark (%)</label>
+                      <input type="number" className="form-control" value={settingsForm.commercial_pass_mark} onChange={e => setSettingsForm({ ...settingsForm, commercial_pass_mark: parseInt(e.target.value) })} min="0" max="100" />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
+                    <button type="submit" className="btn btn-primary" style={{ padding: '12px 28px', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Save size={18} />
+                      Save Academic Settings
+                    </button>
+                  </div>
               </form>
             </div>
           )}
@@ -4471,7 +4510,20 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   <select
                     className="form-control"
                     value={promoSource}
-                    onChange={(e) => setPromoSource(e.target.value)}
+                    onChange={(e) => {
+                      const newSource = e.target.value;
+                      setPromoSource(newSource);
+                      if (newSource) {
+                        const targets = getValidTargets(newSource, classes);
+                        if (targets.length === 1) {
+                          setPromoTarget(targets[0].id);
+                        } else {
+                          setPromoTarget('');
+                        }
+                      } else {
+                        setPromoTarget('');
+                      }
+                    }}
                     required
                   >
                     <option value="">Select current class...</option>
@@ -4482,21 +4534,32 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 </div>
 
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label>New Class</label>
-                  <select
-                    className="form-control"
-                    value={promoTarget}
-                    onChange={(e) => setPromoTarget(e.target.value)}
-                    required
-                  >
-                    <option value="">Select new class...</option>
-                    <option value="graduate">Graduate (Finished School) 🎓</option>
-                    {classes.map((c, idx) => (
-                      <option key={idx} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
+                  <label style={{ fontWeight: 'bold' }}>New Class</label>
+                  {(() => {
+                    const sourceClass = classes.find(c => c.id == promoSource);
+                    const isGraduateSource = sourceClass && sourceClass.name.includes('Graduate');
+                    const validTargets = getValidTargets(promoSource, classes);
+                    
+                    if (isGraduateSource) {
+                      return <div style={{ padding: '8px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '4px', fontSize: '0.9rem' }}>Cannot Promote from Graduate Classes here. Use the Registration Page.</div>;
+                    }
+                    
+                    return (
+                      <select
+                        className="form-control"
+                        value={promoTarget}
+                        onChange={(e) => setPromoTarget(e.target.value)}
+                        required
+                        disabled={!promoSource}
+                      >
+                        <option value="">Select target class...</option>
+                        {validTargets.map((c, idx) => (
+                          <option key={idx} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                    );
+                  })()}
                 </div>
-
                 <button type="submit" className="btn btn-danger" style={{ padding: '10px 20px' }}>
                   Move Students Up ➔
                 </button>
@@ -4833,7 +4896,48 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           <div className="modal-content glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
             <button className="modal-close" onClick={() => setShowStudentModal(false)}>✕</button>
             <h3>Register Student</h3>
-            
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px', backgroundColor: 'var(--bg-secondary)', padding: '10px', borderRadius: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: 'var(--primary)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={isReturningStudent} 
+                  onChange={(e) => {
+                    setIsReturningStudent(e.target.checked);
+                    if (!e.target.checked) {
+                      setGraduateStudents([]);
+                      setSelectedGraduateId('');
+                    } else if (studentForm.class_id) {
+                      // Trigger re-evaluation of target class to fetch grads
+                      handleClassSelectionForRegistration(studentForm.class_id);
+                    }
+                  }} 
+                />
+                Register Returning Student (From Graduate List)
+              </label>
+            </div>
+
+            {isReturningStudent && (
+              <div className="form-group" style={{ marginBottom: '20px', padding: '15px', border: '1px solid var(--primary-light)', borderRadius: '8px' }}>
+                <label style={{ color: 'var(--primary)', fontWeight: 'bold' }}>Select Graduate Student</label>
+                {graduateStudents.length > 0 ? (
+                  <select 
+                    className="form-control" 
+                    value={selectedGraduateId}
+                    onChange={(e) => handleGraduateSelect(e.target.value)}
+                  >
+                    <option value="">-- Choose a student --</option>
+                    {graduateStudents.map(g => (
+                      <option key={g.id} value={g.id}>{g.full_name} ({g.admission_number || 'No Admin No'})</option>
+                    ))}
+                  </select>
+                ) : (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '5px 0' }}>
+                    {studentForm.class_id ? "No students found in the corresponding graduate waiting room for this class." : "Select a 'Class of Entry' below first to see available graduates."}
+                  </p>
+                )}
+              </div>
+            )}
+
             <form onSubmit={handleStudentRegister} style={{ marginTop: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
                 <label style={{ marginRight: '10px', fontWeight: 'bold' }}>Passport Photo:</label>
@@ -4889,7 +4993,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div className="form-group">
                   <label>Class of Entry</label>
-                  <select className="form-control" required value={studentForm.class_id} onChange={(e) => setStudentForm({ ...studentForm, class_id: e.target.value })}>
+                  <select className="form-control" required value={studentForm.class_id} onChange={(e) => handleClassSelectionForRegistration(e.target.value)}>
                     <option value="">Select class...</option>
                     {classes.map((c, idx) => (
                       <option key={idx} value={c.id}>{c.name}</option>

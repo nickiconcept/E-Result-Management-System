@@ -251,10 +251,7 @@ class StudentController extends Controller
         $source_class_id = $request->input('source_class_id');
         $mode = $request->input('mode');
         
-        try {
-            DB::beginTransaction();
-            $settings = DB::table('system_settings')->latest('id')->first();
-            $activeSession = $settings ? $settings->active_session : '';
+        try { DB::beginTransaction(); if ($source_class_id) { $sourceClass = DB::table('classes')->where('id', $source_class_id)->first(); if ($sourceClass && stripos($sourceClass->name, 'Graduate') !== false) { return response()->json(['error' => 'Backend Validation Error: Cannot promote students from a Graduate Waiting Room.'], 400); } } $settings = DB::table('system_settings')->latest('id')->first(); $activeSession = $settings ? $settings->active_session : '';
 
             $students = DB::table('students')->where('class_id', $source_class_id)->get();
             
@@ -323,10 +320,7 @@ class StudentController extends Controller
         $target_class_id = $request->input('target_class_id');
         $selected_student_ids = $request->input('selected_student_ids');
 
-        try {
-            DB::beginTransaction();
-            $settings = DB::table('system_settings')->latest('id')->first();
-            $activeSession = $settings ? $settings->active_session : '';
+        try { DB::beginTransaction(); if ($source_class_id) { $sourceClass = DB::table('classes')->where('id', $source_class_id)->first(); if ($sourceClass && stripos($sourceClass->name, 'Graduate') !== false) { return response()->json(['error' => 'Backend Validation Error: Cannot promote students from a Graduate Waiting Room.'], 400); } } $settings = DB::table('system_settings')->latest('id')->first(); $activeSession = $settings ? $settings->active_session : '';
 
             $studentIdsToPromote = [];
             if (is_array($selected_student_ids) && count($selected_student_ids) > 0) {
@@ -468,5 +462,6 @@ class StudentController extends Controller
         }
     }
 }
+
 
 

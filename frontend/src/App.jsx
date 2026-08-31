@@ -20,6 +20,7 @@ export default function App() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
+  const [settingsError, setSettingsError] = useState(false);
 
   // Sync settings and token session on mount
   useEffect(() => {
@@ -70,8 +71,10 @@ export default function App() {
     try {
       const data = await api.getSettings();
       setSettings(data);
+      setSettingsError(false);
     } catch (err) {
       console.error('Failed to load system settings:', err);
+      setSettingsError(true);
     }
   };
 
@@ -115,6 +118,27 @@ export default function App() {
     localStorage.removeItem('jma_active_subtab');
     window.history.pushState(null, '', `#/dashboard`);
   };
+
+  if (settingsError) {
+    return (
+      <div style={{
+        minHeight: '100vh', display: 'flex', flexDirection: 'column', 
+        alignItems: 'center', justifyContent: 'center', 
+        background: 'var(--bg-primary, #f9fafb)', color: 'var(--text-primary, #111827)'
+      }}>
+        <h2 style={{ marginBottom: '10px' }}>Connection Error</h2>
+        <p style={{ color: 'var(--text-muted, #6b7280)', marginBottom: '20px' }}>
+          Failed to synchronize portal data. Please check if the backend server is running.
+        </p>
+        <button 
+          onClick={() => window.location.reload()}
+          style={{ padding: '10px 20px', background: '#0ea5e9', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+        >
+          Retry Connection
+        </button>
+      </div>
+    );
+  }
 
   if (loading || !settings) {
     return (

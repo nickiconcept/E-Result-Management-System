@@ -31,7 +31,10 @@ class SystemController extends Controller
                 'ca1_name', 'ca2_name', 'ca3_name', 'ca4_name', 'exam_name',
                 'games_master_name', 'games_master_remark', 'house_master_name',
                 'house_master_remark', 'principal_name', 'principal_signature',
-                'next_term_fee', 'next_term_begins'
+                'next_term_fee', 'next_term_begins', 'next_term_ends',
+                'max_ca_count', 'global_pass_mark', 'science_pass_mark', 
+                'arts_pass_mark', 'commercial_pass_mark',
+                'allow_fm_edit_student', 'allow_fm_register_student', 'allow_past_attendance'
             ]);
 
             DB::table('system_settings')->insert($data);
