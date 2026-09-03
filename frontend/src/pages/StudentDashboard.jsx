@@ -2,17 +2,25 @@ import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
 import ReportCard from '../components/ReportCard';
 import Toast from '../components/Toast';
-import { ArrowLeft, Award, CreditCard, FileText, ShieldCheck, CheckCircle, Lock, Unlock, Receipt, X, Download, Key, BookOpen, User, Bell, AlertTriangle, BarChart2, Search } from 'lucide-react';
+import { ArrowLeft, Award, CreditCard, FileText, ShieldCheck, CheckCircle, Lock, Unlock, Receipt, X, Download, Key, BookOpen, User, Bell, AlertTriangle, BarChart2, Search, Calendar } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function StudentDashboard({ user, settings, activeTab, subTab }) {
-  const [activeSubTab, setActiveSubTab] = useState('overview');
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    if (subTab) return subTab;
+    if (activeTab && activeTab !== 'dashboard') return activeTab;
+    return 'overview';
+  });
+  const [isIdCardFlipped, setIsIdCardFlipped] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Student statistics
   const [timeline, setTimeline] = useState([]);
   const [unlockedPins, setUnlockedPins] = useState([]);
   const [invoices, setInvoices] = useState([]);
   const [receipts, setReceipts] = useState([]);
+  const [attendance, setAttendance] = useState([]);
 
   // Result check PIN prompts
   const [showPinModal, setShowPinModal] = useState(false);
@@ -35,8 +43,10 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
   const [schemeWeeks, setSchemeWeeks] = useState([]);
 
   useEffect(() => {
-    loadStudentData();
-  }, []);
+    if (user?.id) {
+      loadStudentData();
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (activeTab && activeTab !== 'dashboard') {
@@ -87,10 +97,10 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
   };
 
   useEffect(() => {
-    if (activeSubTab === 'schemes') {
+    if (activeSubTab === 'schemes' && user?.class_id) {
       loadClassSubjects();
     }
-  }, [activeSubTab]);
+  }, [activeSubTab, user?.class_id]);
 
   useEffect(() => {
     if (selectedSubjectId) {
@@ -99,19 +109,22 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
   }, [selectedSubjectId]);
 
   const loadStudentData = async () => {
+    if (!user?.id) return;
     try {
-      const [tl, pins, invs, recs] = await Promise.all([
-        api.getStudentTimeline(),
-        api.getStudentUnlockedPins(),
-        api.getStudentInvoices(),
-        api.getStudentReceipts(),
+      const [tlRes, feeData, att] = await Promise.all([
+        api.getStudentTimeline(user.id),
+        api.getStudentFees(user.id),
+        api.getStudentAttendance(user.id)
       ]);
-      setTimeline(tl);
-      setUnlockedPins(pins);
-      setInvoices(invs);
-      setReceipts(recs);
+      setTimeline(tlRes.timeline || []);
+      setUnlockedPins(tlRes.unlockedPins || []);
+      setInvoices(feeData.invoices || []);
+      setReceipts(feeData.receipts || []);
+      setAttendance(att);
     } catch (err) {
       setErrorMsg('Failed to load data: ' + err.message);
+    } finally {
+      setIsInitialLoad(false);
     }
   };
 
@@ -127,8 +140,9 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
   };
 
   const fetchReportCard = async (term, academic_year) => {
+    if (!user?.id) return;
     try {
-      const data = await api.getStudentReportCard(term, academic_year);
+      const data = await api.getReportCard(user.id, term, academic_year);
       setActiveReportCardData(data);
     } catch (err) {
       setErrorMsg('Failed to load report card: ' + err.message);
@@ -197,6 +211,8 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
       {right && <div>{right}</div>}
     </div>
   );
+
+  if (isInitialLoad) return <LoadingSpinner />;
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
@@ -293,24 +309,122 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
                 </div>
               )}
 
-              {/* School Announcements */}
-              <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
-                <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '18px 22px', color: 'white', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Bell size={20} />
-                  <div>
-                    <div style={{ fontWeight: '700' }}>School Announcements</div>
-                    <div style={{ fontSize: '0.82rem', opacity: 0.85 }}>Latest updates from the admin office</div>
+              {/* 3D Student ID Card */}
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '15px 0' }}>
+                <div style={{ perspective: '1200px', width: '340px', height: '214px', cursor: 'pointer' }} onClick={() => setIsIdCardFlipped(!isIdCardFlipped)}>
+                  <div style={{
+                    width: '100%', height: '100%', position: 'relative',
+                    transition: 'transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)', transformStyle: 'preserve-3d',
+                    transform: isIdCardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+                    borderRadius: '12px'
+                  }}>
+                  {/* Front of Card */}
+                  <div style={{
+                    position: 'absolute', width: '100%', height: '100%', backfaceVisibility: 'hidden',
+                    borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column',
+                    background: 'linear-gradient(135deg, #ffffff 0%, #f0f4f8 100%)',
+                    border: '1px solid rgba(255,255,255,0.8)'
+                  }}>
+                    {/* Holographic overlay */}
+                    <div style={{
+                      position: 'absolute', inset: 0, opacity: 0.15, pointerEvents: 'none',
+                      background: 'linear-gradient(125deg, transparent 20%, rgba(255,255,255,0.8) 40%, rgba(255,215,0,0.3) 50%, rgba(255,255,255,0.8) 60%, transparent 80%)'
+                    }}></div>
+
+                    {/* Header */}
+                    <div style={{ 
+                      background: 'linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%)', 
+                      padding: '12px 18px', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '20px', height: '20px', backgroundColor: 'white', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <ShieldCheck size={14} color="#1e3a8a" />
+                        </div>
+                        <div style={{ fontWeight: '800', letterSpacing: '0.5px', fontSize: '0.9rem', textTransform: 'uppercase' }}>{settings?.landing_school_name || 'Jere Model Academy'}</div>
+                      </div>
+                      <div style={{ fontSize: '0.65rem', backgroundColor: 'rgba(0,0,0,0.2)', padding: '3px 8px', borderRadius: '12px', fontWeight: 'bold', letterSpacing: '1px' }}>STUDENT</div>
+                    </div>
+
+                    {/* Body */}
+                    <div style={{ padding: '15px 18px', display: 'flex', gap: '18px', flex: 1, position: 'relative' }}>
+                      {/* Watermark */}
+                      <div style={{ position: 'absolute', right: '10px', bottom: '10px', opacity: 0.05, transform: 'scale(3)' }}>
+                        <ShieldCheck size={40} />
+                      </div>
+
+                      {/* Photo */}
+                      <div style={{ 
+                        width: '75px', height: '90px', 
+                        border: '3px solid white', 
+                        boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+                        borderRadius: '6px', overflow: 'hidden', backgroundColor: '#e2e8f0',
+                        position: 'relative', zIndex: 1
+                      }}>
+                        {user.passport_photo ? (
+                          <img src={user.passport_photo.startsWith('data:') ? user.passport_photo : `http://localhost:8000${user.passport_photo}`} alt="Student" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <User size={40} color="#94a3b8" style={{ margin: '22px auto', display: 'block' }} />
+                        )}
+                      </div>
+
+                      {/* Details */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, position: 'relative', zIndex: 1, justifyContent: 'center' }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#0f172a', lineHeight: '1.1', textTransform: 'uppercase' }}>{user.full_name}</div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 'x-4px y-2px', fontSize: '0.75rem', marginTop: '4px' }}>
+                          <div style={{ color: '#64748b', fontWeight: '600' }}>ID:</div>
+                          <div style={{ color: '#1e3a8a', fontWeight: '800' }}>{user.admission_number}</div>
+                          
+                          <div style={{ color: '#64748b', fontWeight: '600' }}>CLASS:</div>
+                          <div style={{ color: '#334155', fontWeight: '700' }}>{user.class_name || 'N/A'}</div>
+                          
+                          <div style={{ color: '#64748b', fontWeight: '600' }}>DOB:</div>
+                          <div style={{ color: '#334155', fontWeight: '700' }}>{user.date_of_birth || 'N/A'}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div style={{ backgroundColor: '#f8fafc', padding: '6px 0', textAlign: 'center', fontSize: '0.65rem', color: '#94a3b8', borderTop: '1px solid #e2e8f0', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                      Tap to flip card
+                    </div>
+                  </div>
+
+                  {/* Back of Card */}
+                  <div style={{
+                    position: 'absolute', width: '100%', height: '100%', backfaceVisibility: 'hidden',
+                    borderRadius: '12px', overflow: 'hidden', display: 'flex', flexDirection: 'column',
+                    transform: 'rotateY(180deg)',
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                    border: '1px solid #cbd5e1'
+                  }}>
+                    {/* Magnetic Strip */}
+                    <div style={{ backgroundColor: '#0f172a', height: '40px', width: '100%', marginTop: '15px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)' }}></div>
+                    
+                    {/* Back Body */}
+                    <div style={{ padding: '12px 18px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ fontSize: '0.7rem', color: '#475569', lineHeight: '1.4', marginBottom: '8px' }}>
+                        <strong>Property of {settings?.landing_school_name || 'Jere Model Academy'}.</strong><br/>
+                        This card must be worn at all times while on school grounds. If found, please return to the school administration office.
+                      </div>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.75rem', color: '#334155', backgroundColor: 'rgba(255,255,255,0.5)', padding: '8px', borderRadius: '6px' }}>
+                        <div><strong>GENDER:</strong> {user.sex || 'N/A'}</div>
+                        <div><strong>ISSUED:</strong> 2026/2027</div>
+                        <div style={{ gridColumn: 'span 2' }}><strong>ADDRESS:</strong> Jere, Kaduna State, Nigeria</div>
+                      </div>
+                      
+                      <div style={{ marginTop: 'auto', textAlign: 'center' }}>
+                        {/* Barcode representation */}
+                        <div style={{ height: '25px', width: '80%', margin: '0 auto', backgroundImage: 'repeating-linear-gradient(90deg, #0f172a, #0f172a 2px, transparent 2px, transparent 4px, #0f172a 4px, #0f172a 5px, transparent 5px, transparent 8px, #0f172a 8px, #0f172a 12px, transparent 12px, transparent 14px)' }}></div>
+                        <div style={{ fontSize: '0.65rem', marginTop: '2px', letterSpacing: '3px', fontFamily: 'monospace' }}>{user.admission_number}</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div style={{ padding: '20px 22px' }}>
-                  <div style={{ borderLeft: '3px solid var(--primary)', paddingLeft: '16px' }}>
-                    <h4 style={{ fontSize: '1rem', margin: '0 0 6px 0' }}>Third Term Terminal Exams Commencement</h4>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '0 0 8px 0' }}>
-                      Students are reminded that all final term grades are computed with 4 CA components (10 marks each) and final exam sheets (60 marks). Study accordingly.
-                    </p>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Posted: July 2026 | Admin Office</span>
-                  </div>
-                </div>
+              </div>
               </div>
             </div>
 
@@ -846,6 +960,60 @@ export default function StudentDashboard({ user, settings, activeTab, subTab }) 
                 <Download size={16} /> Download PDF
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          TAB 6: MY ATTENDANCE CALENDAR
+          ========================================== */}
+      {activeSubTab === 'attendance' && (
+        <div className="glass-panel" style={{ backgroundColor: 'var(--bg-surface)', overflow: 'hidden' }}>
+          <HeroHeader
+            icon={Calendar}
+            title="My Attendance"
+            subtitle="Track your daily attendance records."
+          />
+          <div style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Calendar size={18} color="var(--primary)" /> 90-Day Attendance History
+              </h3>
+              <div style={{ display: 'flex', gap: '12px', fontSize: '0.85rem' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '12px', height: '12px', backgroundColor: '#10b981', borderRadius: '2px' }}></div> Present</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '12px', height: '12px', backgroundColor: '#ef4444', borderRadius: '2px' }}></div> Absent</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><div style={{ width: '12px', height: '12px', backgroundColor: '#f59e0b', borderRadius: '2px' }}></div> Late</span>
+              </div>
+            </div>
+
+            {attendance.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                No attendance records found yet.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '8px' }}>
+                {attendance.map((record, index) => {
+                  let bgColor = 'var(--bg-primary)';
+                  let color = 'var(--text-secondary)';
+                  if (record.status === 'present') { bgColor = '#10b981'; color = 'white'; }
+                  if (record.status === 'absent') { bgColor = '#ef4444'; color = 'white'; }
+                  if (record.status === 'late') { bgColor = '#f59e0b'; color = 'white'; }
+                  
+                  return (
+                    <div key={index} style={{ 
+                      backgroundColor: bgColor, color, 
+                      padding: '10px 5px', borderRadius: '6px', 
+                      textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '4px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                    }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 'bold', opacity: 0.9 }}>{new Date(record.date).toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: '800' }}>{new Date(record.date).getDate()}</span>
+                      <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', opacity: 0.9 }}>{new Date(record.date).toLocaleDateString('en-US', { month: 'short' })}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -32,9 +32,8 @@ export default function StudentRegistrationForm({ student, onClose, onUpdate }) 
   const handleExportPDF = () => {
     const element = formRef.current;
     if (!element) return;
-    // Temporarily make the hidden print form visible for capture
-    const prevDisplay = element.style.display;
-    element.style.display = 'block';
+    // Temporarily force the hidden print form visible for capture by overriding !important
+    element.style.setProperty('display', 'block', 'important');
     const opt = {
       margin:       0.3,
       filename:     `${student?.admission_number || 'student'}_profile.pdf`,
@@ -43,7 +42,7 @@ export default function StudentRegistrationForm({ student, onClose, onUpdate }) 
       jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
     html2pdf().set(opt).from(element).save().then(() => {
-      element.style.display = prevDisplay;
+      element.style.removeProperty('display');
     });
   };
 
@@ -224,100 +223,121 @@ export default function StudentRegistrationForm({ student, onClose, onUpdate }) 
         </div>
 
         {/* PRINTABLE AREA (Only visible during print) */}
-        <div className="physical-form-container print-area" ref={formRef}>
+        <div className="print-area" ref={formRef} style={{ padding: '40px', backgroundColor: '#fff', color: '#000', fontFamily: 'Arial, sans-serif' }}>
           <style>{`
             @media screen {
               .print-area { display: none !important; }
             }
           `}</style>
-          <div className="physical-form-header">
-            <h2>JERE MODEL ACADEMY</h2>
-            <p>OPPOSITE JABAL-ANNUR MOSQUE, NEW ABUJA ROAD,</p>
-            <p>JERE KAGARKO LGA, KADUNA STATE.</p>
+          
+          {/* Header */}
+          <table style={{ width: '100%', borderBottom: '3px solid #1d4ed8', paddingBottom: '10px', marginBottom: '20px' }}>
+            <tbody>
+              <tr>
+                <td style={{ verticalAlign: 'top' }}>
+                  <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#1e3a8a', margin: '0 0 5px 0', textTransform: 'uppercase' }}>Jere Model Academy</h2>
+                  <p style={{ margin: '0', fontSize: '14px', color: '#444' }}>Opposite Jabal-Annur Mosque, New Abuja Road</p>
+                  <p style={{ margin: '0', fontSize: '14px', color: '#444' }}>Jere Kagarko LGA, Kaduna State</p>
+                </td>
+                <td style={{ textAlign: 'right', width: '130px', verticalAlign: 'top' }}>
+                  <div style={{ width: '120px', height: '120px', border: '2px solid #ccc', borderRadius: '8px', overflow: 'hidden', backgroundColor: '#f9f9f9', display: 'inline-block', textAlign: 'center', lineHeight: '120px' }}>
+                    {student.passport_photo ? (
+                      <img src={student.passport_photo} alt="Student" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <span style={{ color: '#999', fontSize: '12px' }}>No Photo</span>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style={{ textAlign: 'center', fontSize: '20px', fontWeight: 'bold', margin: '20px 0', textTransform: 'uppercase', backgroundColor: '#f3f4f6', padding: '10px', borderRadius: '4px' }}>
+            Student Profile Information
           </div>
 
-          <div className="physical-form-title">
-            STUDENTS REGISTRATION FORM
-          </div>
+          {/* Reusable styles for the tables */}
+          {(() => {
+            const labelStyle = { width: '40%', fontWeight: 'bold', fontSize: '12px', color: '#555', padding: '8px', borderBottom: '1px solid #eee', textTransform: 'uppercase', verticalAlign: 'middle' };
+            const valueStyle = { width: '60%', fontSize: '14px', color: '#000', padding: '8px', borderBottom: '1px solid #eee', fontWeight: '500', verticalAlign: 'middle' };
+            const sectionHeader = { fontSize: '16px', fontWeight: 'bold', color: '#1e40af', borderBottom: '2px solid #1e40af', paddingBottom: '4px', marginBottom: '10px', marginTop: '20px', textTransform: 'uppercase' };
 
-          <div className="physical-form-grid">
-            <div className="form-fields">
-              <div className="form-line-item">
-                <span className="form-line-label">NAME:</span>
-                <span className="form-line-value">{student.full_name}</span>
-              </div>
-              <div className="form-line-item">
-                <span className="form-line-label">DATE OF BIRTH:</span>
-                <span className="form-line-value">{student.date_of_birth || 'N/A'}</span>
-              </div>
-              <div className="form-line-item">
-                <span className="form-line-label">CLASS OF ENTRY:</span>
-                <span className="form-line-value">{student.class_of_entry || student.class_name || 'N/A'}</span>
-              </div>
-              <div className="form-line-item">
-                <span className="form-line-label">TERM / YEAR OF ENTRY:</span>
-                <span className="form-line-value">{student.term_year_of_entry || 'N/A'}</span>
-              </div>
-              <div className="form-line-item">
-                <span className="form-line-label">LAST SCHOOL ATTENDED:</span>
-                <span className="form-line-value">{student.last_school_attended || 'N/A'}</span>
-              </div>
-              <div className="form-line-item">
-                <span className="form-line-label">ADDRESS OF RESIDENCE:</span>
-                <span className="form-line-value">{student.address_residence || 'N/A'}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div className="form-line-item">
-                  <span className="form-line-label">SEX:</span>
-                  <span className="form-line-value">{student.sex || 'N/A'}</span>
-                </div>
-                <div className="form-line-item">
-                  <span className="form-line-label">RELIGION:</span>
-                  <span className="form-line-value">{student.religion || 'N/A'}</span>
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div className="form-line-item">
-                  <span className="form-line-label">LOCAL GOVERNMENT:</span>
-                  <span className="form-line-value">{student.local_government || 'N/A'}</span>
-                </div>
-                <div className="form-line-item">
-                  <span className="form-line-label">STATE OF ORIGIN:</span>
-                  <span className="form-line-value">{student.state_of_origin || 'N/A'}</span>
-                </div>
-              </div>
-              <div className="form-line-item">
-                <span className="form-line-label">HANDICAPPED (YES/NO):</span>
-                <span className="form-line-value">
-                  {student.handicapped ? `YES - ${student.handicap_details || 'N/A'}` : 'NO'}
-                </span>
-              </div>
-            </div>
+            return (
+              <>
+                <div style={sectionHeader}>Personal Information</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px' }}>
+                  <tbody>
+                    <tr>
+                      <td style={labelStyle}>Full Name</td><td style={valueStyle}>{student.full_name || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>Date of Birth</td><td style={valueStyle}>{student.date_of_birth || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>Gender</td><td style={valueStyle}>{student.sex || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>Religion</td><td style={valueStyle}>{student.religion || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>Handicapped</td><td style={valueStyle}>{student.handicapped ? `YES - ${student.handicap_details || 'N/A'}` : 'NO'}</td>
+                    </tr>
+                  </tbody>
+                </table>
 
-            <div className="physical-form-photo">
-              {student.passport_photo ? (
-                <img src={student.passport_photo} alt="Student Passport" />
-              ) : (
-                <div style={{ padding: '10px' }}>
-                  PLACE<br />PASSPORT<br />PHOTO<br />HERE
-                </div>
-              )}
-            </div>
-          </div>
+                <div style={sectionHeader}>Academic Details</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px' }}>
+                  <tbody>
+                    <tr>
+                      <td style={labelStyle}>Admission Number</td><td style={valueStyle}>{student.admission_number || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>Class of Entry</td><td style={valueStyle}>{student.class_of_entry || student.class_name || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>Term / Year of Entry</td><td style={valueStyle}>{student.term_year_of_entry || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>Last School Attended</td><td style={valueStyle}>{student.last_school_attended || '-'}</td>
+                    </tr>
+                  </tbody>
+                </table>
 
-          <div style={{ marginTop: '20px' }}>
-            <div className="form-line-item">
-              <span className="form-line-label">NAME OF PARENT/GUARDIAN:</span>
-              <span className="form-line-value">{student.parent_name || 'N/A'}</span>
-            </div>
-            <div className="form-line-item">
-              <span className="form-line-label">ADDRESS:</span>
-              <span className="form-line-value">{student.parent_address || 'N/A'}</span>
-            </div>
-            <div className="form-line-item">
-              <span className="form-line-label">PHONE NUMBER:</span>
-              <span className="form-line-value">{student.parent_phone || 'N/A'}</span>
-            </div>
+                <div style={sectionHeader}>Contact & Origin</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px' }}>
+                  <tbody>
+                    <tr>
+                      <td style={labelStyle}>State of Origin</td><td style={valueStyle}>{student.state_of_origin || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>Local Government</td><td style={valueStyle}>{student.local_government || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>Address of Residence</td><td style={valueStyle}>{student.address_residence || '-'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div style={sectionHeader}>Parent / Guardian Details</div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '15px' }}>
+                  <tbody>
+                    <tr>
+                      <td style={labelStyle}>Name of Parent/Guardian</td><td style={valueStyle}>{student.parent_name || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>Phone Number</td><td style={valueStyle}>{student.parent_phone || '-'}</td>
+                    </tr>
+                    <tr>
+                      <td style={labelStyle}>Parent Address</td><td style={valueStyle}>{student.parent_address || '-'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </>
+            );
+          })()}
+
+          <div style={{ marginTop: '40px', paddingTop: '15px', borderTop: '1px solid #ccc', textAlign: 'center', fontSize: '12px', color: '#777' }}>
+            Generated on {new Date().toLocaleDateString()} | Jere Model Academy Official Document
           </div>
         </div>
 

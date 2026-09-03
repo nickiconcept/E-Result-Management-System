@@ -34,7 +34,8 @@ class SystemController extends Controller
                 'next_term_fee', 'next_term_begins', 'next_term_ends',
                 'max_ca_count', 'global_pass_mark', 'science_pass_mark', 
                 'arts_pass_mark', 'commercial_pass_mark',
-                'allow_fm_edit_student', 'allow_fm_register_student', 'allow_past_attendance'
+                'allow_fm_edit_student', 'allow_fm_register_student', 'allow_past_attendance',
+                'remark_generation_mode', 'allow_offline_debt'
             ]);
 
             DB::table('system_settings')->insert($data);
@@ -111,6 +112,7 @@ class SystemController extends Controller
     {
         $user = auth('api')->user();
         $class_id = $request->query('class_id');
+        $subject_id = $request->query('subject_id');
         $term = $request->query('term');
 
         try {
@@ -135,6 +137,7 @@ class SystemController extends Controller
             }
 
             if ($class_id) $query->where('s.class_id', $class_id);
+            if ($subject_id) $query->where('s.subject_id', $subject_id);
             if ($term) $query->where('s.term', $term);
 
             $schemes = $query->orderBy('s.week')->get();

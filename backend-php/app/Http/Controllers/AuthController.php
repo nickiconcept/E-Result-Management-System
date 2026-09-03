@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Hash;
+
 
 class AuthController extends Controller
 {
@@ -41,14 +43,47 @@ class AuthController extends Controller
             return response()->json(['message' => 'Invalid credentials'], 401);
         }
 
+        if ($user->role === 'student') {
+            $student = \Illuminate\Support\Facades\DB::table('students')->where('id', $user->id)->first();
+            if ($student && in_array($student->status, ['inactive', 'suspended', 'graduated'])) {
+                return response()->json(['message' => 'Account access restricted. Please contact administrator.'], 403);
+            }
+        } elseif ($user->role === 'teacher') {
+            $teacher = \Illuminate\Support\Facades\DB::table('teachers')->where('id', $user->id)->first();
+            if ($teacher && in_array($teacher->status, ['inactive', 'suspended', 'archived'])) {
+                return response()->json(['message' => 'Account access restricted. Please contact administrator.'], 403);
+            }
+        }
+
         // Generate token
         if (! $token = auth('api')->login($user)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
 
+        // Log successful login
+        ActivityLog::log(
+            'login',
+            'auth',
+            "{$user->full_name} ({$user->role}) logged in",
+            ['target_type' => 'user', 'target_id' => $user->id, 'target_name' => $user->full_name]
+        );
+
+        $userData = $user->toArray();
+        if ($user->role === 'student') {
+            $studentDetails = \Illuminate\Support\Facades\DB::table('students')
+                ->leftJoin('classes', 'students.class_id', '=', 'classes.id')
+                ->where('students.id', $user->id)
+                ->select('students.admission_number', 'students.class_id', 'classes.name as class_name', 'students.sex', 'students.religion', 'students.date_of_birth')
+                ->first();
+                
+            if ($studentDetails) {
+                $userData = array_merge($userData, (array) $studentDetails);
+            }
+        }
+
         return response()->json([
             'token' => $token,
-            'user' => $user
+            'user'  => $userData
         ]);
     }
 
@@ -59,6 +94,15 @@ class AuthController extends Controller
      */
     public function logout()
     {
+        $user = auth('api')->user();
+        if ($user) {
+            ActivityLog::log(
+                'logout',
+                'auth',
+                "{$user->full_name} ({$user->role}) logged out",
+                ['target_type' => 'user', 'target_id' => $user->id, 'target_name' => $user->full_name]
+            );
+        }
         auth('api')->logout();
         return response()->json(['message' => 'Successfully logged out']);
     }
@@ -70,7 +114,20 @@ class AuthController extends Controller
      */
     public function me()
     {
-        return response()->json(auth('api')->user());
+        $user = auth('api')->user();
+        $userData = $user->toArray();
+        if ($user->role === 'student') {
+            $studentDetails = \Illuminate\Support\Facades\DB::table('students')
+                ->leftJoin('classes', 'students.class_id', '=', 'classes.id')
+                ->where('students.id', $user->id)
+                ->select('students.admission_number', 'students.class_id', 'classes.name as class_name', 'students.sex', 'students.religion', 'students.date_of_birth')
+                ->first();
+                
+            if ($studentDetails) {
+                $userData = array_merge($userData, (array) $studentDetails);
+            }
+        }
+        return response()->json($userData);
     }
 
     /**

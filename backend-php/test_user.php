@@ -4,8 +4,8 @@ $app = require_once __DIR__.'/bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 try {
-  $debt = \Illuminate\Support\Facades\DB::table('fee_invoices')->where('category', 'Outstanding Debt')->count();
-  echo json_encode(['debt_count' => $debt]);
+  $user = \Illuminate\Support\Facades\DB::table('users')->first();
+  echo json_encode($user);
 } catch (\Exception $e) {
   echo json_encode(['error' => $e->getMessage()]);
 }

@@ -3,11 +3,67 @@ import { ArrowLeft, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
 export default function ClassBroadsheet({ data, className, term, session, settings, onBack }) {
-  if (!data || !Array.isArray(data.subjects) || !Array.isArray(data.rows)) {
+  if (!data || !Array.isArray(data.subjects) || (!Array.isArray(data.rows) && !Array.isArray(data.students))) {
     return <p style={{ padding: '20px', color: 'var(--text-secondary)' }}>Loading broadsheet data...</p>;
   }
 
-  const { subjects, rows } = data;
+  const subjects = data.subjects;
+  
+  // Map backend students format to frontend rows format
+  const rows = (data.rows || data.students || []).map(r => {
+    if (r.full_name) return r; // Already in correct format
+    
+    const mappedGrades = {};
+    let term1TotalSum = 0;
+    let term2TotalSum = 0;
+    let grandTotalSum = 0;
+    let cumAverageSum = 0;
+    let validCumCount = 0;
+
+    if (Array.isArray(r.grades)) {
+      r.grades.forEach(g => {
+        const t1 = g.term1 !== '-' ? Number(g.term1 || 0) : 0;
+        const t2 = g.term2 !== '-' ? Number(g.term2 || 0) : 0;
+        const score = Number(g.score || 0);
+        const cum = g.cum_avg !== '-' ? Number(g.cum_avg || 0) : 0;
+
+        mappedGrades[g.subject_id] = {
+          ca1: g.ca1 || 0,
+          ca2: g.ca2 || 0,
+          ca3: g.ca3 || 0,
+          ca4: g.ca4 || 0,
+          exam: g.exam || 0,
+          total: score,
+          term1_total: t1,
+          term2_total: t2,
+          cum_average: cum,
+          cum_grade: g.cum_grade !== '-' ? g.cum_grade : '',
+          grade: g.grade || ''
+        };
+
+        term1TotalSum += t1;
+        term2TotalSum += t2;
+        grandTotalSum += score;
+        if (cum > 0) {
+            cumAverageSum += cum;
+            validCumCount++;
+        }
+      });
+    }
+    
+    return {
+      full_name: r.student?.full_name || '',
+      admission_number: r.student?.admission_number || '',
+      grades: mappedGrades,
+      grandTotal: r.grandTotal || grandTotalSum,
+      term1GrandTotal: term1TotalSum,
+      term2GrandTotal: term2TotalSum,
+      overallSum: term1TotalSum + term2TotalSum + grandTotalSum,
+      cumAverage: validCumCount > 0 ? (cumAverageSum / validCumCount) : 0,
+      average: r.average || 0,
+      position: r.position || '-'
+    };
+  });
 
   const broadsheetRef = React.useRef(null);
 
@@ -150,6 +206,14 @@ export default function ClassBroadsheet({ data, className, term, session, settin
     document.body.removeChild(link);
   };
 
+  let colsPerSubject = term === '3rd Term' ? 6 : 3;
+  if (!settings?.max_ca_count || settings.max_ca_count >= 1) colsPerSubject++;
+  if (!settings?.max_ca_count || settings.max_ca_count >= 2) colsPerSubject++;
+  if (!settings?.max_ca_count || settings.max_ca_count >= 3) colsPerSubject++;
+  if (!settings?.max_ca_count || settings.max_ca_count >= 4) colsPerSubject++;
+  const endCols = term === '3rd Term' ? 6 : 3;
+  const totalCols = 2 + (subjects.length * colsPerSubject) + endCols;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {onBack && (
@@ -245,7 +309,7 @@ export default function ClassBroadsheet({ data, className, term, session, settin
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={2 + subjects.length * 7 + 3}>No student records found in this class.</td>
+                <td colSpan={totalCols}>No student records found in this class.</td>
               </tr>
             ) : (
               rows.map((row, rIdx) => (
@@ -288,7 +352,7 @@ export default function ClassBroadsheet({ data, className, term, session, settin
                           {row.overallSum}
                         </td>
                         <td style={{ fontWeight: 'bold', backgroundColor: 'var(--primary-light)' }}>
-                          {row.cumAverage ? row.cumAverage.toFixed(1) : 0}%
+                          {row.cumAverage !== undefined && row.cumAverage !== null ? row.cumAverage.toFixed(1) : 0}%
                         </td>
                       </>
                     ) : (
@@ -296,7 +360,7 @@ export default function ClassBroadsheet({ data, className, term, session, settin
                         <td style={{ fontWeight: 'bold', backgroundColor: 'var(--primary-light)' }}>
                           {row.grandTotal}
                         </td>
-                        <td style={{ fontWeight: 'bold' }}>{row.average ? row.average.toFixed(1) : 0}%</td>
+                        <td style={{ fontWeight: 'bold' }}>{row.average !== undefined && row.average !== null ? row.average.toFixed(1) : 0}%</td>
                       </>
                     )}
                   <td style={{ fontWeight: 'bold', color: row.position <= 3 ? 'var(--success)' : 'inherit' }}>

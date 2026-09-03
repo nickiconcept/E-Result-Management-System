@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Award, X, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import api from '../utils/api';
 
 export default function ReportCard({ data, settings, onClose, closeLabel, isBulk = false }) {
   if (!data) return null;
@@ -19,10 +20,61 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
     return photo.startsWith('data:') ? photo : `http://localhost:5000${photo}`;
   };
 
-
-
+  const [localRemarks, setLocalRemarks] = useState(data.remarks || {});
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const reportRef = React.useRef(null);
   
+  // Term Average score
+  const activeTermAverage = grades && grades.length > 0 
+    ? (grades.reduce((sum, g) => sum + (g.total_score || 0), 0) / grades.length).toFixed(1)
+    : '0.0';
+
+  useEffect(() => {
+    const shouldGenerateAi = settings?.remark_generation_mode === 'ai' && !data.remarks?.is_ai_generated;
+    
+    if (shouldGenerateAi) {
+      const generateMissingRemarks = async () => {
+        setIsGeneratingAi(true);
+        try {
+          const perfSummary = `Student Name: ${student.full_name}, Term Average: ${activeTermAverage}%, Total Subjects: ${grades?.length || 0}. Please provide a constructive remark based on this performance.`;
+          
+          // Call generation for Teacher
+          const tRes = await api.generateAIRemark({
+            student_id: student.id,
+            term: term,
+            academic_year: academic_year,
+            performance_summary: perfSummary,
+            type: 'teacher'
+          });
+          
+          if (tRes && tRes.remark) {
+            setLocalRemarks(prev => ({...prev, class_teacher_remark: tRes.remark.class_teacher_remark, is_ai_generated: 1}));
+          }
+
+          // Call generation for Principal
+          const pRes = await api.generateAIRemark({
+            student_id: student.id,
+            term: term,
+            academic_year: academic_year,
+            performance_summary: perfSummary,
+            type: 'principal'
+          });
+          
+          if (pRes && pRes.remark) {
+            setLocalRemarks(prev => ({...prev, principal_remark: pRes.remark.principal_remark, is_ai_generated: 1}));
+          }
+
+        } catch (err) {
+          console.error("Failed to generate AI remarks dynamically:", err);
+        } finally {
+          setIsGeneratingAi(false);
+        }
+      };
+
+      generateMissingRemarks();
+    }
+  }, [settings?.remark_generation_mode, data.remarks, student.id, term, academic_year, activeTermAverage, student.full_name, grades?.length]);
+
   const handleExportPDF = () => {
     const element = reportRef.current;
     if (!element) return;
@@ -41,11 +93,6 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
   const is3rdTerm = term === '3rd Term';
   const classTier = (student?.tier || 'jss').toLowerCase();
     const isPrimary = classTier.includes('primary');
-
-  // Term Average score
-  const activeTermAverage = grades && grades.length > 0 
-    ? (grades.reduce((sum, g) => sum + (g.total_score || 0), 0) / grades.length).toFixed(1)
-    : '0.0';
 
   // Term Grand Total
   const activeTermGrandTotal = grades && grades.length > 0 
@@ -439,11 +486,15 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
           {/* OFFICIAL REMARKS & SIGNATURE STAMPS */}
           <div className="m-remarks-block">
             <div className="m-remark-row">
-              <div className="m-remark-label">Class Teacher Remarks:</div>
+              <div className="m-remark-label">Class Teacher's Remark:</div>
               <div className="m-remark-text">
-                {parseFloat(is3rdTerm ? overallCumAverage : activeTermAverage) >= 50
-                  ? 'Satisfactory academic results and good conduct throughout the term.'
-                  : 'Needs additional study dedication and academic focus.'}
+                {isGeneratingAi ? (
+                  <span style={{ color: '#0ea5e9', fontStyle: 'italic' }}>Generating AI Remark...</span>
+                ) : (
+                  localRemarks?.class_teacher_remark || (parseFloat(is3rdTerm ? overallCumAverage : activeTermAverage) >= 50 
+                    ? 'A very good result. Keep it up.' 
+                    : 'You need to work harder next term.')
+                )}
               </div>
               <div className="m-sign-box" style={{ minWidth: '160px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
                 {student.form_master_signature ? (
@@ -458,9 +509,13 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
             <div className="m-remark-row">
               <div className="m-remark-label">Principal / Headmaster Note:</div>
               <div className="m-remark-text">
-                {parseFloat(is3rdTerm ? overallCumAverage : activeTermAverage) >= 40
-                  ? 'Good performance. Keep up the hard work in the coming session.'
-                  : 'Fair result. Parent guidance is recommended.'}
+                {isGeneratingAi ? (
+                  <span style={{ color: '#0ea5e9', fontStyle: 'italic' }}>Generating AI Remark...</span>
+                ) : (
+                  localRemarks?.principal_remark || (parseFloat(is3rdTerm ? overallCumAverage : activeTermAverage) >= 40
+                    ? 'Good performance. Keep up the hard work in the coming session.'
+                    : 'Fair result. Parent guidance is recommended.')
+                )}
               </div>
               <div className="m-sign-box" style={{ minWidth: '160px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'flex-end' }}>
                 {settings?.principal_signature ? (

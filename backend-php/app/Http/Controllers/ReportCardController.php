@@ -199,6 +199,12 @@ class ReportCardController extends Controller
             });
         }
 
+        $remarkData = DB::table('report_card_remarks')
+            ->where('student_id', $targetStudentId)
+            ->where('term', $reqTerm)
+            ->where('academic_year', $reqYear)
+            ->first();
+
         return [
             'student' => $studentInfo,
             'grades' => $reports,
@@ -210,7 +216,8 @@ class ReportCardController extends Controller
             'total_students' => $total_students,
             'class_average' => $class_average,
             'highest_average' => $highest_average,
-            'lowest_average' => $lowest_average
+            'lowest_average' => $lowest_average,
+            'remarks' => $remarkData
         ];
     }
 
@@ -361,7 +368,13 @@ class ReportCardController extends Controller
 
                         $stuSubjectEntry = [
                             'subject_id' => $subId,
-                            'score' => $g->total_score
+                            'score' => $g->total_score,
+                            'ca1' => $g->ca1,
+                            'ca2' => $g->ca2,
+                            'ca3' => $g->ca3,
+                            'ca4' => $g->ca4,
+                            'exam' => $g->exam_score,
+                            'grade' => $g->grade_letter
                         ];
 
                         if ($term === '3rd Term') {
@@ -387,7 +400,13 @@ class ReportCardController extends Controller
                     } else {
                         $emptyEntry = [
                             'subject_id' => $subId,
-                            'score' => '-'
+                            'score' => '-',
+                            'ca1' => '-',
+                            'ca2' => '-',
+                            'ca3' => '-',
+                            'ca4' => '-',
+                            'exam' => '-',
+                            'grade' => '-'
                         ];
                         if ($term === '3rd Term') {
                             $emptyEntry['term1'] = '-';

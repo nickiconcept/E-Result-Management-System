@@ -11,6 +11,18 @@ class ClassController extends Controller
     {
         $classes = DB::table('classes')
             ->leftJoin('users', 'classes.form_master_id', '=', 'users.id')
+            ->where('classes.name', 'NOT LIKE', '%Waiting Room%')
+            ->select('classes.*', 'users.full_name as form_master_name')
+            ->orderBy('classes.name')
+            ->get();
+        return response()->json($classes);
+    }
+
+    public function waitingRooms()
+    {
+        $classes = DB::table('classes')
+            ->leftJoin('users', 'classes.form_master_id', '=', 'users.id')
+            ->where('classes.name', 'LIKE', '%Waiting Room%')
             ->select('classes.*', 'users.full_name as form_master_name')
             ->orderBy('classes.name')
             ->get();

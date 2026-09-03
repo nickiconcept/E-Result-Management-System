@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\ActivityLog;
+
 
 class StudentController extends Controller
 {
@@ -85,6 +87,29 @@ class StudentController extends Controller
             'full_name' => 'required|string',
         ]);
 
+        $dob = $request->input('date_of_birth');
+        $parentPhone = $request->input('parent_phone');
+
+        if ($dob && $parentPhone) {
+            $duplicate = DB::table('students')
+                ->where('date_of_birth', $dob)
+                ->where('parent_phone', $parentPhone)
+                ->first();
+                
+            if ($duplicate) {
+                return response()->json(['error' => 'Duplicate Registration: A student with this Date of Birth and Parent Phone Number already exists.'], 400);
+            }
+        }
+
+        $duplicateName = DB::table('users')
+            ->where('full_name', $request->input('full_name'))
+            ->where('role', 'student')
+            ->first();
+
+        if ($duplicateName) {
+            return response()->json(['error' => 'Duplicate Registration: A student with this Full Name already exists.'], 400);
+        }
+
         try {
             DB::beginTransaction();
 
@@ -132,9 +157,13 @@ class StudentController extends Controller
 
             $offline_debt = $request->input('offline_debt_amount');
             if ($offline_debt && is_numeric($offline_debt) && $offline_debt > 0) {
+                $fullName = $request->input('full_name');
+                $admNo = $request->input('admission_number');
+                $debtTitle = $fullName . ' - ' . $admNo . ' - School Fee';
+                
                 DB::table('fee_invoices')->insert([
                     'student_id' => $userId,
-                    'title' => 'Outstanding Offline Debt',
+                    'title' => $debtTitle,
                     'category' => 'Outstanding Debt',
                     'amount_due' => $offline_debt,
                     'amount_paid' => 0,
@@ -165,6 +194,15 @@ class StudentController extends Controller
             }
 
             DB::commit();
+
+            // Log the registration
+            ActivityLog::log(
+                'create_student',
+                'students',
+                "Student '{$request->input('full_name')}' registered (Admission: {$admission_number})",
+                ['target_type' => 'student', 'target_id' => $userId, 'target_name' => $request->input('full_name')]
+            );
+
             return response()->json([
                 'message' => 'Student registered successfully',
                 'admission_number' => $admission_number,
@@ -246,72 +284,37 @@ class StudentController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-    public function autoPromote(Request $request)
+    private function getValidTargets($sourceName)
     {
-        $source_class_id = $request->input('source_class_id');
-        $mode = $request->input('mode');
-        
-        try { DB::beginTransaction(); if ($source_class_id) { $sourceClass = DB::table('classes')->where('id', $source_class_id)->first(); if ($sourceClass && stripos($sourceClass->name, 'Graduate') !== false) { return response()->json(['error' => 'Backend Validation Error: Cannot promote students from a Graduate Waiting Room.'], 400); } } $settings = DB::table('system_settings')->latest('id')->first(); $activeSession = $settings ? $settings->active_session : '';
+        if (stripos($sourceName, 'Graduate') !== false) return [];
+        $targetNames = [];
+        $isGraduating = false;
 
-            $students = DB::table('students')->where('class_id', $source_class_id)->get();
-            
-            $promoted = 0;
-            $repeated = 0;
-            
-            foreach ($students as $student) {
-                $avg = DB::table('grades')
-                    ->where('student_id', $student->id)
-                    ->where('academic_year', $activeSession)
-                    ->avg('total_score') ?? 0;
-                    
-                $target_class_id = $source_class_id;
-                
-                if ($mode === 'split') {
-                    if ($avg >= ($settings->science_pass_mark ?? 50)) {
-                        $target_class_id = $request->input('science_target_id');
-                    } elseif ($avg >= ($settings->commercial_pass_mark ?? 50)) {
-                        $target_class_id = $request->input('commercial_target_id');
-                    } elseif ($avg >= ($settings->arts_pass_mark ?? 50)) {
-                        $target_class_id = $request->input('arts_target_id');
-                    }
-                } else {
-                    if ($avg >= ($settings->global_pass_mark ?? 50)) {
-                        $target_class_id = $request->input('global_target_id');
-                    }
-                }
-                
-                DB::table('students')->where('id', $student->id)->update([
-                    'class_id' => $target_class_id,
-                    'updated_at' => now(),
-                ]);
-                
-                if ($target_class_id != $source_class_id) {
-                    $promoted++;
-                } else {
-                    $repeated++;
-                }
-            }
-            
-            $exists = DB::table('promoted_classes')
-                ->where('class_id', $source_class_id)
-                ->where('session', $activeSession)
-                ->first();
-                
-            if (!$exists) {
-                DB::table('promoted_classes')->insert([
-                    'class_id' => $source_class_id,
-                    'session' => $activeSession,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-            
-            DB::commit();
-            return response()->json(['message' => "Auto-promotion completed. Promoted: $promoted, Repeated: $repeated"]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 500);
+        if ($sourceName === 'Nursery 1') $targetNames = ['Nursery 2'];
+        if ($sourceName === 'Nursery 2') $targetNames = ['Nursery 3'];
+        if ($sourceName === 'Nursery 3') $targetNames = ['Nursery Graduates Waiting Room'];
+
+        if ($sourceName === 'Primary 1') $targetNames = ['Primary 2'];
+        if ($sourceName === 'Primary 2') $targetNames = ['Primary 3'];
+        if ($sourceName === 'Primary 3') $targetNames = ['Primary 4'];
+        if ($sourceName === 'Primary 4') $targetNames = ['Primary 5'];
+        if ($sourceName === 'Primary 5') $targetNames = ['Primary Graduates Waiting Room'];
+
+        if ($sourceName === 'JSS 1A') $targetNames = ['JSS 2A'];
+        if ($sourceName === 'JSS 1B') $targetNames = ['JSS 2B'];
+        if ($sourceName === 'JSS 2A') $targetNames = ['JSS 3A'];
+        if ($sourceName === 'JSS 2B') $targetNames = ['JSS 3B'];
+        if ($sourceName === 'JSS 3A' || $sourceName === 'JSS 3B') $targetNames = ['JSS Graduates Waiting Room'];
+
+        if ($sourceName === 'SSS 1A' || $sourceName === 'SSS 1B') $targetNames = ['SSS 2A', 'SSS 2B', 'SSS 2C'];
+        if ($sourceName === 'SSS 2A') $targetNames = ['SSS 3A'];
+        if ($sourceName === 'SSS 2B') $targetNames = ['SSS 3B'];
+        if ($sourceName === 'SSS 2C') $targetNames = ['SSS 3C'];
+        if ($sourceName === 'SSS 3A' || $sourceName === 'SSS 3B' || $sourceName === 'SSS 3C') {
+            $isGraduating = true;
         }
+
+        return ['names' => $targetNames, 'isGraduating' => $isGraduating];
     }
 
     public function promoteBulk(Request $request)
@@ -320,7 +323,33 @@ class StudentController extends Controller
         $target_class_id = $request->input('target_class_id');
         $selected_student_ids = $request->input('selected_student_ids');
 
-        try { DB::beginTransaction(); if ($source_class_id) { $sourceClass = DB::table('classes')->where('id', $source_class_id)->first(); if ($sourceClass && stripos($sourceClass->name, 'Graduate') !== false) { return response()->json(['error' => 'Backend Validation Error: Cannot promote students from a Graduate Waiting Room.'], 400); } } $settings = DB::table('system_settings')->latest('id')->first(); $activeSession = $settings ? $settings->active_session : '';
+        try { DB::beginTransaction(); 
+            if ($source_class_id) { 
+                $sourceClass = DB::table('classes')->where('id', $source_class_id)->first(); 
+                if ($sourceClass) {
+                    if (stripos($sourceClass->name, 'Graduate') !== false) { 
+                        return response()->json(['error' => 'Backend Validation Error: Cannot promote students from a Graduate Waiting Room.'], 400); 
+                    }
+                    
+                    // Validation: Prevent reverse promotion
+                    $validTargetsData = $this->getValidTargets($sourceClass->name);
+                    $isValid = false;
+                    
+                    if ($target_class_id === 'graduate' && $validTargetsData['isGraduating']) {
+                        $isValid = true;
+                    } else if ($target_class_id !== 'graduate') {
+                        $targetClass = DB::table('classes')->where('id', $target_class_id)->first();
+                        if ($targetClass && in_array($targetClass->name, $validTargetsData['names'])) {
+                            $isValid = true;
+                        }
+                    }
+
+                    if (!$isValid) {
+                        return response()->json(['error' => 'Backend Validation Error: Invalid target class. Reverse promotions are not allowed.'], 400);
+                    }
+                } 
+            } 
+            $settings = DB::table('system_settings')->latest('id')->first(); $activeSession = $settings ? $settings->active_session : '';
 
             $studentIdsToPromote = [];
             if (is_array($selected_student_ids) && count($selected_student_ids) > 0) {
@@ -369,6 +398,27 @@ class StudentController extends Controller
         $status = $request->input('status', 'active');
 
         try {
+            $student = DB::table('students')->where('id', $student_id)->first();
+            if ($student && $student->class_id) {
+                $sourceClass = DB::table('classes')->where('id', $student->class_id)->first();
+                if ($sourceClass) {
+                    $validTargetsData = $this->getValidTargets($sourceClass->name);
+                    $isValid = false;
+
+                    if ($target_class_id === 'graduate' && $validTargetsData['isGraduating']) {
+                        $isValid = true;
+                    } else if ($target_class_id !== 'graduate') {
+                        $targetClass = DB::table('classes')->where('id', $target_class_id)->first();
+                        if ($targetClass && in_array($targetClass->name, $validTargetsData['names'])) {
+                            $isValid = true;
+                        }
+                    }
+
+                    if (!$isValid) {
+                        return response()->json(['error' => 'Backend Validation Error: Invalid target class. Reverse promotions are not allowed.'], 400);
+                    }
+                }
+            }
             if ($target_class_id === 'graduate') {
                 DB::table('students')->where('id', $student_id)->update([
                     'status' => 'graduated',
@@ -438,27 +488,67 @@ class StudentController extends Controller
         }
     }
 
-    public function fastTrackGraduate(Request $request)
+    public function bulkStatusUpdate(Request $request)
     {
-        $request->validate([
-            'student_id' => 'required|integer',
-            'class_id' => 'required|integer',
-        ]);
+        $student_ids = $request->input('student_ids');
+        $status = $request->input('status'); // 'active', 'inactive', 'graduated'
+        if (!$student_ids || !is_array($student_ids) || !$status) {
+            return response()->json(['error' => 'Invalid data provided.'], 400);
+        }
 
         try {
-            $updated = DB::table('students')
-                ->where('id', $request->input('student_id'))
-                ->update([
-                    'class_id' => $request->input('class_id'),
-                    'updated_at' => now(),
-                ]);
-            
-            if ($updated) {
-                return response()->json(['message' => 'Student successfully moved from graduate list to active class.']);
-            }
-            return response()->json(['error' => 'Student not found.'], 404);
+            DB::beginTransaction();
+            DB::table('students')->whereIn('id', $student_ids)->update(['status' => $status]);
+            DB::commit();
+            return response()->json(['message' => 'Status updated successfully.']);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function bulkClassUpdate(Request $request)
+    {
+        $student_ids = $request->input('student_ids');
+        $class_id = $request->input('class_id');
+        if (!$student_ids || !is_array($student_ids) || !$class_id) {
+            return response()->json(['error' => 'Invalid data provided.'], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+            DB::table('students')->whereIn('id', $student_ids)->update(['class_id' => $class_id]);
+            DB::commit();
+            return response()->json(['message' => 'Class updated successfully.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function destroy($id)
+    {
+        $user = auth('api')->user();
+        if ($user->role !== 'admin') {
+            return response()->json(['error' => 'Permission denied: Only Admins can delete students.'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $studentUser = DB::table('users')->where('id', $id)->where('role', 'student')->first();
+            if (!$studentUser) {
+                return response()->json(['error' => 'Student not found.'], 404);
+            }
+
+            // Deleting the user will cascade to students, grades, fee_invoices, etc.
+            DB::table('users')->where('id', $id)->delete();
+
+            DB::commit();
+            return response()->json(['message' => 'Student deleted successfully.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to delete student: ' . $e->getMessage()], 500);
         }
     }
 }

@@ -115,6 +115,14 @@ class GradesController extends Controller
                     'updated_at' => now(),
                 ]
             );
+
+            // Invalidate existing AI remarks for this student/term since their grades changed
+            DB::table('report_card_remarks')
+                ->where('student_id', $gradeData['student_id'])
+                ->where('term', $gradeData['term'])
+                ->where('academic_year', $gradeData['academic_year'])
+                ->where('is_ai_generated', true)
+                ->delete();
         }
 
         return response()->json(['message' => 'Grades saved successfully']);

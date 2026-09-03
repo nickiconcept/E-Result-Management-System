@@ -15,7 +15,8 @@ class TeacherController extends Controller
             ->select(
                 'users.id', 'users.username', 'users.full_name', 'users.email', 'users.passport_photo', 'users.created_at', 'teachers.status',
                 'teachers.surname', 'teachers.first_name', 'teachers.other_names', 'teachers.address', 'teachers.state_of_residence', 'teachers.lga_of_residence',
-                'teachers.signature as digital_signature', 'teachers.signature'
+                'teachers.signature as digital_signature', 'teachers.signature',
+                'teachers.phone_number', 'teachers.date_of_birth', 'teachers.qualification', 'teachers.discipline', 'teachers.employment_category'
             )
             ->orderBy('users.full_name')
             ->get();
@@ -80,11 +81,28 @@ class TeacherController extends Controller
 
     public function destroy($id)
     {
-        $deleted = DB::table('teachers')->where('id', $id)->delete();
-        if (!$deleted) {
-            return response()->json(['error' => 'Teacher not found'], 404);
+        $user = auth('api')->user();
+        if ($user->role !== 'admin') {
+            return response()->json(['error' => 'Permission denied: Only Admins can delete teachers.'], 403);
         }
-        return response()->json(['message' => 'Teacher deleted successfully']);
+
+        try {
+            DB::beginTransaction();
+
+            $teacherUser = DB::table('users')->where('id', $id)->where('role', 'teacher')->first();
+            if (!$teacherUser) {
+                return response()->json(['error' => 'Teacher not found.'], 404);
+            }
+
+            // Deleting the user will cascade to teachers table
+            DB::table('users')->where('id', $id)->delete();
+
+            DB::commit();
+            return response()->json(['message' => 'Teacher deleted successfully.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['error' => 'Failed to delete teacher: ' . $e->getMessage()], 500);
+        }
     }
 
     public function assignments(Request $request)

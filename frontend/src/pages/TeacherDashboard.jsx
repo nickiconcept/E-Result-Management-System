@@ -3,10 +3,12 @@ import api from '../utils/api';
 import ClassBroadsheet from '../components/ClassBroadsheet';
 import Toast from '../components/Toast';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
-import { ArrowLeft, Edit3, CheckSquare, BarChart2, FileSpreadsheet, FileText, Save, Search, Users, Award, CheckCircle, XCircle, Plus, Lock, Printer, BookOpen, Clock, UploadCloud, CheckCircle2, Hourglass, Eye } from 'lucide-react';
+import RemarksManager from '../components/RemarksManager';
+import { ArrowLeft, Edit3, CheckSquare, BarChart2, FileSpreadsheet, FileText, Save, Search, Users, Award, CheckCircle, XCircle, Plus, Lock, Printer, BookOpen, Clock, UploadCloud, CheckCircle2, Hourglass, Eye, Sparkles } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import html2pdf from 'html2pdf.js';
 import { Download } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function TeacherDashboard({ user, settings, activeTab, subTab }) {
   const [activeSubTab, setActiveSubTab] = useState('overview');
@@ -56,6 +58,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
   const [attendanceReport, setAttendanceReport] = useState([]);
   const [attendanceReportStartDate, setAttendanceReportStartDate] = useState('');
   const [attendanceReportEndDate, setAttendanceReportEndDate] = useState('');
+  const [attendanceReportView, setAttendanceReportView] = useState('summary');
   const [activeAttendanceSubTab, setActiveAttendanceSubTab] = useState('take'); // 'take' or 'report'
 
   // Broadsheet States
@@ -81,7 +84,9 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
   const [studentForm, setStudentForm] = useState({
     surname: '', first_name: '', other_names: '', full_name: '', class_id: '',
     date_of_birth: '', sex: 'Male', religion: 'Islam',
-    address_residence: '', last_school_attended: '', passport_photo: ''
+    address_residence: '', last_school_attended: '', passport_photo: '',
+    local_government: '', state_of_origin: '', handicapped: false, handicap_details: '',
+    parent_name: '', parent_address: '', parent_phone: '', has_offline_debt: false, offline_debt_amount: ''
   });
 
   // Status banners
@@ -89,8 +94,12 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    loadTeacherInfo();
-    loadResultProgress();
+    Promise.all([
+      loadTeacherInfo(),
+      loadResultProgress()
+    ]).finally(() => {
+      setIsInitialLoad(false);
+    });
   }, []);
 
   useEffect(() => {
@@ -124,7 +133,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
     if (activeSubTab === 'attendance' && activeAttendanceSubTab === 'report' && assignments.formClass) {
       fetchAttendanceReport();
     }
-  }, [activeSubTab, activeAttendanceSubTab, attendanceReportStartDate, attendanceReportEndDate, assignments.formClass]);
+  }, [activeSubTab, activeAttendanceSubTab, attendanceReportStartDate, attendanceReportEndDate, attendanceReportView, assignments.formClass]);
 
   const loadResultProgress = async () => {
     try {
@@ -176,7 +185,13 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
       const res = await api.registerStudent(payload);
       setNotify(`Student registered! Admission No: ${res.admission_number}`);
       setShowStudentModal(false);
-      setStudentForm({ surname: '', first_name: '', other_names: '', full_name: '', class_id: '', date_of_birth: '', sex: 'Male', religion: 'Islam', address_residence: '', last_school_attended: '', passport_photo: '' });
+      setStudentForm({
+        surname: '', first_name: '', other_names: '', full_name: '', class_id: '',
+        date_of_birth: '', sex: 'Male', religion: 'Islam',
+        address_residence: '', last_school_attended: '', passport_photo: '',
+        local_government: '', state_of_origin: '', handicapped: false, handicap_details: '',
+        parent_name: '', parent_address: '', parent_phone: '', has_offline_debt: false, offline_debt_amount: ''
+      });
       loadFormClassStudents(assignments.formClass.id);
     } catch (err) {
       setErrorMsg('Failed to register student: ' + err.message);
@@ -298,7 +313,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
   const fetchAttendanceReport = async () => {
     if (!assignments.formClass) return;
     try {
-      const data = await api.getAttendanceReport(assignments.formClass.id, attendanceReportStartDate, attendanceReportEndDate);
+      const data = await api.getAttendanceReport(assignments.formClass.id, attendanceReportStartDate, attendanceReportEndDate, attendanceReportView);
       setAttendanceReport(data);
     } catch (err) {
       setErrorMsg('Failed to fetch attendance report: ' + err.message);
@@ -326,7 +341,10 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
 
       // 2. Fetch Rated/Unrated Students
       const data = await api.getSkillsStudents(assignments.formClass.id, settings.active_term, settings.active_session);
-      setBehavioralStudents(data);
+      
+      const rated = Array.isArray(data) ? data.filter(s => s.status === 'Rated') : [];
+      const unrated = Array.isArray(data) ? data.filter(s => s.status === 'Unrated') : [];
+      setBehavioralStudents({ rated, unrated });
     } catch (err) {
       setErrorMsg('Failed to load psychomotor data: ' + err.message);
     }
@@ -384,7 +402,8 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
   // TEACHER SCHEME OF WORK LOGIC
   // ==========================================
   const [teacherSchemeAssignIdx, setTeacherSchemeAssignIdx] = useState('');
-  const [teacherSchemeTerm, setTeacherSchemeTerm] = useState('3rd Term');
+  const [teacherSchemeTerm, setTeacherSchemeTerm] = useState('1st Term');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [teacherSchemeWeeks, setTeacherSchemeWeeks] = useState(Array.from({ length: 12 }, (_, i) => ({ week: i + 1, topic: '', objectives: '', id: null })));
 
   const loadTeacherSchemes = async () => {
@@ -452,22 +471,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
     }
   };
 
-  const handleDeleteTeacherSchemeWeek = async (weekObj) => {
-    if (!weekObj.id) {
-      handleTeacherSchemeFieldChange(weekObj.week, 'topic', '');
-      handleTeacherSchemeFieldChange(weekObj.week, 'objectives', '');
-      return;
-    }
-    setNotify('');
-    setErrorMsg('');
-    try {
-      await api.deleteScheme(weekObj.id);
-      setNotify(`Successfully deleted Week ${weekObj.week} entry.`);
-      loadTeacherSchemes();
-    } catch (err) {
-      setErrorMsg(`Failed to delete Week ${weekObj.week}: ` + err.message);
-    }
-  };
+
 
   useEffect(() => {
     if (activeSubTab === 'schemes' && teacherSchemeAssignIdx !== '') {
@@ -475,8 +479,10 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
     }
   }, [activeSubTab, teacherSchemeAssignIdx, teacherSchemeTerm]);
 
+  if (isInitialLoad) return <LoadingSpinner />;
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '24px' }}>
       
       {/* Toast Notifications */}
       <Toast message={notify} type="success" onClose={() => setNotify('')} duration={4000} />
@@ -491,7 +497,89 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
           
           {/* RESULT UPLOAD PROGRESS WIDGET */}
-          {/* RESULT UPLOAD PROGRESS WIDGET */}
+          <div className="glass-panel" style={{ padding: '28px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>My Assigned Subjects</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '4px 0 0 0' }}>
+                Select a subject stream below to open the grading spreadsheet.
+              </p>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
+              {assignments.subjects.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', backgroundColor: 'var(--bg-secondary)', borderRadius: '12px', color: 'var(--text-muted)' }}>
+                  You are not currently assigned to teach any subjects.
+                </div>
+              ) : (
+                assignments.subjects.map((assign, idx) => (
+                  <button
+                    key={idx}
+                    className="btn"
+                    style={{ 
+                      display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px', textAlign: 'left', 
+                      backgroundColor: '#f8fafc', color: 'var(--text-primary)', border: '1px solid var(--border-color)', 
+                      borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 6px 12px rgba(0,0,0,0.05)'; e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
+                    onClick={() => handleSelectClassSubjectForGrades(assign)}
+                  >
+                    <div>
+                      <div style={{ fontWeight: '700', fontSize: '1.05rem', color: 'var(--primary)' }}>{assign.class_name}</div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{assign.subject_name}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)', marginTop: 'auto' }}>
+                      <Edit3 size={14} /> Enter Marks
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="glass-panel" style={{ padding: '28px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Form Master Status</h3>
+            </div>
+            {assignments.formClass ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ 
+                  backgroundColor: 'rgba(59, 130, 246, 0.05)', color: 'var(--primary)', padding: '20px', 
+                  borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' 
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Form Master of</div>
+                    <div style={{ fontSize: '1.4rem', fontWeight: '800', marginTop: '4px' }}>{assignments.formClass.name}</div>
+                  </div>
+                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Users size={24} style={{ color: 'var(--primary)' }} />
+                  </div>
+                </div>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: '1.5' }}>
+                  As Form Master, you have access to daily attendance checklists and the complete class broadsheet for academic reviews.
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                  <button className="btn btn-primary" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => { setActiveSubTab('attendance'); fetchAttendance(assignments.formClass.id, attendanceDate); }}>
+                    <CheckSquare size={16} /> Mark Attendance
+                  </button>
+                  <button className="btn btn-secondary" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#fff', border: '1px solid var(--border-color)' }} onClick={() => { setActiveSubTab('broadsheet'); fetchBroadsheet(assignments.formClass.id); }}>
+                    <FileSpreadsheet size={16} /> View Class Results
+                  </button>
+                  <button className="btn btn-secondary" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#fff', border: '1px solid var(--border-color)' }} onClick={() => { setActiveSubTab('behavioral'); loadBehavioralRoster(); }}>
+                    <Award size={16} /> Evaluate Psychomotor
+                  </button>
+                  <button className="btn btn-secondary" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#fff', border: '1px solid var(--border-color)' }} onClick={() => { setActiveSubTab('remarks'); }}>
+                    <Sparkles size={16} /> Manage Remarks
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ padding: '20px', textAlign: 'center', backgroundColor: 'var(--bg-secondary)', borderRadius: '12px', color: 'var(--text-muted)' }}>
+                You are not currently assigned as a Class Teacher for any class.
+              </div>
+            )}
+          </div>
+
           <div className="glass-panel" style={{ gridColumn: '1 / -1', padding: '28px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <div>
@@ -637,88 +725,18 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
             )}
 
           </div>
-          
-          <div className="glass-panel" style={{ padding: '28px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>My Assigned Subjects</h3>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '4px 0 0 0' }}>
-                Select a subject stream below to open the grading spreadsheet.
-              </p>
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '16px' }}>
-              {assignments.subjects.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', backgroundColor: 'var(--bg-secondary)', borderRadius: '12px', color: 'var(--text-muted)' }}>
-                  You are not currently assigned to teach any subjects.
-                </div>
-              ) : (
-                assignments.subjects.map((assign, idx) => (
-                  <button
-                    key={idx}
-                    className="btn"
-                    style={{ 
-                      display: 'flex', flexDirection: 'column', gap: '12px', padding: '20px', textAlign: 'left', 
-                      backgroundColor: '#f8fafc', color: 'var(--text-primary)', border: '1px solid var(--border-color)', 
-                      borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 6px 12px rgba(0,0,0,0.05)'; e.currentTarget.style.borderColor = 'var(--primary)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
-                    onClick={() => handleSelectClassSubjectForGrades(assign)}
-                  >
-                    <div>
-                      <div style={{ fontWeight: '700', fontSize: '1.05rem', color: 'var(--primary)' }}>{assign.class_name}</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{assign.subject_name}</div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)', marginTop: 'auto' }}>
-                      <Edit3 size={14} /> Enter Marks
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="glass-panel" style={{ padding: '28px', backgroundColor: 'var(--bg-surface)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>Form Master Status</h3>
-            </div>
-            {assignments.formClass ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ 
-                  backgroundColor: 'rgba(59, 130, 246, 0.05)', color: 'var(--primary)', padding: '20px', 
-                  borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' 
-                }}>
-                  <div>
-                    <div style={{ fontSize: '0.8rem', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Form Master of</div>
-                    <div style={{ fontSize: '1.4rem', fontWeight: '800', marginTop: '4px' }}>{assignments.formClass.name}</div>
-                  </div>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Users size={24} style={{ color: 'var(--primary)' }} />
-                  </div>
-                </div>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: '1.5' }}>
-                  As Form Master, you have access to daily attendance checklists and the complete class broadsheet for academic reviews.
-                </p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                  <button className="btn btn-primary" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => { setActiveSubTab('attendance'); fetchAttendance(assignments.formClass.id, attendanceDate); }}>
-                    <CheckSquare size={16} /> Mark Attendance
-                  </button>
-                  <button className="btn btn-secondary" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#fff', border: '1px solid var(--border-color)' }} onClick={() => { setActiveSubTab('broadsheet'); fetchBroadsheet(assignments.formClass.id); }}>
-                    <FileSpreadsheet size={16} /> View Class Results
-                  </button>
-                  <button className="btn btn-secondary" style={{ padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: '#fff', border: '1px solid var(--border-color)' }} onClick={() => { setActiveSubTab('behavioral'); loadBehavioralRoster(); }}>
-                    <Award size={16} /> Evaluate Psychomotor
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div style={{ padding: '20px', textAlign: 'center', backgroundColor: 'var(--bg-secondary)', borderRadius: '12px', color: 'var(--text-muted)' }}>
-                You are not currently assigned as a Class Teacher for any class.
-              </div>
-            )}
-          </div>
-
         </div>
+      )}
+
+      {activeSubTab === 'remarks' && assignments.formClass && (
+        <RemarksManager 
+          classId={assignments.formClass.id} 
+          term={settings?.active_term} 
+          session={settings?.active_session} 
+          type="teacher"
+          generationMode={settings?.remark_generation_mode || 'manual'}
+          onBack={() => setActiveSubTab('overview')} 
+        />
       )}
 
       {/* ==========================================
@@ -1092,6 +1110,14 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                     <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>To:</span>
                     <input type="date" className="form-control" style={{ width: '150px', padding: '6px' }} value={attendanceReportEndDate} onChange={(e) => setAttendanceReportEndDate(e.target.value)} />
                   </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>View:</span>
+                    <select className="form-control" style={{ width: '120px', padding: '6px' }} value={attendanceReportView} onChange={(e) => setAttendanceReportView(e.target.value)}>
+                      <option value="summary">Summary</option>
+                      <option value="weekdays">Weekdays</option>
+                      <option value="monthly">Monthly</option>
+                    </select>
+                  </div>
                   <button className="btn btn-secondary no-print" style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={handleDownloadAttendancePDF}><Download size={15} /> Download PDF</button>
                 </div>
               </div>
@@ -1101,17 +1127,30 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                     <tr>
                       <th style={{ padding: '14px' }}>Student Name</th>
                       <th style={{ padding: '14px' }}>Admission Number</th>
-                      <th style={{ textAlign: 'center', padding: '14px' }}>Present</th>
-                      <th style={{ textAlign: 'center', padding: '14px' }}>Absent</th>
-                      <th style={{ textAlign: 'center', padding: '14px' }}>Late</th>
-                      <th style={{ textAlign: 'center', padding: '14px' }}>Total Days</th>
-                      <th style={{ textAlign: 'center', padding: '14px' }}>Attendance %</th>
+                      {attendanceReportView === 'monthly' && <th style={{ padding: '14px' }}>Month</th>}
+                      {attendanceReportView === 'weekdays' ? (
+                        <>
+                          <th style={{ textAlign: 'center', padding: '14px' }}>Mon</th>
+                          <th style={{ textAlign: 'center', padding: '14px' }}>Tue</th>
+                          <th style={{ textAlign: 'center', padding: '14px' }}>Wed</th>
+                          <th style={{ textAlign: 'center', padding: '14px' }}>Thu</th>
+                          <th style={{ textAlign: 'center', padding: '14px' }}>Fri</th>
+                        </>
+                      ) : (
+                        <>
+                          <th style={{ textAlign: 'center', padding: '14px' }}>Present</th>
+                          <th style={{ textAlign: 'center', padding: '14px' }}>Absent</th>
+                          <th style={{ textAlign: 'center', padding: '14px' }}>Late</th>
+                          <th style={{ textAlign: 'center', padding: '14px' }}>Total Days</th>
+                          <th style={{ textAlign: 'center', padding: '14px' }}>Attendance %</th>
+                        </>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
                     {attendanceReport.length === 0 ? (
                       <tr>
-                        <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No attendance records found for this period.</td>
+                        <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>No attendance records found for this period.</td>
                       </tr>
                     ) : (
                       attendanceReport.map((r, idx) => {
@@ -1120,19 +1159,33 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                           <tr key={idx} style={{ transition: 'background-color 0.2s', borderBottom: '1px solid var(--border-color)' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.01)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                             <td style={{ fontWeight: '600', padding: '14px' }}>{r.full_name}</td>
                             <td style={{ padding: '14px' }}><code style={{ backgroundColor: 'var(--bg-secondary)', padding: '3px 8px', borderRadius: '4px', fontSize: '0.82rem' }}>{r.admission_number}</code></td>
-                            <td style={{ textAlign: 'center', padding: '14px' }}><span style={{ color: '#10b981', fontWeight: '700', fontSize: '1rem' }}>{r.present_count}</span></td>
-                            <td style={{ textAlign: 'center', padding: '14px' }}><span style={{ color: '#ef4444', fontWeight: '700', fontSize: '1rem' }}>{r.absent_count}</span></td>
-                            <td style={{ textAlign: 'center', padding: '14px' }}><span style={{ color: '#f59e0b', fontWeight: '700', fontSize: '1rem' }}>{r.late_count}</span></td>
-                            <td style={{ textAlign: 'center', padding: '14px', fontWeight: '700' }}>{r.total_days}</td>
-                            <td style={{ textAlign: 'center', padding: '14px' }}>
-                              <div style={{
-                                display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: '700',
-                                backgroundColor: ratio >= 80 ? 'rgba(16,185,129,0.1)' : ratio >= 50 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
-                                color: ratio >= 80 ? '#10b981' : ratio >= 50 ? '#f59e0b' : '#ef4444'
-                              }}>
-                                {ratio}%
-                              </div>
-                            </td>
+                            {attendanceReportView === 'monthly' && <td style={{ padding: '14px', fontWeight: 'bold' }}>{r.month}</td>}
+                            
+                            {attendanceReportView === 'weekdays' ? (
+                              <>
+                                <td style={{ textAlign: 'center', padding: '14px' }}><span style={{ color: '#10b981', fontWeight: 'bold' }}>{r.mon_present || 0}</span> / <span style={{ color: '#ef4444' }}>{r.mon_absent || 0}</span></td>
+                                <td style={{ textAlign: 'center', padding: '14px' }}><span style={{ color: '#10b981', fontWeight: 'bold' }}>{r.tue_present || 0}</span> / <span style={{ color: '#ef4444' }}>{r.tue_absent || 0}</span></td>
+                                <td style={{ textAlign: 'center', padding: '14px' }}><span style={{ color: '#10b981', fontWeight: 'bold' }}>{r.wed_present || 0}</span> / <span style={{ color: '#ef4444' }}>{r.wed_absent || 0}</span></td>
+                                <td style={{ textAlign: 'center', padding: '14px' }}><span style={{ color: '#10b981', fontWeight: 'bold' }}>{r.thu_present || 0}</span> / <span style={{ color: '#ef4444' }}>{r.thu_absent || 0}</span></td>
+                                <td style={{ textAlign: 'center', padding: '14px' }}><span style={{ color: '#10b981', fontWeight: 'bold' }}>{r.fri_present || 0}</span> / <span style={{ color: '#ef4444' }}>{r.fri_absent || 0}</span></td>
+                              </>
+                            ) : (
+                              <>
+                                <td style={{ textAlign: 'center', padding: '14px' }}><span style={{ color: '#10b981', fontWeight: '700', fontSize: '1rem' }}>{r.present_count || 0}</span></td>
+                                <td style={{ textAlign: 'center', padding: '14px' }}><span style={{ color: '#ef4444', fontWeight: '700', fontSize: '1rem' }}>{r.absent_count || 0}</span></td>
+                                <td style={{ textAlign: 'center', padding: '14px' }}><span style={{ color: '#f59e0b', fontWeight: '700', fontSize: '1rem' }}>{r.late_count || 0}</span></td>
+                                <td style={{ textAlign: 'center', padding: '14px', fontWeight: '700' }}>{r.total_days || 0}</td>
+                                <td style={{ textAlign: 'center', padding: '14px' }}>
+                                  <div style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '5px 12px', borderRadius: '20px', fontSize: '0.82rem', fontWeight: '700',
+                                    backgroundColor: ratio >= 80 ? 'rgba(16,185,129,0.1)' : ratio >= 50 ? 'rgba(245,158,11,0.1)' : 'rgba(239,68,68,0.1)',
+                                    color: ratio >= 80 ? '#10b981' : ratio >= 50 ? '#f59e0b' : '#ef4444'
+                                  }}>
+                                    {ratio}%
+                                  </div>
+                                </td>
+                              </>
+                            )}
                           </tr>
                         );
                       })
@@ -1617,71 +1670,138 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '20px' }}>
               Registering into: <strong style={{ color: 'var(--primary)' }}>{assignments.formClass.name}</strong>
             </p>
-            <form onSubmit={handleRegisterStudent} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label>Surname *</label>
-                  <input type="text" className="form-control" required value={studentForm.surname} onChange={(e) => {
-                    const newSurname = e.target.value;
-                    const computedFullname = `${newSurname} ${studentForm.first_name} ${studentForm.other_names}`.replace(/\s+/g, ' ').trim();
-                    setStudentForm({ ...studentForm, surname: newSurname, full_name: computedFullname });
-                  }} />
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label>First Name *</label>
-                  <input type="text" className="form-control" required value={studentForm.first_name} onChange={(e) => {
-                    const newFirstname = e.target.value;
-                    const computedFullname = `${studentForm.surname} ${newFirstname} ${studentForm.other_names}`.replace(/\s+/g, ' ').trim();
-                    setStudentForm({ ...studentForm, first_name: newFirstname, full_name: computedFullname });
-                  }} />
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label>Other Names</label>
-                  <input type="text" className="form-control" value={studentForm.other_names} onChange={(e) => {
-                    const newOthernames = e.target.value;
-                    const computedFullname = `${studentForm.surname} ${studentForm.first_name} ${newOthernames}`.replace(/\s+/g, ' ').trim();
-                    setStudentForm({ ...studentForm, other_names: newOthernames, full_name: computedFullname });
-                  }} />
-                </div>
+            <form onSubmit={handleRegisterStudent} style={{ marginTop: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
+                <label style={{ marginRight: '10px', fontWeight: 'bold' }}>Passport Photo:</label>
+                <input type="file" accept="image/*" className="form-control" onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => setStudentForm({ ...studentForm, passport_photo: reader.result });
+                    reader.readAsDataURL(file);
+                  }
+                }} />
+                {studentForm.passport_photo && <span style={{ marginLeft: '10px', color: 'var(--success)' }}>✓ Added</span>}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label>Display Full Name</label>
-                  <input type="text" className="form-control" required readOnly style={{ backgroundColor: 'var(--bg-secondary)' }} value={studentForm.full_name} />
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+                  <div className="form-group">
+                    <label>Surname</label>
+                    <input type="text" className="form-control" required value={studentForm.surname} onChange={(e) => {
+                      const newSurname = e.target.value;
+                      const computedFullname = `${newSurname} ${studentForm.first_name} ${studentForm.other_names}`.replace(/\s+/g, ' ').trim();
+                      setStudentForm({ ...studentForm, surname: newSurname, full_name: computedFullname });
+                    }} />
+                  </div>
+                  <div className="form-group">
+                    <label>First Name</label>
+                    <input type="text" className="form-control" required value={studentForm.first_name} onChange={(e) => {
+                      const newFirstname = e.target.value;
+                      const computedFullname = `${studentForm.surname} ${newFirstname} ${studentForm.other_names}`.replace(/\s+/g, ' ').trim();
+                      setStudentForm({ ...studentForm, first_name: newFirstname, full_name: computedFullname });
+                    }} />
+                  </div>
+                  <div className="form-group">
+                    <label>Other Names</label>
+                    <input type="text" className="form-control" value={studentForm.other_names} onChange={(e) => {
+                      const newOthernames = e.target.value;
+                      const computedFullname = `${studentForm.surname} ${studentForm.first_name} ${newOthernames}`.replace(/\s+/g, ' ').trim();
+                      setStudentForm({ ...studentForm, other_names: newOthernames, full_name: computedFullname });
+                    }} />
+                  </div>
                 </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
-                <div className="form-group" style={{ margin: 0 }}>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div className="form-group">
+                    <label>Display Full Name</label>
+                    <input type="text" className="form-control" required readOnly style={{ backgroundColor: 'var(--bg-secondary)' }} value={studentForm.full_name} />
+                  </div>
+                  <div className="form-group">
+                    <label>Last School Attended</label>
+                    <input type="text" className="form-control" value={studentForm.last_school_attended} onChange={(e) => setStudentForm({ ...studentForm, last_school_attended: e.target.value })} />
+                  </div>
+                </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
+                <div className="form-group">
                   <label>Date of Birth</label>
                   <input type="date" className="form-control" value={studentForm.date_of_birth} onChange={(e) => setStudentForm({ ...studentForm, date_of_birth: e.target.value })} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label>Gender</label>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div className="form-group">
+                  <label>Sex</label>
                   <select className="form-control" value={studentForm.sex} onChange={(e) => setStudentForm({ ...studentForm, sex: e.target.value })}>
-                    <option>Male</option>
-                    <option>Female</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
                   </select>
                 </div>
-                <div className="form-group" style={{ margin: 0 }}>
+                <div className="form-group">
                   <label>Religion</label>
                   <select className="form-control" value={studentForm.religion} onChange={(e) => setStudentForm({ ...studentForm, religion: e.target.value })}>
-                    <option>Islam</option>
-                    <option>Christianity</option>
-                    <option>Others</option>
+                    <option value="Islam">Islam</option>
+                    <option value="Christianity">Christianity</option>
                   </select>
                 </div>
               </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label>Home Address</label>
-                <input type="text" className="form-control" value={studentForm.address_residence} onChange={(e) => setStudentForm({ ...studentForm, address_residence: e.target.value })} />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div className="form-group">
+                  <label>LGA of Origin</label>
+                  <input type="text" className="form-control" value={studentForm.local_government} onChange={(e) => setStudentForm({ ...studentForm, local_government: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>State of Origin</label>
+                  <input type="text" className="form-control" value={studentForm.state_of_origin} onChange={(e) => setStudentForm({ ...studentForm, state_of_origin: e.target.value })} />
+                </div>
               </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label>Last School Attended</label>
-                <input type="text" className="form-control" value={studentForm.last_school_attended} onChange={(e) => setStudentForm({ ...studentForm, last_school_attended: e.target.value })} />
+
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input type="checkbox" checked={studentForm.handicapped} onChange={(e) => setStudentForm({ ...studentForm, handicapped: e.target.checked })} />
+                  Is student handicapped?
+                </label>
+                {studentForm.handicapped && (
+                  <input type="text" className="form-control" placeholder="Specify handicap details..." value={studentForm.handicap_details} onChange={(e) => setStudentForm({ ...studentForm, handicap_details: e.target.value })} />
+                )}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+
+              <hr style={{ margin: '20px 0', borderColor: 'var(--border-color)' }} />
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div className="form-group">
+                  <label>Parent / Guardian Name</label>
+                  <input type="text" className="form-control" value={studentForm.parent_name} onChange={(e) => setStudentForm({ ...studentForm, parent_name: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Parent Phone Number</label>
+                  <input type="text" className="form-control" value={studentForm.parent_phone} onChange={(e) => setStudentForm({ ...studentForm, parent_phone: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Parent Home Address</label>
+                <textarea className="form-control" value={studentForm.parent_address} onChange={(e) => setStudentForm({ ...studentForm, parent_address: e.target.value })} />
+              </div>
+
+              <hr style={{ margin: '20px 0', borderColor: 'var(--border-color)' }} />
+              {settings?.allow_offline_debt === 1 && (
+                <div className="form-group" style={{ backgroundColor: 'rgba(239, 68, 68, 0.05)', padding: '15px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                    <input type="checkbox" checked={studentForm.has_offline_debt} onChange={(e) => setStudentForm({ ...studentForm, has_offline_debt: e.target.checked })} />
+                    Student owes an outstanding fee from offline records?
+                  </label>
+                  {studentForm.has_offline_debt && (
+                    <div style={{ marginTop: '15px' }}>
+                      <label>Outstanding Amount (₦)</label>
+                      <input type="number" min="0" className="form-control" placeholder="e.g. 5000" value={studentForm.offline_debt_amount} onChange={(e) => setStudentForm({ ...studentForm, offline_debt_amount: e.target.value })} />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '15px' }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowStudentModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Save size={15} /> Register Student</button>
               </div>

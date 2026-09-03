@@ -30,6 +30,7 @@ class AttendanceController extends Controller
 
     public function classReport(Request $request, $classId)
     {
+        $view = $request->query('view', 'summary');
         $start_date = $request->query('start_date');
         $end_date = $request->query('end_date');
         $user = auth('api')->user();
@@ -50,10 +51,42 @@ class AttendanceController extends Controller
                         $join->whereBetween('a.date', [$start_date, $end_date]);
                     }
                 })
-                ->where('s.class_id', $classId)
-                ->groupBy('s.id', 'u.full_name', 's.admission_number')
+                ->where('s.class_id', $classId);
+
+            if ($view === 'monthly') {
+                $query->select(
+                    's.id as student_id',
+                    'u.full_name',
+                    's.admission_number',
+                    DB::raw("DATE_FORMAT(a.date, '%Y-%m') as month"),
+                    DB::raw("SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present_count"),
+                    DB::raw("SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as absent_count"),
+                    DB::raw("SUM(CASE WHEN a.status = 'late' THEN 1 ELSE 0 END) as late_count"),
+                    DB::raw("COUNT(a.status) as total_days")
+                )
+                ->groupBy('s.id', 'u.full_name', 's.admission_number', DB::raw("DATE_FORMAT(a.date, '%Y-%m')"))
                 ->orderBy('u.full_name')
-                ->select(
+                ->orderBy('month');
+            } elseif ($view === 'weekdays') {
+                $query->select(
+                    's.id as student_id',
+                    'u.full_name',
+                    's.admission_number',
+                    DB::raw("SUM(CASE WHEN DAYOFWEEK(a.date) = 2 AND a.status = 'present' THEN 1 ELSE 0 END) as mon_present"),
+                    DB::raw("SUM(CASE WHEN DAYOFWEEK(a.date) = 2 AND a.status IN ('absent', 'late') THEN 1 ELSE 0 END) as mon_absent"),
+                    DB::raw("SUM(CASE WHEN DAYOFWEEK(a.date) = 3 AND a.status = 'present' THEN 1 ELSE 0 END) as tue_present"),
+                    DB::raw("SUM(CASE WHEN DAYOFWEEK(a.date) = 3 AND a.status IN ('absent', 'late') THEN 1 ELSE 0 END) as tue_absent"),
+                    DB::raw("SUM(CASE WHEN DAYOFWEEK(a.date) = 4 AND a.status = 'present' THEN 1 ELSE 0 END) as wed_present"),
+                    DB::raw("SUM(CASE WHEN DAYOFWEEK(a.date) = 4 AND a.status IN ('absent', 'late') THEN 1 ELSE 0 END) as wed_absent"),
+                    DB::raw("SUM(CASE WHEN DAYOFWEEK(a.date) = 5 AND a.status = 'present' THEN 1 ELSE 0 END) as thu_present"),
+                    DB::raw("SUM(CASE WHEN DAYOFWEEK(a.date) = 5 AND a.status IN ('absent', 'late') THEN 1 ELSE 0 END) as thu_absent"),
+                    DB::raw("SUM(CASE WHEN DAYOFWEEK(a.date) = 6 AND a.status = 'present' THEN 1 ELSE 0 END) as fri_present"),
+                    DB::raw("SUM(CASE WHEN DAYOFWEEK(a.date) = 6 AND a.status IN ('absent', 'late') THEN 1 ELSE 0 END) as fri_absent")
+                )
+                ->groupBy('s.id', 'u.full_name', 's.admission_number')
+                ->orderBy('u.full_name');
+            } else {
+                $query->select(
                     's.id as student_id',
                     'u.full_name',
                     's.admission_number',
@@ -61,7 +94,10 @@ class AttendanceController extends Controller
                     DB::raw("SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as absent_count"),
                     DB::raw("SUM(CASE WHEN a.status = 'late' THEN 1 ELSE 0 END) as late_count"),
                     DB::raw("COUNT(a.status) as total_days")
-                );
+                )
+                ->groupBy('s.id', 'u.full_name', 's.admission_number')
+                ->orderBy('u.full_name');
+            }
 
             $report = $query->get();
             return response()->json($report);

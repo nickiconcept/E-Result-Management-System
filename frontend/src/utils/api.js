@@ -46,6 +46,13 @@ async function handleResponse(response) {
 
 const api = {
   // Authentication
+  getMe: async () => {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    return handleResponse(res);
+  },
   login: async (identifier, password) => {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
@@ -162,11 +169,37 @@ const api = {
     return handleResponse(res);
   },
 
-  updateStudent: async (id, studentData) => {
+  updateStudent: async (id, data) => {
     const res = await fetch(`${API_BASE}/users/update-student/${id}`, {
       method: 'PUT',
       headers: getHeaders(),
-      body: JSON.stringify(studentData)
+      body: JSON.stringify(data)
+    });
+    return handleResponse(res);
+  },
+
+  deleteStudent: async (id) => {
+    const res = await fetch(`${API_BASE}/users/delete-student/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    return handleResponse(res);
+  },
+
+  bulkUpdateStudentStatus: async (student_ids, status) => {
+    const res = await fetch(`${API_BASE}/students/bulk-status-update`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ student_ids, status })
+    });
+    return handleResponse(res);
+  },
+
+  bulkUpdateStudentClass: async (student_ids, class_id) => {
+    const res = await fetch(`${API_BASE}/students/bulk-class-update`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ student_ids, class_id })
     });
     return handleResponse(res);
   },
@@ -189,9 +222,22 @@ const api = {
     return handleResponse(res);
   },
 
+  deleteTeacher: async (id) => {
+    const res = await fetch(`${API_BASE}/teachers/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders()
+    });
+    return handleResponse(res);
+  },
+
   // Classes & Subjects Configuration
   getClasses: async () => {
     const res = await fetch(`${API_BASE}/classes`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+
+  getWaitingRooms: async () => {
+    const res = await fetch(`${API_BASE}/waiting-rooms`, { headers: getHeaders() });
     return handleResponse(res);
   },
 
@@ -283,6 +329,11 @@ const api = {
   // Attendance
   getAttendance: async (classId, date) => {
     const res = await fetch(`${API_BASE}/attendance/${classId}/${date}`, { headers: getHeaders() });
+    return handleResponse(res);
+  },
+
+  getStudentAttendance: async (studentId) => {
+    const res = await fetch(`${API_BASE}/attendance/student/${studentId}`, { headers: getHeaders() });
     return handleResponse(res);
   },
 

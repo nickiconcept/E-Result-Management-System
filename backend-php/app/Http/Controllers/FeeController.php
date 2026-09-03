@@ -75,10 +75,13 @@ class FeeController extends Controller
         $amount = (float)$request->input('amount');
         $class_id = $request->input('class_id');
         $tier = $request->input('tier');
+        $all_classes = filter_var($request->input('all_classes', false), FILTER_VALIDATE_BOOLEAN);
 
         try {
             $studentIds = [];
-            if ($class_id) {
+            if ($all_classes) {
+                $studentIds = DB::table('students')->pluck('id')->toArray();
+            } elseif ($class_id) {
                 $studentIds = DB::table('students')->where('class_id', $class_id)->pluck('id')->toArray();
             } elseif ($tier) {
                 $studentIds = DB::table('students as s')
@@ -299,7 +302,7 @@ class FeeController extends Controller
             $data = DB::table('fee_invoices as i')
                 ->join('students as s', 'i.student_id', '=', 's.id')
                 ->leftJoin('classes as c', 's.class_id', '=', 'c.id')
-                ->where('i.category', '!=', 'School Fees')
+                ->whereNotIn('i.category', ['School Fees', 'Outstanding Debt'])
                 ->groupBy('i.title', 'i.category', 'c.id', 'c.name', 'c.tier', 'i.amount_due')
                 ->orderBy('c.name')
                 ->orderBy('i.title')

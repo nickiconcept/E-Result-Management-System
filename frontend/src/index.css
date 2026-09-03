@@ -347,6 +347,7 @@ body.dark .skeleton {
 
 .main-content {
   flex-grow: 1;
+  min-width: 0;
   padding: 28px 32px;
   overflow-y: auto;
   overflow-x: hidden;
@@ -720,112 +721,115 @@ body.dark .skeleton {
 /* ==========================================
    STUDENT REGISTRATION FORM REPLICA STYLE (PRINT-READY)
    ========================================== */
-.physical-form-container {
+.professional-pdf-container {
   padding: 40px;
   background-color: #fff !important;
-  color: #000 !important;
-  border: 2px solid #000;
-  font-family: 'Times New Roman', Times, serif;
+  color: #1f2937 !important;
+  font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
+  box-sizing: border-box;
 }
-.physical-form-header {
-  text-align: center;
-  border-bottom: 2px double #000;
-  padding-bottom: 12px;
-  margin-bottom: 24px;
-}
-.physical-form-header h2 {
-  font-family: 'Times New Roman', Times, serif;
-  font-size: 1.8rem;
-  font-weight: 800;
-  color: #000;
-  text-transform: uppercase;
-}
-.physical-form-header p {
-  font-size: 0.95rem;
-  font-weight: bold;
-  color: #000;
-}
-.physical-form-title {
-  text-align: center;
-  font-size: 1.2rem;
-  font-weight: 800;
-  text-decoration: underline;
-  margin: 16px 0;
-  text-transform: uppercase;
-  color: #000;
-}
-.physical-form-grid {
-  display: grid;
-  grid-template-columns: 1fr 180px;
-  gap: 20px;
-}
-.physical-form-photo {
-  width: 140px;
-  height: 160px;
-  border: 2px dashed #000;
+.professional-pdf-header {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 3px solid #1d4ed8; /* Brand blue */
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+}
+.professional-pdf-header-text {
+  flex-grow: 1;
+}
+.professional-pdf-header-text h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: #1e3a8a;
+  margin: 0 0 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.professional-pdf-header-text p {
+  font-size: 0.95rem;
+  color: #4b5563;
+  margin: 2px 0;
+}
+.professional-pdf-photo {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  border: 3px solid #e5e7eb;
+  overflow: hidden;
+  background-color: #f3f4f6;
+  display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.75rem;
-  text-align: center;
-  font-weight: bold;
-  color: #555;
-  background-color: #f9f9f9;
-  justify-self: end;
+  flex-shrink: 0;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
 }
-.physical-form-photo img {
+.professional-pdf-photo img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.form-line-item {
-  margin-bottom: 14px;
-  display: flex;
-  align-items: flex-end;
-  font-size: 1.05rem;
-}
-.form-line-label {
-  font-weight: bold;
-  white-space: nowrap;
-  margin-right: 10px;
-  text-transform: uppercase;
-}
-.form-line-value {
-  flex-grow: 1;
-  border-bottom: 1px dotted #000;
-  padding-bottom: 2px;
-  padding-left: 10px;
-  font-style: italic;
-  font-weight: 500;
-}
-.undertaking-section {
-  margin-top: 32px;
-  border-top: 2px dashed #000;
-  padding-top: 20px;
-  font-family: 'Times New Roman', Times, serif;
-  color: #000;
-}
-.undertaking-section h3 {
+.professional-pdf-title {
   text-align: center;
-  text-decoration: underline;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 25px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  background-color: #f3f4f6;
+  padding: 10px;
+  border-radius: 6px;
+}
+.professional-pdf-section {
+  margin-bottom: 25px;
+}
+.professional-pdf-section h3 {
   font-size: 1.1rem;
-  margin-bottom: 16px;
+  font-weight: 600;
+  color: #1e40af;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 5px;
+  margin-bottom: 15px;
   text-transform: uppercase;
 }
-.rules-list {
-  font-size: 0.85rem;
-  margin-bottom: 24px;
-  padding-left: 20px;
+.professional-pdf-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px 25px;
 }
-.rules-list li {
+.professional-pdf-field {
+  display: flex;
+  flex-direction: column;
+}
+.professional-pdf-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
   margin-bottom: 4px;
 }
-.undertaking-text {
-  font-size: 0.95rem;
-  line-height: 1.5;
-  margin-bottom: 30px;
-  text-align: justify;
+.professional-pdf-value {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #111827;
+  padding: 8px 12px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  min-height: 20px;
+}
+.professional-pdf-value.full-width {
+  grid-column: 1 / -1;
+}
+.professional-pdf-footer {
+  margin-top: 50px;
+  padding-top: 20px;
+  border-top: 1px solid #e5e7eb;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #9ca3af;
 }
 .undertaking-signatures {
   display: flex;

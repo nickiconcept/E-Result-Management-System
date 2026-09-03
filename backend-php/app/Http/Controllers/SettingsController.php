@@ -20,7 +20,9 @@ class SettingsController extends Controller
             $settings = new SystemSetting();
         }
         
-        $data = $request->except(['id', 'created_at', 'updated_at']);
+        $validColumns = \Illuminate\Support\Facades\Schema::getColumnListing($settings->getTable());
+        $data = $request->only($validColumns);
+        unset($data['id'], $data['created_at'], $data['updated_at']);
         
         // Handle defaults based on Node backend
         $data['ca1_name'] = $request->input('ca1_name', 'CA 1');

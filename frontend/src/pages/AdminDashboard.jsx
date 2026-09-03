@@ -8,6 +8,8 @@ import SignaturePad from '../components/SignaturePad';
 import BulkResultPrinter from '../components/BulkResultPrinter';
 import ClassBroadsheet from '../components/ClassBroadsheet';
 import ReportCard from '../components/ReportCard';
+import ManageGraduatesModal from '../components/ManageGraduatesModal';
+import LoadingSpinner from '../components/LoadingSpinner';
 import Toast from '../components/Toast';
 import StatCard from '../components/StatCard';
 import {
@@ -55,7 +57,8 @@ import {
   CheckCircle2,
   Hourglass,
   UploadCloud,
-  Star
+  Star,
+  Trash
 } from 'lucide-react';
 
 // Modern Bar Chart Component
@@ -231,6 +234,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [settingsSubTab, setSettingsSubTab] = useState('academic');
   const [resultsSubTab, setResultsSubTab] = useState('bulk');
   const [subjectsSubTab, setSubjectsSubTab] = useState('list');
+  const [showGraduatesModal, setShowGraduatesModal] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // PDF export refs
   const schemeRef = useRef(null);
@@ -258,6 +263,14 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
     const printHeaders = element.querySelectorAll('.only-print');
     printHeaders.forEach(el => el.style.display = 'block');
 
+    // Temporarily hide .no-print elements inside the container
+    const noPrintItems = element.querySelectorAll('.no-print');
+    const originalNoPrintDisplays = [];
+    noPrintItems.forEach(el => {
+      originalNoPrintDisplays.push(el.style.display);
+      el.style.display = 'none';
+    });
+
     html2pdf().set({
       margin:      0.3,
       filename,
@@ -266,6 +279,9 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       jsPDF:       { unit: 'in', format: 'a4', orientation }
     }).from(element).save().then(() => {
       printHeaders.forEach(el => el.style.display = 'none');
+      noPrintItems.forEach((el, index) => {
+        el.style.display = originalNoPrintDisplays[index];
+      });
       element.classList.remove('pdf-exporting');
       if (originalDisplay === 'none') {
         element.style.display = 'none';
@@ -344,7 +360,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   
   const [teacherForm, setTeacherForm] = useState({ 
     full_name: '', email: '', passport_photo: '',
-    surname: '', first_name: '', other_names: '', address: '', state_of_residence: '', lga_of_residence: '', signature: ''
+    surname: '', first_name: '', other_names: '', address: '', state_of_residence: '', lga_of_residence: '', signature: '',
+    phone_number: '', date_of_birth: '', qualification: '', discipline: '', employment_category: ''
   });
   const [classForm, setClassForm] = useState({ name: '', tier: 'jss' });
   const [subjectForm, setSubjectForm] = useState({ name: '', tier: 'jss', class_ids: [] });
@@ -357,6 +374,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [studentSearch, setStudentSearch] = useState('');
   const [studentClassFilter, setStudentClassFilter] = useState('');
   const [teacherSearch, setTeacherSearch] = useState('');
+  const [showArchivedTeachers, setShowArchivedTeachers] = useState(false);
   const [feeSearch, setFeeSearch] = useState('');
   const [feeClassFilter, setFeeClassFilter] = useState('');
   const [feeCategoryFilter, setFeeCategoryFilter] = useState('');
@@ -743,13 +761,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       setPins(pinList);
       setSkills(skillsList);
 
-      loadSessions();
-      loadFeeStructures();
-      loadCustomInvoices();
-      loadFeesReport();
-      loadAdminResultProgress();
+      await Promise.all([
+        loadSessions(),
+        loadFeeStructures(),
+        loadCustomInvoices(),
+        loadFeesReport(),
+        loadAdminResultProgress()
+      ]);
     } catch (err) {
       setErrorMsg('Failed to sync school database: ' + err.message);
+    } finally {
+      setIsInitialLoad(false);
     }
   };
 
@@ -844,17 +866,42 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
         last_school_attended: '', address_residence: '', sex: 'Male', religion: 'Islam',
         local_government: '', state_of_origin: '', handicapped: false, handicap_details: '',
         parent_name: '', parent_address: '', parent_phone: '', passport_photo: '', custom_admission_number: '',
-        has_offline_debt: false, offline_debt_amount: ''
+        has_offline_debt: false, offline_debt_amount: '', status: 'active'
       });
     } catch (err) {
       setErrorMsg(err.message);
     }
   };
 
+  const handleDeleteStudent = async (studentId) => {
+    if (!window.confirm("Are you sure you want to delete this student? This action cannot be undone.")) return;
+    try {
+      await api.deleteStudent(studentId);
+      setNotify("Student deleted successfully!");
+      loadAllData();
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
+  const handleDeleteTeacher = async (teacherId) => {
+    if (!window.confirm("Are you sure you want to delete this teacher? This action cannot be undone.")) return;
+    try {
+      await api.deleteTeacher(teacherId);
+      setNotify("Teacher deleted successfully.");
+      loadAllData();
+    } catch (err) {
+      setErrorMsg("Failed to delete teacher.");
+    }
+  };
+
   const handleTeacherRegister = async (e) => {
     e.preventDefault();
     try {
-      await api.registerTeacher(teacherForm);
+      const computedFullName = [teacherForm.surname, teacherForm.first_name, teacherForm.other_names].filter(Boolean).join(' ');
+      const payload = { ...teacherForm, full_name: computedFullName };
+      
+      await api.registerTeacher(payload);
       setNotify('Teacher registered successfully!');
       setShowTeacherModal(false);
       loadAllData();
@@ -1578,6 +1625,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
     }
   }, [activeSubTab, resultsSubTab, adminGradesClass, adminGradesSubject, settings.active_term, settings.active_session]);
 
+  if (isInitialLoad) return <LoadingSpinner />;
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
       {/* Toast Notifications */}
@@ -1879,6 +1928,9 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               </div>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+              <button className="btn btn-secondary" onClick={() => setShowGraduatesModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
+                <Users size={16} /> Manage Graduates
+              </button>
               <button className="btn btn-primary" onClick={() => setShowStudentModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
                 <Plus size={16} /> Register New Student
               </button>
@@ -1918,6 +1970,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   <th>Class Arm</th>
                   <th>Parent Contact</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1973,6 +2026,15 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                         <option value="graduated">Graduated</option>
                       </select>
                     </td>
+                    <td>
+                      <button 
+                        className="btn btn-danger" 
+                        style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onClick={() => handleDeleteStudent(student.id)}
+                      >
+                        <Trash size={14} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1996,9 +2058,26 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Full record of registered school academic staff.</p>
               </div>
             </div>
-            <button className="btn btn-primary" onClick={() => setShowTeacherModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
-              <Plus size={16} /> Register Teacher
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <button
+                onClick={() => setShowTeacherModal(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px', cursor: 'pointer' }}
+              >
+                <Plus size={16} /> Register Teacher
+              </button>
+              <button
+                onClick={() => setShowArchivedTeachers(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.6)', backgroundColor: !showArchivedTeachers ? 'white' : 'rgba(255,255,255,0.15)', color: !showArchivedTeachers ? 'var(--primary)' : 'white', fontWeight: !showArchivedTeachers ? '700' : '400', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              >
+                Active Teachers
+              </button>
+              <button
+                onClick={() => setShowArchivedTeachers(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.6)', backgroundColor: showArchivedTeachers ? 'white' : 'rgba(255,255,255,0.15)', color: showArchivedTeachers ? 'var(--primary)' : 'white', fontWeight: showArchivedTeachers ? '700' : '400', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              >
+                Archived Teachers
+              </button>
+            </div>
           </div>
 
           {/* Search Controls */}
@@ -2023,12 +2102,14 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   <th>Email</th>
                   <th>Employment Date</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {teachers.filter(teach => 
-                  teach.full_name.toLowerCase().includes(teacherSearch.toLowerCase()) ||
-                  teach.username.toLowerCase().includes(teacherSearch.toLowerCase())
+                  (showArchivedTeachers ? teach.status === 'archived' : teach.status !== 'archived') &&
+                  (teach.full_name.toLowerCase().includes(teacherSearch.toLowerCase()) ||
+                  teach.username.toLowerCase().includes(teacherSearch.toLowerCase()))
                 ).map((teach, idx) => (
                   <tr key={idx}>
                     <td>
@@ -2052,14 +2133,25 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     <td>
                       <select
                         className="form-control"
-                        style={{ padding: '4px 8px', fontSize: '0.85rem', width: 'auto' }}
+                        style={{ padding: '4px 8px', fontSize: '0.85rem', width: 'auto', minWidth: '110px' }}
                         value={teach.status || 'active'}
                         onChange={(e) => handleUserStatusChange(teach.id, e.target.value)}
                       >
                         <option value="active">Active</option>
                         <option value="suspended">Suspended</option>
                         <option value="inactive">Inactive</option>
+                        <option value="archived">Archived</option>
                       </select>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        className="btn btn-danger"
+                        style={{ padding: '6px 10px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '4px', borderRadius: '8px' }}
+                        onClick={() => handleDeleteTeacher(teach.id)}
+                        title="Delete Teacher"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -2316,7 +2408,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   value={adminSchemeClass}
                   onChange={(e) => setAdminSchemeClass(e.target.value)}
                 >
-                  <option value="">Choose Class...</option>
+                  <option value="">Select Class...</option>
                   {classes.map((cls, idx) => (
                     <option key={idx} value={cls.id}>{cls.name}</option>
                   ))}
@@ -2426,10 +2518,11 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                         <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             <div>
-                              <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '3px', display: 'block', letterSpacing: '0.03em' }}>Topic Title</label>
+                              <label className="no-print" style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '3px', display: 'block', letterSpacing: '0.03em' }}>Topic Title</label>
+                              <div className="only-print" style={{ display: 'none', fontWeight: '700', fontSize: '0.92rem', color: '#000' }}>{w.topic || '-'}</div>
                               <input
                                 type="text"
-                                className="form-control"
+                                className="form-control no-print"
                                 style={{ fontSize: '0.88rem', padding: '8px 10px', margin: 0 }}
                                 placeholder="e.g. Introduction to Algebra"
                                 value={w.topic}
@@ -2437,10 +2530,11 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                               />
                             </div>
                             <div>
-                              <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '3px', display: 'block', letterSpacing: '0.03em' }}>Subtitle / Theme</label>
+                              <label className="no-print" style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '3px', display: 'block', letterSpacing: '0.03em' }}>Subtitle / Theme</label>
+                              <div className="only-print" style={{ display: 'none', fontSize: '0.8rem', color: '#444', marginTop: '3px', fontWeight: '500' }}>{w.subtitle ? `?? ${w.subtitle}` : ''}</div>
                               <input
                                 type="text"
-                                className="form-control"
+                                className="form-control no-print"
                                 style={{ fontSize: '0.82rem', padding: '7px 10px', margin: 0 }}
                                 placeholder="e.g. Linear Equations & Variables"
                                 value={w.subtitle || ''}
@@ -2450,9 +2544,10 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                           </div>
                         </td>
                         <td style={{ padding: '12px 14px', verticalAlign: 'top' }}>
-                          <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '3px', display: 'block', letterSpacing: '0.03em' }}>Detailed Content & Learning Objectives</label>
+                          <label className="no-print" style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '3px', display: 'block', letterSpacing: '0.03em' }}>Detailed Content & Learning Objectives</label>
+                          <div className="only-print" style={{ display: 'none', fontSize: '0.85rem', color: '#000', whiteSpace: 'pre-wrap' }}>{w.objectives || '-'}</div>
                           <textarea
-                            className="form-control"
+                            className="form-control no-print"
                             rows={3}
                             style={{ fontSize: '0.85rem', padding: '8px 10px', margin: 0, resize: 'vertical', width: '100%' }}
                             placeholder="Enter detailed weekly lesson outline, objectives, activities, and teacher remarks..."
@@ -3209,7 +3304,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       setSingleResultStudentId('');
                     }}
                   >
-                    <option value="">-- Choose Class --</option>
+                    <option value="">Select Class...</option>
                     {classes.map((c, idx) => (
                       <option key={idx} value={c.id}>{c.name}</option>
                     ))}
@@ -3445,7 +3540,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255,255,255,0.9)' }}>Class</label>
                     <select className="form-control" value={adminGradesClass} onChange={(e) => setAdminGradesClass(e.target.value)}>
-                      <option value="">Choose...</option>
+                      <option value="">Select Class...</option>
                       {classes.map((cls, idx) => <option key={idx} value={cls.id}>{cls.name}</option>)}
                     </select>
                   </div>
@@ -3557,7 +3652,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'rgba(255,255,255,0.9)' }}>Class</label>
                     <select className="form-control" value={adminScoresheetClass} onChange={(e) => { setAdminScoresheetClass(e.target.value); setAdminScoresheetSubject(''); }}>
-                      <option value="">Choose...</option>
+                      <option value="">Select Class...</option>
                       {classes.map((cls, idx) => <option key={idx} value={cls.id}>{cls.name}</option>)}
                     </select>
                   </div>
@@ -3750,7 +3845,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   onChange={(e) => setPromoSource(e.target.value)}
                   required
                 >
-                  <option value="">Select current class...</option>
+                  <option value="">Select Class...</option>
                   {classes
                     .filter(c => showAllClassesInPromo || !promotedClassIds.includes(c.id))
                     .map((c, idx) => (
@@ -3769,7 +3864,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   onChange={(e) => setPromoTarget(e.target.value)}
                   required
                 >
-                  <option value="">Select target class...</option>
+                  <option value="">Select Target Class...</option>
                   {classes.map((c, idx) => (
                     <option key={idx} value={c.id}>{c.name}</option>
                   ))}
@@ -4526,7 +4621,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     }}
                     required
                   >
-                    <option value="">Select current class...</option>
+                    <option value="">Select Class...</option>
                     {classes.map((c, idx) => (
                       <option key={idx} value={c.id}>{c.name}</option>
                     ))}
@@ -4552,7 +4647,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                         required
                         disabled={!promoSource}
                       >
-                        <option value="">Select target class...</option>
+                        <option value="">Select Target Class...</option>
                         {validTargets.map((c, idx) => (
                           <option key={idx} value={c.id}>{c.name}</option>
                         ))}
@@ -4600,7 +4695,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     value={adminAttendanceClass}
                     onChange={(e) => setAdminAttendanceClass(e.target.value)}
                   >
-                    <option value="">Choose Class...</option>
+                    <option value="">Select Class...</option>
                     {classes.map((cls, idx) => (
                       <option key={idx} value={cls.id}>{cls.name}</option>
                     ))}
@@ -4740,7 +4835,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     value={adminReportClassId}
                     onChange={(e) => setAdminReportClassId(e.target.value)}
                   >
-                    <option value="">Choose Class...</option>
+                    <option value="">Select Class...</option>
                     {classes.map((cls, idx) => (
                       <option key={idx} value={cls.id}>{cls.name}</option>
                     ))}
@@ -4891,6 +4986,14 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       {/* =======================================================
           MODAL: STUDENT REGISTRATION FORM
           ======================================================= */}
+      {showGraduatesModal && (
+        <ManageGraduatesModal
+          onClose={() => setShowGraduatesModal(false)}
+          classes={classes}
+          fetchStudents={loadAllData}
+        />
+      )}
+
       {showStudentModal && (
         <div className="modal-overlay">
           <div className="modal-content glass-panel" style={{ backgroundColor: 'var(--bg-surface)' }}>
@@ -4939,17 +5042,26 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             )}
 
             <form onSubmit={handleStudentRegister} style={{ marginTop: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '15px' }}>
-                <label style={{ marginRight: '10px', fontWeight: 'bold' }}>Passport Photo:</label>
-                <input type="file" accept="image/*" className="form-control" onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () => setStudentForm({ ...studentForm, passport_photo: reader.result });
-                    reader.readAsDataURL(file);
-                  }
-                }} />
-                {studentForm.passport_photo && <span style={{ marginLeft: '10px', color: 'var(--success)' }}>✓ Added</span>}
+              <div style={{ display: 'flex', flexDirection: 'column', marginBottom: '15px' }}>
+                <label style={{ marginBottom: '5px', fontWeight: 'bold' }}>Passport Photo (Max 150kb):</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                  {studentForm.passport_photo && (
+                    <img src={studentForm.passport_photo} alt="Preview" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #ccc' }} />
+                  )}
+                  <input type="file" accept=".jpg,.jpeg,.png" className="form-control" onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      if (file.size > 150 * 1024) {
+                        alert("Image size exceeds 150KB limit.");
+                        e.target.value = '';
+                        return;
+                      }
+                      const reader = new FileReader();
+                      reader.onloadend = () => setStudentForm({ ...studentForm, passport_photo: reader.result });
+                      reader.readAsDataURL(file);
+                    }
+                  }} />
+                </div>
               </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
@@ -4994,7 +5106,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 <div className="form-group">
                   <label>Class of Entry</label>
                   <select className="form-control" required value={studentForm.class_id} onChange={(e) => handleClassSelectionForRegistration(e.target.value)}>
-                    <option value="">Select class...</option>
+                    <option value="">Select Class...</option>
                     {classes.map((c, idx) => (
                       <option key={idx} value={c.id}>{c.name}</option>
                     ))}
@@ -5019,6 +5131,13 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   <select className="form-control" value={studentForm.religion} onChange={(e) => setStudentForm({ ...studentForm, religion: e.target.value })}>
                     <option value="Islam">Islam</option>
                     <option value="Christianity">Christianity</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Status</label>
+                  <select className="form-control" value={studentForm.status} onChange={(e) => setStudentForm({ ...studentForm, status: e.target.value })}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
                   </select>
                 </div>
               </div>
@@ -5121,14 +5240,63 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               </div>
 
               <div className="form-group">
-                <label>Display Full Name</label>
-                <input type="text" className="form-control" required placeholder="e.g. Mr. John Doe" value={teacherForm.full_name} onChange={(e) => setTeacherForm({ ...teacherForm, full_name: e.target.value })} />
+                <label>Full Name <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(auto-computed from name fields above)</span></label>
+                <input
+                  type="text"
+                  className="form-control"
+                  readOnly
+                  style={{ backgroundColor: 'var(--bg-secondary)', cursor: 'not-allowed' }}
+                  value={[teacherForm.surname, teacherForm.first_name, teacherForm.other_names].filter(Boolean).join(' ')}
+                  placeholder="Will be generated automatically"
+                />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '15px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div className="form-group">
                   <label>Email Address</label>
                   <input type="email" className="form-control" value={teacherForm.email} onChange={(e) => setTeacherForm({ ...teacherForm, email: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Phone Number</label>
+                  <input type="text" className="form-control" value={teacherForm.phone_number} onChange={(e) => setTeacherForm({ ...teacherForm, phone_number: e.target.value })} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div className="form-group">
+                  <label>Date of Birth</label>
+                  <input type="date" className="form-control" value={teacherForm.date_of_birth} onChange={(e) => setTeacherForm({ ...teacherForm, date_of_birth: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Discipline</label>
+                  <input type="text" className="form-control" placeholder="e.g. Mathematics" value={teacherForm.discipline} onChange={(e) => setTeacherForm({ ...teacherForm, discipline: e.target.value })} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div className="form-group">
+                  <label>Qualification</label>
+                  <select className="form-control" value={teacherForm.qualification} onChange={(e) => setTeacherForm({ ...teacherForm, qualification: e.target.value })}>
+                    <option value="">Select Qualification</option>
+                    <option value="M.Sc">M.Sc</option>
+                    <option value="B.Sc">B.Sc</option>
+                    <option value="B.Ed">B.Ed</option>
+                    <option value="B.A">B.A</option>
+                    <option value="NCE">NCE</option>
+                    <option value="Others">Others</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Category of Employment</label>
+                  <select className="form-control" value={teacherForm.employment_category} onChange={(e) => setTeacherForm({ ...teacherForm, employment_category: e.target.value })}>
+                    <option value="">Select Category</option>
+                    <option value="Full Time">Full Time</option>
+                    <option value="Part Time">Part Time</option>
+                    <option value="Teaching Practice">Teaching Practice</option>
+                    <option value="SIWES/IT">SIWES/IT</option>
+                    <option value="Corp Member">Corp Member</option>
+                    <option value="Others">Others</option>
+                  </select>
                 </div>
               </div>
 
@@ -5374,7 +5542,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 <div className="form-group">
                   <label>Option A: Single Class</label>
                   <select className="form-control" value={feeForm.class_id} onChange={(e) => setFeeForm({ ...feeForm, class_id: e.target.value, tier: '' })}>
-                    <option value="">Choose Class...</option>
+                    <option value="">Select Class...</option>
                     {classes.map((c, idx) => (
                       <option key={idx} value={c.id}>{c.name}</option>
                     ))}
@@ -6037,7 +6205,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               <select className="form-control" value={autoPromoForm.source_class_id} onChange={(e) => {
                 setAutoPromoForm({...autoPromoForm, source_class_id: e.target.value, global_target_id: '', science_target_id: '', arts_target_id: '', commercial_target_id: ''});
               }}>
-                <option value="">-- Select Class --</option>
+                <option value="">Select Class...</option>
                 {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
@@ -6060,7 +6228,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   <div className="form-group">
                     <label>Target Class (If Passed)</label>
                     <select className="form-control" value={autoPromoForm.global_target_id} onChange={(e) => setAutoPromoForm({...autoPromoForm, global_target_id: e.target.value})}>
-                      <option value="">-- Select Target --</option>
+                      <option value="">Select Target Class...</option>
                       {getValidTargets(autoPromoForm.source_class_id, classes).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
@@ -6071,7 +6239,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       <div className="form-group mb-0">
                         <label>Target Class</label>
                         <select className="form-control" value={autoPromoForm.science_target_id} onChange={(e) => setAutoPromoForm({...autoPromoForm, science_target_id: e.target.value})}>
-                          <option value="">-- Select Target --</option>
+                          <option value="">Select Target Class...</option>
                           {getValidTargets(autoPromoForm.source_class_id, classes).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                       </div>
@@ -6081,7 +6249,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       <div className="form-group mb-0">
                         <label>Target Class</label>
                         <select className="form-control" value={autoPromoForm.arts_target_id} onChange={(e) => setAutoPromoForm({...autoPromoForm, arts_target_id: e.target.value})}>
-                          <option value="">-- Select Target --</option>
+                          <option value="">Select Target Class...</option>
                           {getValidTargets(autoPromoForm.source_class_id, classes).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                       </div>
@@ -6091,7 +6259,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       <div className="form-group mb-0">
                         <label>Target Class</label>
                         <select className="form-control" value={autoPromoForm.commercial_target_id} onChange={(e) => setAutoPromoForm({...autoPromoForm, commercial_target_id: e.target.value})}>
-                          <option value="">-- Select Target --</option>
+                          <option value="">Select Target Class...</option>
                           {getValidTargets(autoPromoForm.source_class_id, classes).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                       </div>

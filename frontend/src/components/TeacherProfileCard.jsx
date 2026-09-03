@@ -32,7 +32,9 @@ export default function TeacherProfileCard({ teacher, onClose, onUpdate }) {
     setLoading(true);
     setError('');
     try {
-      await api.updateTeacher(teacher.id, formData);
+      const computedFullName = [formData.surname, formData.first_name, formData.other_names].filter(Boolean).join(' ');
+      const payload = { ...formData, full_name: computedFullName };
+      await api.updateTeacher(teacher.id, payload);
       setIsEditing(false);
       if (onUpdate) onUpdate(); // Refresh parent data
     } catch (err) {
@@ -92,7 +94,11 @@ export default function TeacherProfileCard({ teacher, onClose, onUpdate }) {
                 <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '15px' }}>Professional Information</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
                   <div><strong>Email:</strong> {teacher.email || 'N/A'}</div>
+                  <div><strong>Phone Number:</strong> {teacher.phone_number || 'N/A'}</div>
                   <div><strong>Employed:</strong> {teacher.created_at ? teacher.created_at.split(' ')[0] : 'N/A'}</div>
+                  <div><strong>Category of Employment:</strong> {teacher.employment_category || 'N/A'}</div>
+                  <div><strong>Qualification:</strong> {teacher.qualification || 'N/A'}</div>
+                  <div><strong>Discipline:</strong> {teacher.discipline || 'N/A'}</div>
                 </div>
 
                 <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '15px' }}>Personal Information</h4>
@@ -100,6 +106,7 @@ export default function TeacherProfileCard({ teacher, onClose, onUpdate }) {
                   <div><strong>Surname:</strong> {teacher.surname || 'N/A'}</div>
                   <div><strong>First Name:</strong> {teacher.first_name || 'N/A'}</div>
                   <div><strong>Other Names:</strong> {teacher.other_names || 'N/A'}</div>
+                  <div><strong>Date of Birth:</strong> {teacher.date_of_birth || 'N/A'}</div>
                 </div>
 
                 <h4 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px', marginBottom: '15px' }}>Location</h4>
@@ -140,8 +147,15 @@ export default function TeacherProfileCard({ teacher, onClose, onUpdate }) {
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label>Display Full Name</label>
-                    <input type="text" className="form-control" name="full_name" value={formData.full_name || ''} onChange={handleChange} required />
+                    <label>Full Name <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(auto-computed from name fields below)</span></label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      readOnly
+                      style={{ backgroundColor: 'var(--bg-secondary)', cursor: 'not-allowed' }}
+                      value={[formData.surname, formData.first_name, formData.other_names].filter(Boolean).join(' ')}
+                      placeholder="Will be generated from Surname, First Name & Other Names"
+                    />
                   </div>
                   <div className="form-group">
                     <label>Surname</label>
@@ -154,6 +168,42 @@ export default function TeacherProfileCard({ teacher, onClose, onUpdate }) {
                   <div className="form-group">
                     <label>Other Names</label>
                     <input type="text" className="form-control" name="other_names" value={formData.other_names || ''} onChange={handleChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>Phone Number</label>
+                    <input type="text" className="form-control" name="phone_number" value={formData.phone_number || ''} onChange={handleChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>Date of Birth</label>
+                    <input type="date" className="form-control" name="date_of_birth" value={formData.date_of_birth || ''} onChange={handleChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>Discipline</label>
+                    <input type="text" className="form-control" name="discipline" value={formData.discipline || ''} onChange={handleChange} />
+                  </div>
+                  <div className="form-group">
+                    <label>Qualification</label>
+                    <select className="form-control" name="qualification" value={formData.qualification || ''} onChange={handleChange}>
+                      <option value="">Select Qualification</option>
+                      <option value="M.Sc">M.Sc</option>
+                      <option value="B.Sc">B.Sc</option>
+                      <option value="B.Ed">B.Ed</option>
+                      <option value="B.A">B.A</option>
+                      <option value="NCE">NCE</option>
+                      <option value="Others">Others</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Category of Employment</label>
+                    <select className="form-control" name="employment_category" value={formData.employment_category || ''} onChange={handleChange}>
+                      <option value="">Select Category</option>
+                      <option value="Full Time">Full Time</option>
+                      <option value="Part Time">Part Time</option>
+                      <option value="Teaching Practice">Teaching Practice</option>
+                      <option value="SIWES/IT">SIWES/IT</option>
+                      <option value="Corp Member">Corp Member</option>
+                      <option value="Others">Others</option>
+                    </select>
                   </div>
                 </div>
 

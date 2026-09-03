@@ -29,10 +29,11 @@ Route::group(['middleware' => ['auth:api', 'throttle:60,1']], function () {
     Route::get('/students', [StudentController::class, 'index']);
     Route::get('/students/graduated', [StudentController::class, 'graduated']);
     Route::get('/students/averages', [StudentController::class, 'averages']);
-    Route::post('/students/auto-promote', [StudentController::class, 'autoPromote']);
     Route::post('/students/fast-track-graduate', [StudentController::class, 'fastTrackGraduate']);
     Route::post('/students/promote-bulk', [StudentController::class, 'promoteBulk']);
     Route::post('/students/promote-individual', [StudentController::class, 'promoteIndividual']);
+    Route::post('/students/bulk-status-update', [StudentController::class, 'bulkStatusUpdate']);
+    Route::post('/students/bulk-class-update', [StudentController::class, 'bulkClassUpdate']);
     Route::get('/promoted-classes', [StudentController::class, 'promotedClasses']);
     Route::post('/promoted-classes/reset', [StudentController::class, 'resetPromotedClasses']);
     Route::get('/students/{id}', [StudentController::class, 'show']);
@@ -41,10 +42,12 @@ Route::group(['middleware' => ['auth:api', 'throttle:60,1']], function () {
     Route::put('/users/update-teacher/{id}', [App\Http\Controllers\UserController::class, 'updateTeacher']);
     Route::post('/users/update-status', [App\Http\Controllers\UserController::class, 'updateStatus']);
     Route::put('/users/update-student/{id}', [StudentController::class, 'update']);
+    Route::delete('/users/delete-student/{id}', [StudentController::class, 'destroy']);
     Route::post('/students/transition', [StudentController::class, 'transition']);
 
     // Classes
     Route::get('/classes', [\App\Http\Controllers\ClassController::class, 'index']);
+    Route::get('/waiting-rooms', [\App\Http\Controllers\ClassController::class, 'waitingRooms']);
     Route::get('/classes/{id}', [\App\Http\Controllers\ClassController::class, 'show']);
     Route::post('/classes', [\App\Http\Controllers\ClassController::class, 'store']);
     Route::post('/classes/assign-form-master', [\App\Http\Controllers\ClassController::class, 'assignFormMaster']);
@@ -82,6 +85,11 @@ Route::group(['middleware' => ['auth:api', 'throttle:60,1']], function () {
     Route::get('/admin/result-progress', [\App\Http\Controllers\ReportCardController::class, 'adminResultProgress']);
     Route::get('/student/timeline/{studentId}', [\App\Http\Controllers\ReportCardController::class, 'studentTimeline']);
 
+    // Remarks
+    Route::get('/remarks/{studentId}', [\App\Http\Controllers\RemarkController::class, 'getRemark']);
+    Route::post('/remarks/save', [\App\Http\Controllers\RemarkController::class, 'saveRemark']);
+    Route::post('/remarks/generate-ai', [\App\Http\Controllers\RemarkController::class, 'generateAIRemark']);
+
     // Skills & Evaluation
     Route::get('/skills', [\App\Http\Controllers\SkillController::class, 'getSkills']);
     Route::post('/skills', [\App\Http\Controllers\SkillController::class, 'addSkill']);
@@ -114,7 +122,7 @@ Route::group(['middleware' => ['auth:api', 'throttle:60,1']], function () {
 
     // System Settings & Sessions
     // Route::get('/settings', [\App\Http\Controllers\SystemController::class, 'getSettings']); // OVERRIDES UNPROTECTED ROUTE!
-    Route::post('/settings', [\App\Http\Controllers\SystemController::class, 'updateSettings']);
+    // Route::post('/settings', [\App\Http\Controllers\SystemController::class, 'updateSettings']); // Removed duplicate
     
     Route::get('/sessions', [\App\Http\Controllers\SystemController::class, 'getSessions']);
     Route::post('/sessions', [\App\Http\Controllers\SystemController::class, 'createSession']);
@@ -156,4 +164,12 @@ Route::group(['middleware' => ['auth:api', 'throttle:60,1']], function () {
     Route::put('/fee-invoices/{id}', [\App\Http\Controllers\FeeInvoiceController::class, 'update']);
     Route::post('/fee-invoices/{id}/pay', [\App\Http\Controllers\FeeInvoiceController::class, 'recordPayment']);
     Route::delete('/fee-invoices/{id}', [\App\Http\Controllers\FeeInvoiceController::class, 'destroy']);
+
+    /* ================================================================
+       ACTIVITY LOGS
+       ================================================================ */
+    Route::get('/activity-logs', [\App\Http\Controllers\ActivityLogController::class, 'index']);
+    Route::get('/activity-logs/stats', [\App\Http\Controllers\ActivityLogController::class, 'stats']);
+    Route::delete('/activity-logs/purge', [\App\Http\Controllers\ActivityLogController::class, 'purge']);
 });
+

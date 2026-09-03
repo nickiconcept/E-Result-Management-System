@@ -10,10 +10,14 @@ import api from './utils/api';
 export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.replace('#/', '').replace('#', '');
+    if (hash) return hash.split('/')[0];
     const saved = localStorage.getItem('jma_active_tab');
     return (saved && saved !== 'undefined' && saved !== 'null') ? saved : 'dashboard';
   });
   const [subTab, setSubTab] = useState(() => {
+    const hash = window.location.hash.replace('#/', '').replace('#', '');
+    if (hash) return hash.split('/')[1] || null;
     const saved = localStorage.getItem('jma_active_subtab');
     return (saved && saved !== 'undefined' && saved !== 'null') ? saved : null;
   });
@@ -78,20 +82,48 @@ export default function App() {
     }
   };
 
-  const verifySession = () => {
+  const verifySession = async () => {
     const token = localStorage.getItem('jma_token');
     if (token) {
       try {
         // Simple client-side token payload decoding
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const payload = JSON.parse(window.atob(base64));
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const base64Url = parts[1];
+          let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const pad = base64.length % 4;
+          if (pad) {
+            base64 += new Array(5 - pad).join('=');
+          }
+          const payload = JSON.parse(window.atob(base64));
 
-        // Check expiry (in seconds)
-        if (payload.exp * 1000 < Date.now()) {
-          handleLogout();
+          // Check expiry (in seconds)
+          if (payload.exp * 1000 < Date.now()) {
+            handleLogout();
+            return;
+          }
+          
+          // Temporarily use cached user, then fetch latest
+          const storedUser = localStorage.getItem('jma_user');
+          if (storedUser) {
+            setUser(JSON.parse(storedUser));
+          } else {
+            setUser(payload);
+          }
         } else {
-          setUser(payload);
+          // If not a JWT, just use stored user temporarily
+          const storedUser = localStorage.getItem('jma_user');
+          if (storedUser) setUser(JSON.parse(storedUser));
+        }
+        
+        setLoading(false); // Unblock UI immediately with cached data
+        
+        try {
+           const freshUser = await api.getMe();
+           setUser(freshUser);
+        } catch (e) {
+           console.error('Failed to fetch fresh user details:', e);
+           handleLogout();
         }
       } catch (err) {
         console.error('Invalid session token:', err);
@@ -116,6 +148,7 @@ export default function App() {
     setSubTab(null);
     localStorage.removeItem('jma_active_tab');
     localStorage.removeItem('jma_active_subtab');
+    localStorage.removeItem('jma_user');
     window.history.pushState(null, '', `#/dashboard`);
   };
 

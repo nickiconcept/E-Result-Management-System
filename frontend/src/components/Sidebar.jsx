@@ -30,8 +30,11 @@ import {
   ShieldCheck,
   ChevronDown,
   ChevronRight,
-  X
+  ClipboardList,
+  X,
+  Calendar
 } from 'lucide-react';
+
 
 export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout, user, isOpen, onClose, settings }) {
   const [openMenus, setOpenMenus] = useState({});
@@ -72,7 +75,8 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
           { id: 'single', label: 'Single Result View', icon: FileText },
           { id: 'bulk', label: 'Download Bulk Results', icon: Download },
           { id: 'promotions', label: 'Student Promotions', icon: TrendingUp },
-          { id: 'pins', label: 'Scratch Cards / PINs', icon: Key }
+          { id: 'pins', label: 'Scratch Cards / PINs', icon: Key },
+          { id: 'remarks', label: 'Manage Remarks', icon: Sparkles }
         ]
       },
       {
@@ -81,7 +85,7 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
         icon: CreditCard,
         subItems: [
           { id: 'invoices', label: 'Invoices & Billing', icon: Receipt },
-          { id: 'custom', label: 'Custom Invoice', icon: Edit3 },
+          { id: 'custom', label: 'Other Fees', icon: Edit3 },
           { id: 'structures', label: 'Fee Structures', icon: Layers },
           { id: 'report', label: 'Payment Records', icon: History }
         ]
@@ -96,7 +100,8 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
           { id: 'reports', label: 'Grading & Reports', icon: Award },
           { id: 'skills', label: 'Behavioral Domains', icon: Sparkles }
         ]
-      }
+      },
+      { id: 'logs', label: 'Activity Logs', icon: ClipboardList }
     ],
     teacher: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -112,10 +117,12 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
         ]
       },
       { id: 'broadsheet', label: 'Class Results', icon: FileSpreadsheet },
+      { id: 'behavioral', label: 'Evaluate Students', icon: Sparkles },
       { id: 'schemes', label: 'Scheme of Work', icon: FileText }
     ],
     student: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { id: 'attendance', label: 'My Attendance', icon: Calendar },
       { id: 'results', label: 'My Results', icon: Award },
       { id: 'schemes', label: 'Scheme of Work', icon: FileText },
       { id: 'fees', label: 'Fees & Payments', icon: CreditCard },

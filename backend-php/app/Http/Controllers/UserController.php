@@ -19,9 +19,26 @@ class UserController extends Controller
         $state_of_residence = $request->input('state_of_residence');
         $lga_of_residence = $request->input('lga_of_residence');
         $signature = $request->input('signature');
+        $phone_number = $request->input('phone_number');
+        $date_of_birth = $request->input('date_of_birth');
+        $qualification = $request->input('qualification');
+        $discipline = $request->input('discipline');
+        $employment_category = $request->input('employment_category');
 
         if (!$full_name) {
             return response()->json(['error' => 'Full name is required'], 400);
+        }
+
+        // Check for duplicate teacher by email and full_name
+        if ($email && $full_name) {
+            $duplicate = DB::table('users')
+                ->where('role', 'teacher')
+                ->where('email', $email)
+                ->where('full_name', $full_name)
+                ->first();
+            if ($duplicate) {
+                return response()->json(['error' => 'Duplicate Registration: A teacher with this Full Name and Email already exists.'], 400);
+            }
         }
 
         try {
@@ -57,6 +74,11 @@ class UserController extends Controller
                 'lga_of_residence' => $lga_of_residence,
                 'signature' => $signature,
                 'status' => 'active',
+                'phone_number' => $phone_number,
+                'date_of_birth' => $date_of_birth,
+                'qualification' => $qualification,
+                'discipline' => $discipline,
+                'employment_category' => $employment_category,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -89,6 +111,11 @@ class UserController extends Controller
         $passport_photo = $request->input('passport_photo');
         $digital_signature = $request->input('digital_signature');
         $signature = $request->input('signature');
+        $phone_number = $request->input('phone_number');
+        $date_of_birth = $request->input('date_of_birth');
+        $qualification = $request->input('qualification');
+        $discipline = $request->input('discipline');
+        $employment_category = $request->input('employment_category');
 
         $sig = $digital_signature !== null ? $digital_signature : $signature;
 
@@ -114,6 +141,11 @@ class UserController extends Controller
             if ($state_of_residence !== null) $teacherUpdateData['state_of_residence'] = $state_of_residence;
             if ($lga_of_residence !== null) $teacherUpdateData['lga_of_residence'] = $lga_of_residence;
             if ($sig !== null) $teacherUpdateData['signature'] = $sig;
+            if ($phone_number !== null) $teacherUpdateData['phone_number'] = $phone_number;
+            if ($date_of_birth !== null) $teacherUpdateData['date_of_birth'] = $date_of_birth;
+            if ($qualification !== null) $teacherUpdateData['qualification'] = $qualification;
+            if ($discipline !== null) $teacherUpdateData['discipline'] = $discipline;
+            if ($employment_category !== null) $teacherUpdateData['employment_category'] = $employment_category;
 
             DB::table('teachers')->where('id', $id)->update($teacherUpdateData);
 
@@ -139,6 +171,7 @@ class UserController extends Controller
             
             $user = DB::table('users')->where('id', $userId)->first();
             if (!$user) {
+                DB::rollBack();
                 return response()->json(['error' => 'User not found'], 404);
             }
 
@@ -148,7 +181,12 @@ class UserController extends Controller
             if ($user->role === 'student') {
                 DB::table('students')->where('id', $userId)->update(['status' => $status]);
             } elseif ($user->role === 'teacher') {
-                DB::table('teachers')->where('id', $userId)->update(['status' => $status]);
+                $exists = DB::table('teachers')->where('id', $userId)->exists();
+                if ($exists) {
+                    DB::table('teachers')->where('id', $userId)->update(['status' => $status]);
+                } else {
+                    DB::table('teachers')->insert(['id' => $userId, 'status' => $status]);
+                }
             }
 
             DB::commit();
