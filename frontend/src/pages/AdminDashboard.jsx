@@ -2142,15 +2142,18 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               <button className="btn btn-primary" onClick={() => { setTeacherForm({ full_name: '', username: '', phone: '', email: '', temp_password: '' }); setShowTeacherModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
                 <Plus size={16} /> Register Teacher
               </button>
-              <select
-                className="form-control"
-                style={{ padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.6)', backgroundColor: 'rgba(255,255,255,0.15)', color: 'white' }}
-                value={showArchivedTeachers ? 'archived' : 'active'}
-                onChange={(e) => setShowArchivedTeachers(e.target.value === 'archived')}
+              <button
+                onClick={() => setShowArchivedTeachers(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.6)', backgroundColor: !showArchivedTeachers ? 'white' : 'rgba(255,255,255,0.15)', color: !showArchivedTeachers ? 'var(--primary)' : 'white', fontWeight: !showArchivedTeachers ? '700' : '400', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s ease' }}
               >
-                <option value="active">Active Teachers</option>
-                <option value="archived">Archived Teachers</option>
-              </select>
+                Active Teachers
+              </button>
+              <button
+                onClick={() => setShowArchivedTeachers(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.6)', backgroundColor: showArchivedTeachers ? 'white' : 'rgba(255,255,255,0.15)', color: showArchivedTeachers ? 'var(--primary)' : 'white', fontWeight: showArchivedTeachers ? '700' : '400', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              >
+                Archived Teachers
+              </button>
             </div>
           </div>
 
@@ -2175,31 +2178,15 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 <option key={idx} value={cls.name}>{cls.name}</option>
               ))}
             </select>
-            <select
-              className="form-control"
-              style={{ width: '150px', padding: '10px' }}
-              value={teacherStatusFilter}
-              onChange={(e) => setTeacherStatusFilter(e.target.value)}
-            >
-              <option value="all">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="archived">Archived</option>
-            </select>
           </div>
 
           {(() => {
             const filteredTeachers = teachers.filter(teach => {
               const matchesSearch = (teach.full_name.toLowerCase().includes(teacherSearch.toLowerCase()) || teach.username.toLowerCase().includes(teacherSearch.toLowerCase()));
-              const matchesStatus = teacherStatusFilter === 'all' || 
-                                    (teacherStatusFilter === 'archived' ? teach.status === 'archived' : teach.status !== 'archived');
+              const matchesStatus = showArchivedTeachers ? teach.status === 'archived' : teach.status !== 'archived';
               
-              // Find if teacher is assigned to any class stream (Form Master or Subject Teacher)
-              // Wait, the API probably just returns teachers. Let's just check if teacher is a form master for the class stream? 
-              // Better: Check if class stream matches
               let matchesClass = true;
               if (teacherClassFilter !== '') {
-                // If the teacher has a 'classes' array from API, we could check it. But without it, 
-                // we'll see if the teacher is assigned to the class in `classSubjects` or `classes` as form master
                 const isFormMaster = classes.some(c => c.name === teacherClassFilter && c.form_master_id === teach.id);
                 const isSubjectTeacher = classSubjects.some(cs => cs.class_name === teacherClassFilter && cs.teacher_id === teach.id);
                 matchesClass = isFormMaster || isSubjectTeacher;
@@ -2322,10 +2309,11 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 value={classStreamFilter}
                 onChange={(e) => setClassStreamFilter(e.target.value)}
               >
-                <option value="all">All Tiers</option>
-                <option value="universal">Universal</option>
-                <option value="junior">Junior (JSS)</option>
-                <option value="senior">Senior (SSS)</option>
+                <option value="all">All Sections (Tiers)</option>
+                <option value="nursery">Nursery School</option>
+                <option value="primary">Primary School</option>
+                <option value="jss">Junior Secondary</option>
+                <option value="sss">Senior Secondary</option>
               </select>
               <select
                 className="form-control"
@@ -3847,7 +3835,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   onChange={(e) => setPinStatusFilter(e.target.value)}
                 >
                   <option value="all">All Statuses</option>
-                  <option value="active">Active (Unused/Partial)</option>
+                  <option value="active">Active (Partial)</option>
+                  <option value="not_used">Not Used (New)</option>
                   <option value="exhausted">Used (Exhausted)</option>
                 </select>
               </div>
@@ -3858,8 +3847,16 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   const matchesSearch = p.pin.toLowerCase().includes(query) ||
                          (p.student_name && p.student_name.toLowerCase().includes(query)) ||
                          (p.admission_number && p.admission_number.toLowerCase().includes(query));
-                  const matchesStatus = pinStatusFilter === 'all' || 
-                         (pinStatusFilter === 'active' ? p.status === 'active' : p.status === 'exhausted');
+                  
+                  let matchesStatus = true;
+                  if (pinStatusFilter === 'active') {
+                    matchesStatus = p.status === 'active' && p.checks_remaining < parseInt(settingsForm?.pin_max_checks || 5);
+                  } else if (pinStatusFilter === 'not_used') {
+                    matchesStatus = p.status === 'active' && p.checks_remaining === parseInt(settingsForm?.pin_max_checks || 5);
+                  } else if (pinStatusFilter === 'exhausted') {
+                    matchesStatus = p.status === 'exhausted';
+                  }
+
                   return matchesSearch && matchesStatus;
                 });
                 const paginatedPins = filteredPins.slice((pinPage - 1) * pinPageSize, pinPage * pinPageSize);
