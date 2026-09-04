@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { ArrowLeft, Award, X, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import api from '../utils/api';
@@ -141,7 +142,7 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
     }
   };
 
-  return (
+  const modalContent = (
     <div className={isBulk ? "bulk-card-wrapper" : "modal-overlay"}>
       <div className={isBulk ? "bulk-card-inner" : "modal-content glass-panel"} style={isBulk ? { backgroundColor: '#fff', color: '#000', padding: '0px' } : { maxWidth: '940px', backgroundColor: '#fff', color: '#000', padding: '24px' }}>
         
@@ -880,4 +881,10 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
       </div>
     </div>
   );
+
+  if (isBulk) {
+    return modalContent;
+  }
+  
+  return ReactDOM.createPortal(modalContent, document.body);
 }
