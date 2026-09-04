@@ -4684,19 +4684,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     <FileText size={18} /> Official Signatures & Dates
                   </h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-                    <div className="form-group" style={{ margin: 0, padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)' }}>
-                      <label>Sports Master / Coach Name</label>
-                      <input type="text" className="form-control" value={settingsForm.games_master_name} onChange={e => setSettingsForm({ ...settingsForm, games_master_name: e.target.value })} placeholder="e.g. A. K. Bello" />
-                      <label style={{ marginTop: '12px' }}>Sports Master Note / Comment</label>
-                      <input type="text" className="form-control" value={settingsForm.games_master_remark} onChange={e => setSettingsForm({ ...settingsForm, games_master_remark: e.target.value })} placeholder="e.g. Active in school sports." />
-                    </div>
-                    
-                    <div className="form-group" style={{ margin: 0, padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)' }}>
-                      <label>House Master / Advisor Name</label>
-                      <input type="text" className="form-control" value={settingsForm.house_master_name} onChange={e => setSettingsForm({ ...settingsForm, house_master_name: e.target.value })} placeholder="e.g. S. Ibrahim" />
-                      <label style={{ marginTop: '12px' }}>House Master Note / Comment</label>
-                      <input type="text" className="form-control" value={settingsForm.house_master_remark} onChange={e => setSettingsForm({ ...settingsForm, house_master_remark: e.target.value })} placeholder="e.g. Disciplined student." />
-                    </div>
+
                     
                     <div className="form-group" style={{ margin: 0, gridColumn: '1 / -1', padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
