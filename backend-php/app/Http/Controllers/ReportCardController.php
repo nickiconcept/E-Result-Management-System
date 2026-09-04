@@ -107,7 +107,7 @@ class ReportCardController extends Controller
                      ->where('sse.term', '=', $reqTerm)
                      ->where('sse.academic_year', '=', $reqYear);
             })
-            ->select('bs.name', DB::raw("'affective' as category"), 'bs.target_section', DB::raw('COALESCE(sse.rating, 4) as rating'))
+            ->select('bs.name', DB::raw("'affective' as category"), 'bs.target_section', DB::raw('COALESCE(sse.rating, 0) as rating'))
             ->orderBy('bs.name')
             ->get();
 
@@ -118,7 +118,7 @@ class ReportCardController extends Controller
                      ->where('sse.term', '=', $reqTerm)
                      ->where('sse.academic_year', '=', $reqYear);
             })
-            ->select('bs.name', DB::raw("'psychomotor' as category"), 'bs.target_section', DB::raw('COALESCE(sse.rating, 4) as rating'))
+            ->select('bs.name', DB::raw("'psychomotor' as category"), 'bs.target_section', DB::raw('COALESCE(sse.rating, 0) as rating'))
             ->orderBy('bs.name')
             ->get();
 
@@ -129,10 +129,22 @@ class ReportCardController extends Controller
         $class_average = '0.0';
         $highest_average = '0.0';
         $lowest_average = '0.0';
+        
+        $next_term_fee = null;
 
         if ($studentInfo && $studentInfo->class_id) {
             $classId = $studentInfo->class_id;
             
+            if (!empty($studentInfo->tier)) {
+                $feeStruct = DB::table('fee_structures')
+                    ->where('tier', $studentInfo->tier)
+                    ->where('category', 'School Fees')
+                    ->first();
+                if ($feeStruct) {
+                    $next_term_fee = '₦' . number_format($feeStruct->amount, 2);
+                }
+            }
+
             $classStudents = DB::table('students')->where('class_id', $classId)->pluck('id');
             $total_students = $classStudents->count();
 
@@ -217,7 +229,8 @@ class ReportCardController extends Controller
             'class_average' => $class_average,
             'highest_average' => $highest_average,
             'lowest_average' => $lowest_average,
-            'remarks' => $remarkData
+            'remarks' => $remarkData,
+            'next_term_fee' => $next_term_fee
         ];
     }
 

@@ -3758,8 +3758,15 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   term={settings?.active_term}
                   session={settings?.active_session}
                   settings={settings}
-                  onBack={() => setActiveSubTab('overview')}
                   classes={classes}
+                  onBack={() => {
+                    if (adminBroadsheetClassId) {
+                      setAdminBroadsheetClassId('');
+                      setAdminBroadsheetData(null);
+                    } else {
+                      setActiveSubTab('overview');
+                    }
+                  }}
                   onClassSelect={(id) => {
                     setAdminBroadsheetClassId(id);
                     fetchAdminBroadsheet(id);
@@ -4713,8 +4720,6 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                         <div>
                           <label>Principal / Headmaster Name</label>
                           <input type="text" className="form-control" value={settingsForm.principal_name} onChange={e => setSettingsForm({ ...settingsForm, principal_name: e.target.value })} placeholder="e.g. Principal Stamp (JMA)" style={{ marginBottom: '16px' }} />
-                          <label>School Fee for Next Term (₦)</label>
-                          <input type="text" className="form-control" value={settingsForm.next_term_fee} onChange={e => setSettingsForm({ ...settingsForm, next_term_fee: e.target.value })} placeholder="e.g. ₦45,000.00" />
                         </div>
                         <div>
                           <label>Principal Digital Signature</label>

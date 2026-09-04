@@ -377,13 +377,13 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
 
                 const hasDynamicSkills = Array.isArray(behavioral) && behavioral.length > 0;
                 const displayList = hasDynamicSkills
-                  ? affectiveSkills.map(b => ({ name: b.name, val: b.rating || 4 }))
+                  ? affectiveSkills.map(b => ({ name: b.name, val: b.rating ?? 0 }))
                   : (isSecondary ? [] : [
-                      { name: 'Punctuality', val: behavioral?.punctuality || 4 },
-                      { name: 'Neatness & Dressing', val: behavioral?.neatness || 4 },
-                      { name: 'Honesty & Integrity', val: behavioral?.honesty || 4 },
-                      { name: 'Self Control & Discipline', val: behavioral?.self_control || 4 },
-                      { name: 'Peer Relationship', val: behavioral?.peer_relationship || 4 }
+                      { name: 'Punctuality', val: behavioral?.punctuality ?? 0 },
+                      { name: 'Neatness & Dressing', val: behavioral?.neatness ?? 0 },
+                      { name: 'Honesty & Integrity', val: behavioral?.honesty ?? 0 },
+                      { name: 'Self Control & Discipline', val: behavioral?.self_control ?? 0 },
+                      { name: 'Peer Relationship', val: behavioral?.peer_relationship ?? 0 }
                     ]);
 
                 let col1, col2, col3;
@@ -445,13 +445,13 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
 
                 const hasDynamicSkills = Array.isArray(behavioral) && behavioral.length > 0;
                 const displayList = hasDynamicSkills
-                  ? psychomotorSkills.map(b => ({ name: b.name, val: b.rating || 4 }))
+                  ? psychomotorSkills.map(b => ({ name: b.name, val: b.rating ?? 0 }))
                   : (isSecondary ? [] : [
-                      { name: 'Sports & Games', val: behavioral?.sports || 4 },
-                      { name: 'Craft & Manual Skills', val: behavioral?.manual_skills || 3 },
-                      { name: 'Verbal Fluency', val: behavioral?.verbal_fluency || 4 },
-                      { name: 'Musical Skills', val: behavioral?.musical_skills || 3 },
-                      { name: 'Handwriting & Neatness', val: 4 }
+                      { name: 'Sports & Games', val: behavioral?.sports ?? 0 },
+                      { name: 'Craft & Manual Skills', val: behavioral?.manual_skills ?? 0 },
+                      { name: 'Verbal Fluency', val: behavioral?.verbal_fluency ?? 0 },
+                      { name: 'Musical Skills', val: behavioral?.musical_skills ?? 0 },
+                      { name: 'Handwriting & Neatness', val: behavioral?.handwriting ?? 0 }
                     ]);
 
                 const midIndex = Math.ceil(displayList.length / 2);
@@ -532,7 +532,7 @@ export default function ReportCard({ data, settings, onClose, closeLabel, isBulk
           {/* FUTURE TERM INFORMATION BAR */}
           <div className="m-footer-bar">
             <div>Unpaid Balance: <strong>₦{parseFloat(student.unpaid_balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
-            <div>Next Term Fee: <strong>{settings?.next_term_fee || '₦45,000.00'}</strong></div>
+            <div>Next Term Fee: <strong>{data.next_term_fee || 'Not Set'}</strong></div>
             <div>Next Term Begins: <strong>{settings?.next_term_begins || '13/04/2026'}</strong></div>
             <div>Next Term Ends: <strong>{settings?.next_term_ends || '--/--/----'}</strong></div>
           </div>
