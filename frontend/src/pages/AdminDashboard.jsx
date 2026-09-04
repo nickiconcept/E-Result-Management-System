@@ -2450,9 +2450,11 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   onChange={(e) => setSubjectTierFilter(e.target.value)}
                 >
                   <option value="all">All Tiers</option>
-                  <option value="universal">Universal</option>
-                  <option value="senior">Senior (SSS)</option>
-                  <option value="junior">Junior (JSS)</option>
+                  <option value="universal">Universal (All Tiers)</option>
+                  <option value="nursery">Nursery School</option>
+                  <option value="primary">Primary School</option>
+                  <option value="jss">Junior Secondary (JSS)</option>
+                  <option value="sss">Senior Secondary (SSS)</option>
                 </select>
               </div>
 
