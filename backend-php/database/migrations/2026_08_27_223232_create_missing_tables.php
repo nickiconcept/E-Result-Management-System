@@ -11,75 +11,89 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('academic_sessions', function (Blueprint $table) {
-            $table->id();
-            $table->string('session_name')->unique();
-            $table->boolean('is_current')->default(0);
-        });
+        if (!Schema::hasTable('academic_sessions')) {
+            Schema::create('academic_sessions', function (Blueprint $table) {
+                $table->id();
+                $table->string('session_name')->unique();
+                $table->boolean('is_current')->default(0);
+            });
+        }
 
-        Schema::create('promoted_classes', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('class_id');
-            $table->string('session_name');
-            $table->timestamp('promoted_at')->useCurrent();
-            
-            $table->unique(['class_id', 'session_name']);
-        });
+        if (!Schema::hasTable('promoted_classes')) {
+            Schema::create('promoted_classes', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('class_id');
+                $table->string('session_name');
+                $table->timestamp('promoted_at')->useCurrent();
+                
+                $table->unique(['class_id', 'session_name']);
+            });
+        }
 
-        Schema::create('result_pins', function (Blueprint $table) {
-            $table->id();
-            $table->string('pin')->unique();
-            $table->unsignedBigInteger('student_id')->nullable();
-            $table->string('term')->nullable();
-            $table->string('academic_year')->nullable();
-            $table->integer('usage_count')->default(0);
-            $table->string('status')->default('active');
-            $table->timestamp('generated_at')->useCurrent();
-            
-            $table->foreign('student_id')->references('id')->on('students')->onDelete('set null');
-        });
+        if (!Schema::hasTable('result_pins')) {
+            Schema::create('result_pins', function (Blueprint $table) {
+                $table->id();
+                $table->string('pin')->unique();
+                $table->unsignedBigInteger('student_id')->nullable();
+                $table->string('term')->nullable();
+                $table->string('academic_year')->nullable();
+                $table->integer('usage_count')->default(0);
+                $table->string('status')->default('active');
+                $table->timestamp('generated_at')->useCurrent();
+                
+                $table->foreign('student_id')->references('id')->on('students')->onDelete('set null');
+            });
+        }
 
-        Schema::create('affective_skills', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('target_section')->default('secondary');
-            
-            $table->unique(['name', 'target_section']);
-        });
+        if (!Schema::hasTable('affective_skills')) {
+            Schema::create('affective_skills', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->string('target_section')->default('secondary');
+                
+                $table->unique(['name', 'target_section']);
+            });
+        }
 
-        Schema::create('psychomotor_skills', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('target_section')->default('secondary');
-            
-            $table->unique(['name', 'target_section']);
-        });
+        if (!Schema::hasTable('psychomotor_skills')) {
+            Schema::create('psychomotor_skills', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->string('target_section')->default('secondary');
+                
+                $table->unique(['name', 'target_section']);
+            });
+        }
 
-        Schema::create('student_affective_eval', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('student_id');
-            $table->unsignedBigInteger('skill_id');
-            $table->string('term');
-            $table->string('academic_year');
-            $table->integer('rating')->nullable();
-            
-            $table->foreign('student_id')->references('id')->on('students')->onDelete('cascade');
-            $table->foreign('skill_id')->references('id')->on('affective_skills')->onDelete('cascade');
-            $table->unique(['student_id', 'skill_id', 'term', 'academic_year'], 'affective_eval_unique');
-        });
+        if (!Schema::hasTable('student_affective_eval')) {
+            Schema::create('student_affective_eval', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('student_id');
+                $table->unsignedBigInteger('skill_id');
+                $table->string('term');
+                $table->string('academic_year');
+                $table->integer('rating')->nullable();
+                
+                $table->foreign('student_id')->references('id')->on('students')->onDelete('cascade');
+                $table->foreign('skill_id')->references('id')->on('affective_skills')->onDelete('cascade');
+                $table->unique(['student_id', 'skill_id', 'term', 'academic_year'], 'affective_eval_unique');
+            });
+        }
 
-        Schema::create('student_psychomotor_eval', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('student_id');
-            $table->unsignedBigInteger('skill_id');
-            $table->string('term');
-            $table->string('academic_year');
-            $table->integer('rating')->nullable();
-            
-            $table->foreign('student_id')->references('id')->on('students')->onDelete('cascade');
-            $table->foreign('skill_id')->references('id')->on('psychomotor_skills')->onDelete('cascade');
-            $table->unique(['student_id', 'skill_id', 'term', 'academic_year'], 'psycho_eval_unique');
-        });
+        if (!Schema::hasTable('student_psychomotor_eval')) {
+            Schema::create('student_psychomotor_eval', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('student_id');
+                $table->unsignedBigInteger('skill_id');
+                $table->string('term');
+                $table->string('academic_year');
+                $table->integer('rating')->nullable();
+                
+                $table->foreign('student_id')->references('id')->on('students')->onDelete('cascade');
+                $table->foreign('skill_id')->references('id')->on('psychomotor_skills')->onDelete('cascade');
+                $table->unique(['student_id', 'skill_id', 'term', 'academic_year'], 'psycho_eval_unique');
+            });
+        }
     }
 
     /**

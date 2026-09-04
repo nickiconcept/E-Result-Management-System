@@ -32,8 +32,7 @@ class SystemController extends Controller
                 'games_master_name', 'games_master_remark', 'house_master_name',
                 'house_master_remark', 'principal_name', 'principal_signature',
                 'next_term_fee', 'next_term_begins', 'next_term_ends',
-                'max_ca_count', 'global_pass_mark', 'science_pass_mark', 
-                'arts_pass_mark', 'commercial_pass_mark',
+                'max_ca_count',
                 'allow_fm_edit_student', 'allow_fm_register_student', 'allow_past_attendance',
                 'remark_generation_mode', 'allow_offline_debt'
             ]);

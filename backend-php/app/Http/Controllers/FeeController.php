@@ -277,9 +277,10 @@ class FeeController extends Controller
                 ->leftJoin('users as u', 's.id', '=', 'u.id')
                 ->leftJoin('fee_invoices as i', 's.id', '=', 'i.student_id')
                 ->leftJoin('classes as c', 's.class_id', '=', 'c.id')
-                ->groupBy('s.id', 'u.full_name', 'c.name')
+                ->groupBy('s.id', 's.admission_number', 'u.full_name', 'c.name')
                 ->select(
                     's.id as student_id',
+                    's.admission_number',
                     'u.full_name',
                     'c.name as class_name',
                     DB::raw('SUM(i.amount_due) as amount_due'),

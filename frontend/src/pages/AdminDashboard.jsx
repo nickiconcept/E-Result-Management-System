@@ -609,11 +609,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
         allow_past_attendance: settings.allow_past_attendance || 0,
         allow_fm_register_student: settings.allow_fm_register_student || 0,
         allow_fm_edit_student: settings.allow_fm_edit_student || 0,
-        max_ca_count: settings.max_ca_count || 4,
-        global_pass_mark: settings.global_pass_mark || 40,
-        science_pass_mark: settings.science_pass_mark || 60,
-        arts_pass_mark: settings.arts_pass_mark || 40,
-        commercial_pass_mark: settings.commercial_pass_mark || 50
+        max_ca_count: settings.max_ca_count || 4
       });
     }
   }, [settings]);
@@ -1344,6 +1340,25 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
       loadFeeStructures();
     } catch (err) {
       setErrorMsg(err.message);
+    }
+  };
+
+  const handleGenerateTermlyFee = async () => {
+    if (!window.confirm('Are you sure you want to generate school fees for all active students for this term?')) return;
+    setNotify('');
+    setErrorMsg('');
+    setLoading(true);
+    try {
+      const res = await api.generateTermlyFees();
+      if (res.count === 0) {
+        setNotify('Operation completed. No new fees generated (they might already exist for this term).');
+      } else {
+        setNotify(`Successfully generated ${res.count} new fee invoices.`);
+      }
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -2825,7 +2840,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     onClick={handleGenerateTermlyFee}
                     style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}
                   >
-                    Generate Termly Fee
+                    Generate {settings?.active_term && settings?.active_session ? `${settings.active_term} ${settings.active_session}` : 'Active Term and Session'} School Fees
                   </button>
                   <button 
                     className="btn btn-primary" 
@@ -2892,13 +2907,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           {/* SUBTAB 3: PAYMENT RECORDS (FORMERLY PAID FEES REPORT) */}
           {activeFeesSubTab === 'report' && (() => {
             const filteredList = feesReport.filter(inv => {
+              const amountDue = parseFloat(inv.amount_due) || 0;
+              const amountPaid = parseFloat(inv.amount_paid) || 0;
+              const remaining = Math.max(0, amountDue - amountPaid);
+              const calculatedStatus = remaining <= 0 ? 'paid' : (amountPaid > 0 ? 'partial' : 'unpaid');
+              
               const matchesSearch = (inv.full_name || '').toLowerCase().includes(paymentReportSearch.toLowerCase()) ||
-                                    (inv.admission_number || '').toLowerCase().includes(paymentReportSearch.toLowerCase()) ||
-                                    (inv.title || '').toLowerCase().includes(paymentReportSearch.toLowerCase());
+                                    (inv.admission_number || '').toLowerCase().includes(paymentReportSearch.toLowerCase());
               const matchesClass = paymentReportClassFilter === '' || inv.class_name === classes.find(c => c.id === parseInt(paymentReportClassFilter))?.name;
-              const matchesStatus = paymentReportStatusFilter === 'all' || inv.status === paymentReportStatusFilter;
-              const matchesCategory = paymentReportCategoryFilter === '' || (inv.category || 'School Fees') === paymentReportCategoryFilter;
-              return matchesSearch && matchesClass && matchesStatus && matchesCategory;
+              const matchesStatus = paymentReportStatusFilter === 'all' || calculatedStatus === paymentReportStatusFilter;
+              
+              return matchesSearch && matchesClass && matchesStatus;
             });
 
             const totalBilled = filteredList.reduce((sum, item) => sum + (item.amount_due || 0), 0);
@@ -3047,7 +3066,6 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       <tr>
                         <th>Student Details</th>
                         <th>Class</th>
-                        <th>Fee Title</th>
                         <th style={{ textAlign: 'right' }}>Total Fees</th>
                         <th style={{ textAlign: 'right' }}>Paid</th>
                         <th style={{ textAlign: 'right' }}>Debt</th>
@@ -3090,23 +3108,19 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                                 </div>
                               </td>
                               <td>{inv.class_name || 'Unassigned'}</td>
-                              <td>
-                                <div style={{ fontWeight: '500' }}>{inv.title}</div>
-                                {inv.category && (
-                                  <span className="badge" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--primary)', border: '1px solid var(--border-color)', fontSize: '0.66rem', marginTop: '2px' }}>
-                                    {inv.category}
-                                  </span>
-                                )}
-                              </td>
-                              <td style={{ textAlign: 'right', fontWeight: 'bold' }}>₦{inv.amount_due.toLocaleString()}</td>
-                              <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 'bold' }}>₦{inv.amount_paid.toLocaleString()}</td>
+                              <td style={{ textAlign: 'right', fontWeight: 'bold' }}>₦{(parseFloat(inv.amount_due) || 0).toLocaleString()}</td>
+                              <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 'bold' }}>₦{(parseFloat(inv.amount_paid) || 0).toLocaleString()}</td>
                               <td style={{ textAlign: 'right', color: remaining > 0 ? 'var(--danger)' : 'var(--success)', fontWeight: 'bold' }}>
                                 ₦{remaining.toLocaleString()}
                               </td>
                               <td style={{ textAlign: 'center' }}>
-                                <span className={`badge ${inv.status === 'paid' ? 'badge-success' : inv.status === 'partial' ? 'badge-warning' : 'badge-danger'}`}>
-                                  {inv.status === 'paid' ? 'Fully Paid' : inv.status === 'partial' ? 'Partial' : 'Unpaid'}
-                                </span>
+                                {remaining <= 0 ? (
+                                  <span className="badge badge-success">Fully Paid</span>
+                                ) : (parseFloat(inv.amount_paid) || 0) > 0 ? (
+                                  <span className="badge badge-warning">Partial</span>
+                                ) : (
+                                  <span className="badge badge-danger">Unpaid</span>
+                                )}
                               </td>
                             </tr>
                           );
@@ -4179,6 +4193,38 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                         style={{ width: '18px', height: '18px', marginRight: '10px', accentColor: 'var(--primary)' }}
                       />
                       {settingsForm.allow_fm_edit_student === 1 ? 'Enabled' : 'Disabled'}
+                    </label>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <Award size={18} style={{ color: 'var(--primary)' }} />
+                      Show Student Rank in Class?
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.9rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={settingsForm.result_show_position === 1} 
+                        onChange={(e) => setSettingsForm({ ...settingsForm, result_show_position: e.target.checked ? 1 : 0 })}
+                        style={{ width: '18px', height: '18px', marginRight: '10px', accentColor: 'var(--primary)' }}
+                      />
+                      {settingsForm.result_show_position === 1 ? 'Enabled' : 'Disabled'}
+                    </label>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
+                      <BarChart2 size={18} style={{ color: 'var(--primary)' }} />
+                      Show Class Average Score?
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.9rem' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={settingsForm.result_show_average === 1} 
+                        onChange={(e) => setSettingsForm({ ...settingsForm, result_show_average: e.target.checked ? 1 : 0 })}
+                        style={{ width: '18px', height: '18px', marginRight: '10px', accentColor: 'var(--primary)' }}
+                      />
+                      {settingsForm.result_show_average === 1 ? 'Enabled' : 'Disabled'}
                     </label>
                   </div>
 
@@ -6218,105 +6264,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
         />
       )}
 
-      {/* AUTO-PROMOTE MODAL */}
-      {showAutoPromoteModal && (
-        <div className="modal-overlay no-print" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="glass-panel" style={{ padding: '30px', width: '90%', maxWidth: '600px', backgroundColor: 'var(--bg-surface)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Auto-Promote by Passmark</h3>
-            
-            <div style={{ backgroundColor: 'rgba(0,0,0,0.03)', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-              <h4 style={{ margin: '0 0 10px 0', color: 'var(--primary)' }}>Current Global Passmarks</h4>
-              <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.9rem' }}>
-                <li>Global: <strong>{settings?.global_pass_mark || 50}%</strong></li>
-                <li>Science (Arm A): <strong>{settings?.science_pass_mark || 50}%</strong></li>
-                <li>Arts (Arm B): <strong>{settings?.arts_pass_mark || 50}%</strong></li>
-                <li>Commercial (Arm C): <strong>{settings?.commercial_pass_mark || 50}%</strong></li>
-              </ul>
-              <p style={{ margin: '10px 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Note: You can change these values in Settings &gt; Grading & Reports.</p>
-            </div>
-
-            <div className="form-group">
-              <label>Source Class</label>
-              <select className="form-control" value={autoPromoForm.source_class_id} onChange={(e) => {
-                setAutoPromoForm({...autoPromoForm, source_class_id: e.target.value, global_target_id: '', science_target_id: '', arts_target_id: '', commercial_target_id: ''});
-              }}>
-                <option value="">Select Class...</option>
-                {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            
-            {autoPromoForm.source_class_id && classes.find(c => c.id == autoPromoForm.source_class_id)?.name.includes('Graduate') ? (
-               <div style={{ padding: '15px', backgroundColor: '#fee2e2', color: '#991b1b', borderRadius: '8px', marginBottom: '20px' }}>
-                 <strong>Graduate Lock Active:</strong> You cannot auto-promote students out of a Graduate Waiting Room here. Please use the "Returning Student" feature on the Registration page.
-               </div>
-            ) : (
-              <>
-                <div className="form-group">
-                  <label>Promotion Mode</label>
-                  <select className="form-control" value={autoPromoForm.mode} onChange={(e) => setAutoPromoForm({...autoPromoForm, mode: e.target.value})}>
-                    <option value="standard">Standard (All pass to 1 target class)</option>
-                    <option value="split">Split (A-Science, B-Arts, C-Commercial)</option>
-                  </select>
-                </div>
-                
-                {autoPromoForm.mode === 'standard' ? (
-                  <div className="form-group">
-                    <label>Target Class (If Passed)</label>
-                    <select className="form-control" value={autoPromoForm.global_target_id} onChange={(e) => setAutoPromoForm({...autoPromoForm, global_target_id: e.target.value})}>
-                      <option value="">Select Target Class...</option>
-                      {getValidTargets(autoPromoForm.source_class_id, classes).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ padding: '15px', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '8px', marginBottom: '15px' }}>
-                      <h4 style={{ margin: '0 0 10px 0' }}>Science (Arm A)</h4>
-                      <div className="form-group mb-0">
-                        <label>Target Class</label>
-                        <select className="form-control" value={autoPromoForm.science_target_id} onChange={(e) => setAutoPromoForm({...autoPromoForm, science_target_id: e.target.value})}>
-                          <option value="">Select Target Class...</option>
-                          {getValidTargets(autoPromoForm.source_class_id, classes).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    <div style={{ padding: '15px', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '8px', marginBottom: '15px' }}>
-                      <h4 style={{ margin: '0 0 10px 0' }}>Arts (Arm B)</h4>
-                      <div className="form-group mb-0">
-                        <label>Target Class</label>
-                        <select className="form-control" value={autoPromoForm.arts_target_id} onChange={(e) => setAutoPromoForm({...autoPromoForm, arts_target_id: e.target.value})}>
-                          <option value="">Select Target Class...</option>
-                          {getValidTargets(autoPromoForm.source_class_id, classes).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    <div style={{ padding: '15px', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '8px', marginBottom: '15px' }}>
-                      <h4 style={{ margin: '0 0 10px 0' }}>Commercial (Arm C)</h4>
-                      <div className="form-group mb-0">
-                        <label>Target Class</label>
-                        <select className="form-control" value={autoPromoForm.commercial_target_id} onChange={(e) => setAutoPromoForm({...autoPromoForm, commercial_target_id: e.target.value})}>
-                          <option value="">Select Target Class...</option>
-                          {getValidTargets(autoPromoForm.source_class_id, classes).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  </>
-                )}
-                
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Note: Students who do not meet the passmark will automatically Repeat the source class.</p>
-                
-                <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '20px' }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowAutoPromoteModal(false)}>Cancel</button>
-                  <button type="button" className="btn btn-primary" onClick={handleAutoPromoteSubmit} disabled={
-                    autoPromoForm.mode === 'standard' ? !autoPromoForm.global_target_id : 
-                    (!autoPromoForm.science_target_id || !autoPromoForm.arts_target_id || !autoPromoForm.commercial_target_id)
-                  }>Run Auto-Promote</button>
-                </div>
-              </>
-            )}
           </div>
-        </div>
-      )}
-    </div>
   );
 }
 
