@@ -12,6 +12,7 @@ import ManageGraduatesModal from '../components/ManageGraduatesModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import Toast from '../components/Toast';
 import StatCard from '../components/StatCard';
+import Pagination from '../components/Pagination';
 import {
   ArrowLeft,
   LayoutDashboard,
@@ -324,6 +325,37 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [subjects, setSubjects] = useState([]);
   const [classSubjects, setClassSubjects] = useState([]);
   const [pins, setPins] = useState([]);
+  
+  // Pagination States
+  const [studentPage, setStudentPage] = useState(1);
+  const [studentPageSize, setStudentPageSize] = useState(20);
+  const [teacherPage, setTeacherPage] = useState(1);
+  const [teacherPageSize, setTeacherPageSize] = useState(20);
+  const [subjectPage, setSubjectPage] = useState(1);
+  const [subjectPageSize, setSubjectPageSize] = useState(20);
+  const [assignTeacherPage, setAssignTeacherPage] = useState(1);
+  const [assignTeacherPageSize, setAssignTeacherPageSize] = useState(20);
+  const [paymentPage, setPaymentPage] = useState(1);
+  const [paymentPageSize, setPaymentPageSize] = useState(20);
+  const [activityLogPage, setActivityLogPage] = useState(1);
+  const [activityLogPageSize, setActivityLogPageSize] = useState(20);
+
+  const [pinPage, setPinPage] = useState(1);
+  const [pinPageSize, setPinPageSize] = useState(20);
+  const [billingPage, setBillingPage] = useState(1);
+  const [billingPageSize, setBillingPageSize] = useState(20);
+  const [customInvoicePage, setCustomInvoicePage] = useState(1);
+  const [customInvoicePageSize, setCustomInvoicePageSize] = useState(20);
+  const [feeStructPage, setFeeStructPage] = useState(1);
+  const [feeStructPageSize, setFeeStructPageSize] = useState(20);
+  const [modalInvoicePage, setModalInvoicePage] = useState(1);
+  const [modalInvoicePageSize, setModalInvoicePageSize] = useState(20);
+  const [modalReceiptPage, setModalReceiptPage] = useState(1);
+  const [modalReceiptPageSize, setModalReceiptPageSize] = useState(20);
+  const [collationPage, setCollationPage] = useState(1);
+  const [collationPageSize, setCollationPageSize] = useState(20);
+  const [classPage, setClassPage] = useState(1);
+  const [classPageSize, setClassPageSize] = useState(20);
   const [skills, setSkills] = useState([]);
   const [skillForm, setSkillForm] = useState({ name: '', category: 'affective', target_section: 'secondary' });
   
@@ -373,12 +405,31 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   // Search & Filter States
   const [studentSearch, setStudentSearch] = useState('');
   const [studentClassFilter, setStudentClassFilter] = useState('');
+  
   const [teacherSearch, setTeacherSearch] = useState('');
+  const [teacherStatusFilter, setTeacherStatusFilter] = useState('all');
+  const [teacherClassFilter, setTeacherClassFilter] = useState('');
   const [showArchivedTeachers, setShowArchivedTeachers] = useState(false);
+  
   const [feeSearch, setFeeSearch] = useState('');
   const [feeClassFilter, setFeeClassFilter] = useState('');
   const [feeCategoryFilter, setFeeCategoryFilter] = useState('');
+  
   const [pinSearch, setPinSearch] = useState('');
+  const [pinStatusFilter, setPinStatusFilter] = useState('all');
+  
+  const [customInvoiceSearch, setCustomInvoiceSearch] = useState('');
+  const [customInvoiceClassFilter, setCustomInvoiceClassFilter] = useState('');
+  
+  const [subjectSearch, setSubjectSearch] = useState('');
+  const [subjectTierFilter, setSubjectTierFilter] = useState('all');
+  
+  const [assignClassFilter, setAssignClassFilter] = useState('');
+  const [assignTeacherStatusFilter, setAssignTeacherStatusFilter] = useState('all');
+  
+  const [classSearch, setClassSearch] = useState('');
+  const [classStreamFilter, setClassStreamFilter] = useState('all');
+  const [classFormMasterFilter, setClassFormMasterFilter] = useState('all');
   
   // Promotion manager states
   const [promoSource, setPromoSource] = useState('');
@@ -1973,26 +2024,32 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             </select>
           </div>
 
-          <div className="table-container">
-            <table className="school-table">
-              <thead>
-                <tr>
-                  <th>Passport</th>
-                  <th>Full Name</th>
-                  <th>Admission Number</th>
-                  <th>Class Arm</th>
-                  <th>Parent Contact</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {students.filter(student => {
-                  const matchesSearch = student.full_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
-                                        student.admission_number.toLowerCase().includes(studentSearch.toLowerCase());
-                  const matchesClass = studentClassFilter === '' || student.class_id === parseInt(studentClassFilter);
-                  return matchesSearch && matchesClass;
-                }).map((student, idx) => (
+          {(() => {
+            const filteredStudents = students.filter(student => {
+              const matchesSearch = student.full_name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+                                    student.admission_number.toLowerCase().includes(studentSearch.toLowerCase());
+              const matchesClass = studentClassFilter === '' || student.class_id === parseInt(studentClassFilter);
+              return matchesSearch && matchesClass;
+            });
+            const paginatedStudents = filteredStudents.slice((studentPage - 1) * studentPageSize, studentPage * studentPageSize);
+            
+            return (
+              <>
+                <div className="table-container" style={{ margin: 0 }}>
+                  <table className="school-table" style={{ margin: 0 }}>
+                    <thead>
+                      <tr>
+                        <th>Passport</th>
+                        <th>Full Name</th>
+                        <th>Admission Number</th>
+                        <th>Class Arm</th>
+                        <th>Parent Contact</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paginatedStudents.map((student, idx) => (
                   <tr key={idx}>
                     <td>
                       <div
@@ -2052,9 +2109,19 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 ))}
               </tbody>
             </table>
+            <Pagination 
+              currentPage={studentPage} 
+              totalItems={filteredStudents.length} 
+              pageSize={studentPageSize} 
+              onPageChange={setStudentPage} 
+              onPageSizeChange={setStudentPageSize} 
+            />
           </div>
-        </div>
-      )}
+        </>
+      );
+    })()}
+  </div>
+)}
 
       {/* =======================================================
           TAB 3: STAFF REGISTRY
@@ -2072,58 +2139,92 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <button
-                onClick={() => setShowTeacherModal(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px', cursor: 'pointer' }}
-              >
+              <button className="btn btn-primary" onClick={() => { setTeacherForm({ full_name: '', username: '', phone: '', email: '', temp_password: '' }); setShowTeacherModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
                 <Plus size={16} /> Register Teacher
               </button>
-              <button
-                onClick={() => setShowArchivedTeachers(false)}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.6)', backgroundColor: !showArchivedTeachers ? 'white' : 'rgba(255,255,255,0.15)', color: !showArchivedTeachers ? 'var(--primary)' : 'white', fontWeight: !showArchivedTeachers ? '700' : '400', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              <select
+                className="form-control"
+                style={{ padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.6)', backgroundColor: 'rgba(255,255,255,0.15)', color: 'white' }}
+                value={showArchivedTeachers ? 'archived' : 'active'}
+                onChange={(e) => setShowArchivedTeachers(e.target.value === 'archived')}
               >
-                Active Teachers
-              </button>
-              <button
-                onClick={() => setShowArchivedTeachers(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.6)', backgroundColor: showArchivedTeachers ? 'white' : 'rgba(255,255,255,0.15)', color: showArchivedTeachers ? 'var(--primary)' : 'white', fontWeight: showArchivedTeachers ? '700' : '400', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px', cursor: 'pointer', transition: 'all 0.2s ease' }}
-              >
-                Archived Teachers
-              </button>
+                <option value="active">Active Teachers</option>
+                <option value="archived">Archived Teachers</option>
+              </select>
             </div>
           </div>
 
-          {/* Search Controls */}
+          {/* Search & Filter Controls */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
             <input
               type="text"
               className="form-control"
-              style={{ maxWidth: '300px', padding: '10px' }}
+              style={{ flex: 1, minWidth: '250px', padding: '10px' }}
               placeholder="Search teacher by name or username..."
               value={teacherSearch}
               onChange={(e) => setTeacherSearch(e.target.value)}
             />
+            <select
+              className="form-control"
+              style={{ width: '200px', padding: '10px' }}
+              value={teacherClassFilter}
+              onChange={(e) => setTeacherClassFilter(e.target.value)}
+            >
+              <option value="">All Class Streams</option>
+              {classes.map((cls, idx) => (
+                <option key={idx} value={cls.name}>{cls.name}</option>
+              ))}
+            </select>
+            <select
+              className="form-control"
+              style={{ width: '150px', padding: '10px' }}
+              value={teacherStatusFilter}
+              onChange={(e) => setTeacherStatusFilter(e.target.value)}
+            >
+              <option value="all">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="archived">Archived</option>
+            </select>
           </div>
 
-          <div className="table-container">
-            <table className="school-table">
-              <thead>
-                <tr>
-                  <th>Avatar</th>
-                  <th>Full Name</th>
-                  <th>Username</th>
-                  <th>Email</th>
-                  <th>Employment Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teachers.filter(teach => 
-                  (showArchivedTeachers ? teach.status === 'archived' : teach.status !== 'archived') &&
-                  (teach.full_name.toLowerCase().includes(teacherSearch.toLowerCase()) ||
-                  teach.username.toLowerCase().includes(teacherSearch.toLowerCase()))
-                ).map((teach, idx) => (
+          {(() => {
+            const filteredTeachers = teachers.filter(teach => {
+              const matchesSearch = (teach.full_name.toLowerCase().includes(teacherSearch.toLowerCase()) || teach.username.toLowerCase().includes(teacherSearch.toLowerCase()));
+              const matchesStatus = teacherStatusFilter === 'all' || 
+                                    (teacherStatusFilter === 'archived' ? teach.status === 'archived' : teach.status !== 'archived');
+              
+              // Find if teacher is assigned to any class stream (Form Master or Subject Teacher)
+              // Wait, the API probably just returns teachers. Let's just check if teacher is a form master for the class stream? 
+              // Better: Check if class stream matches
+              let matchesClass = true;
+              if (teacherClassFilter !== '') {
+                // If the teacher has a 'classes' array from API, we could check it. But without it, 
+                // we'll see if the teacher is assigned to the class in `classSubjects` or `classes` as form master
+                const isFormMaster = classes.some(c => c.name === teacherClassFilter && c.form_master_id === teach.id);
+                const isSubjectTeacher = classSubjects.some(cs => cs.class_name === teacherClassFilter && cs.teacher_id === teach.id);
+                matchesClass = isFormMaster || isSubjectTeacher;
+              }
+              
+              return matchesSearch && matchesStatus && matchesClass;
+            });
+            const paginatedTeachers = filteredTeachers.slice((teacherPage - 1) * teacherPageSize, teacherPage * teacherPageSize);
+            
+            return (
+              <div className="table-container">
+                <table className="school-table">
+                  <thead>
+                    <tr>
+                      <th>Avatar</th>
+                      <th>Full Name</th>
+                      <th>Username</th>
+                      <th>Email</th>
+                      <th>Employment Date</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedTeachers.map((teach, idx) => (
                   <tr key={idx}>
                     <td>
                       <div style={{ width: '40px', height: '40px', borderRadius: '50%', overflow: 'hidden', backgroundColor: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyItems: 'center' }}>
@@ -2167,10 +2268,19 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       </button>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    ))}
+                  </tbody>
+                </table>
+                <Pagination 
+                  currentPage={teacherPage} 
+                  totalItems={filteredTeachers.length} 
+                  pageSize={teacherPageSize} 
+                  onPageChange={setTeacherPage} 
+                  onPageSizeChange={setTeacherPageSize} 
+                />
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -2195,8 +2305,53 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 <Plus size={16} /> Create Class
               </button>
             </div>
+
+            {/* Search & Filter Controls */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
+              <input
+                type="text"
+                className="form-control"
+                style={{ flex: 1, minWidth: '220px', padding: '10px' }}
+                placeholder="Search class name..."
+                value={classSearch}
+                onChange={(e) => setClassSearch(e.target.value)}
+              />
+              <select
+                className="form-control"
+                style={{ width: '200px', padding: '10px' }}
+                value={classStreamFilter}
+                onChange={(e) => setClassStreamFilter(e.target.value)}
+              >
+                <option value="all">All Tiers</option>
+                <option value="universal">Universal</option>
+                <option value="junior">Junior (JSS)</option>
+                <option value="senior">Senior (SSS)</option>
+              </select>
+              <select
+                className="form-control"
+                style={{ width: '200px', padding: '10px' }}
+                value={classFormMasterFilter}
+                onChange={(e) => setClassFormMasterFilter(e.target.value)}
+              >
+                <option value="all">All Statuses</option>
+                <option value="assigned">Form Master Assigned</option>
+                <option value="unassigned">Unassigned</option>
+              </select>
+            </div>
             
-            <div className="table-container">
+            {(() => {
+              const filteredClasses = classes.filter(c => {
+                const query = classSearch.toLowerCase();
+                const matchesSearch = c.name.toLowerCase().includes(query);
+                const matchesStream = classStreamFilter === 'all' || c.tier === classStreamFilter;
+                const isAssigned = !!c.form_master_id;
+                const matchesMaster = classFormMasterFilter === 'all' || 
+                                      (classFormMasterFilter === 'assigned' ? isAssigned : !isAssigned);
+                return matchesSearch && matchesStream && matchesMaster;
+              });
+              const paginatedClasses = filteredClasses.slice((classPage - 1) * classPageSize, classPage * classPageSize);
+              return (
+                <div className="table-container">
               <table className="school-table">
                 <thead>
                   <tr>
@@ -2207,7 +2362,10 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   </tr>
                 </thead>
                 <tbody>
-                  {classes.map((c, idx) => (
+                  {paginatedClasses.length === 0 ? (
+                    <tr><td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No classes found.</td></tr>
+                  ) : (
+                    paginatedClasses.map((c, idx) => (
                     <tr key={idx}>
                       <td style={{ fontWeight: '600' }}>{c.name}</td>
                       <td style={{ textTransform: 'capitalize' }}>{c.tier}</td>
@@ -2243,10 +2401,20 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    ))
+                  )}
                 </tbody>
               </table>
+              <Pagination 
+                currentPage={classPage} 
+                totalItems={filteredClasses.length} 
+                pageSize={classPageSize} 
+                onPageChange={setClassPage} 
+                onPageSizeChange={setClassPageSize} 
+              />
             </div>
+          );
+        })()}
           </div>
 
         </div>
@@ -2277,22 +2445,54 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 </button>
               </div>
 
-          <div className="table-container">
-            <table className="school-table">
-              <thead>
-                <tr>
-                  <th>Subject Name</th>
-                  <th>Tier Level</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {subjects.length === 0 ? (
-                  <tr>
-                    <td colSpan="3" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No subjects found. Add a subject to start.</td>
-                  </tr>
-                ) : (
-                  subjects.map((sub, idx) => (
+              {/* Search & Filter Controls */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ flex: 1, minWidth: '220px', padding: '10px' }}
+                  placeholder="Search subject by name..."
+                  value={subjectSearch}
+                  onChange={(e) => setSubjectSearch(e.target.value)}
+                />
+                <select
+                  className="form-control"
+                  style={{ width: '200px', padding: '10px' }}
+                  value={subjectTierFilter}
+                  onChange={(e) => setSubjectTierFilter(e.target.value)}
+                >
+                  <option value="all">All Tiers</option>
+                  <option value="universal">Universal</option>
+                  <option value="senior">Senior (SSS)</option>
+                  <option value="junior">Junior (JSS)</option>
+                </select>
+              </div>
+
+          {(() => {
+            const filteredSubjects = subjects.filter(sub => {
+              const query = subjectSearch.toLowerCase();
+              const matchesSearch = sub.name.toLowerCase().includes(query);
+              const matchesTier = subjectTierFilter === 'all' || sub.tier === subjectTierFilter;
+              return matchesSearch && matchesTier;
+            });
+            const paginatedSubjects = filteredSubjects.slice((subjectPage - 1) * subjectPageSize, subjectPage * subjectPageSize);
+            return (
+              <div className="table-container">
+                <table className="school-table">
+                  <thead>
+                    <tr>
+                      <th>Subject Name</th>
+                      <th>Tier Level</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedSubjects.length === 0 ? (
+                      <tr>
+                        <td colSpan="3" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No subjects found on this page.</td>
+                      </tr>
+                    ) : (
+                      paginatedSubjects.map((sub, idx) => (
                     <tr key={idx}>
                       <td style={{ fontWeight: '600' }}>{sub.name}</td>
                       <td style={{ textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.8rem', color: 'var(--primary)' }}>{sub.tier}</td>
@@ -2315,11 +2515,20 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                         </button>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+                <Pagination 
+                  currentPage={subjectPage} 
+                  totalItems={filteredSubjects.length} 
+                  pageSize={subjectPageSize} 
+                  onPageChange={setSubjectPage} 
+                  onPageSizeChange={setSubjectPageSize} 
+                />
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -2346,18 +2555,58 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               </div>
             </div>
 
-            <div className="table-container">
-              <table className="school-table">
-                <thead>
-                  <tr>
-                    <th>Class</th>
-                    <th>Subject</th>
-                    <th>Subject Teacher</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {classSubjects.map((cs, idx) => (
+              {/* Search & Filter Controls */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
+                <select
+                  className="form-control"
+                  style={{ width: '200px', padding: '10px' }}
+                  value={assignClassFilter}
+                  onChange={(e) => setAssignClassFilter(e.target.value)}
+                >
+                  <option value="">All Class Streams</option>
+                  {classes.map((cls, idx) => (
+                    <option key={idx} value={cls.name}>{cls.name}</option>
+                  ))}
+                </select>
+                <select
+                  className="form-control"
+                  style={{ width: '200px', padding: '10px' }}
+                  value={assignTeacherStatusFilter}
+                  onChange={(e) => setAssignTeacherStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="assigned">Assigned</option>
+                  <option value="unassigned">Unassigned</option>
+                </select>
+              </div>
+
+          {(() => {
+            const filteredClassSubjects = classSubjects.filter(cs => {
+              const matchesClass = assignClassFilter === '' || cs.class_name === assignClassFilter;
+              const isAssigned = !!cs.teacher_name;
+              const matchesStatus = assignTeacherStatusFilter === 'all' || 
+                                    (assignTeacherStatusFilter === 'assigned' ? isAssigned : !isAssigned);
+              return matchesClass && matchesStatus;
+            });
+            const paginatedClassSubjects = filteredClassSubjects.slice((assignTeacherPage - 1) * assignTeacherPageSize, assignTeacherPage * assignTeacherPageSize);
+            return (
+              <div className="table-container">
+                <table className="school-table">
+                  <thead>
+                    <tr>
+                      <th>Class</th>
+                      <th>Subject</th>
+                      <th>Subject Teacher</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedClassSubjects.length === 0 ? (
+                      <tr>
+                        <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No subject assignments found on this page.</td>
+                      </tr>
+                    ) : (
+                      paginatedClassSubjects.map((cs, idx) => (
                     <tr key={idx}>
                       <td style={{ fontWeight: '600' }}>{cs.class_name}</td>
                       <td>{cs.subject_name}</td>
@@ -2377,11 +2626,21 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                         </button>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+                <Pagination 
+                  currentPage={assignTeacherPage} 
+                  totalItems={filteredClassSubjects.length} 
+                  pageSize={assignTeacherPageSize} 
+                  onPageChange={setAssignTeacherPage} 
+                  onPageSizeChange={setAssignTeacherPageSize} 
+                />
+              </div>
+            );
+          })()}
+        </div>
 
           </>
 
@@ -2724,7 +2983,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                           </td>
                         </tr>
                       ) : (
-                        uniqueStudentList.map((st, idx) => {
+                        uniqueStudentList.slice((billingPage - 1) * billingPageSize, billingPage * billingPageSize).map((st, idx) => {
                           const balance = Math.max(0, st.total_billed - st.total_paid);
                           let status = 'unpaid';
                           if (st.total_billed === 0) status = 'none';
@@ -2756,6 +3015,13 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       )}
                     </tbody>
                   </table>
+                  <Pagination 
+                    currentPage={billingPage} 
+                    totalItems={uniqueStudentList.length} 
+                    pageSize={billingPageSize} 
+                    onPageChange={setBillingPage} 
+                    onPageSizeChange={setBillingPageSize} 
+                  />
                 </div>
               </>
             );
@@ -2771,24 +3037,57 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 <button className="btn btn-primary" onClick={() => { setNewFeeStructureForm({ title: '', category: 'Uniform/Books', amount: '', tier: 'jss' }); setShowFeeModal(true); }}>+ Add Other Fees</button>
               </div>
 
-              <div className="table-container">
-                <table className="school-table">
-                  <thead>
-                    <tr>
-                      <th>Title</th>
-                      <th>Category</th>
-                      <th>Billed Amount</th>
-                      <th>Target Cohort</th>
-                      <th>Total Assigned</th>
-                      <th>Fully Paid</th>
-                      <th style={{ textAlign: 'right' }}>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {customInvoices.length === 0 ? (
-                      <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No custom invoices found.</td></tr>
-                    ) : (
-                      customInvoices.map((inv, idx) => (
+              {/* Search & Filter Controls */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
+                <input
+                  type="text"
+                  className="form-control"
+                  style={{ flex: 1, minWidth: '220px', padding: '10px' }}
+                  placeholder="Search fee title..."
+                  value={customInvoiceSearch}
+                  onChange={(e) => setCustomInvoiceSearch(e.target.value)}
+                />
+                <select
+                  className="form-control"
+                  style={{ width: '200px', padding: '10px' }}
+                  value={customInvoiceClassFilter}
+                  onChange={(e) => setCustomInvoiceClassFilter(e.target.value)}
+                >
+                  <option value="">All Class Streams</option>
+                  {classes.map((cls, idx) => (
+                    <option key={idx} value={cls.name}>{cls.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {(() => {
+                const filteredInvoices = customInvoices.filter(inv => {
+                  const query = customInvoiceSearch.toLowerCase();
+                  const matchesSearch = inv.title.toLowerCase().includes(query);
+                  const matchesClass = customInvoiceClassFilter === '' || (inv.class_name && inv.class_name === customInvoiceClassFilter);
+                  return matchesSearch && matchesClass;
+                });
+                const paginatedInvoices = filteredInvoices.slice((customInvoicePage - 1) * customInvoicePageSize, customInvoicePage * customInvoicePageSize);
+                
+                return (
+                  <div className="table-container">
+                    <table className="school-table">
+                      <thead>
+                        <tr>
+                          <th>Title</th>
+                          <th>Category</th>
+                          <th>Billed Amount</th>
+                          <th>Target Cohort</th>
+                          <th>Total Assigned</th>
+                          <th>Fully Paid</th>
+                          <th style={{ textAlign: 'right' }}>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedInvoices.length === 0 ? (
+                          <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No custom invoices found.</td></tr>
+                        ) : (
+                          paginatedInvoices.map((inv, idx) => (
                         <tr key={idx}>
                           <td style={{ fontWeight: '600' }}>{inv.title}</td>
                           <td><span className="badge badge-outline">{inv.category}</span></td>
@@ -2813,11 +3112,20 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                             <button className="btn btn-danger" style={{ padding: '4px 8px' }} onClick={() => handleDeleteCustomInvoiceGroup(inv)}>Delete</button>
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                    <Pagination 
+                      currentPage={customInvoicePage} 
+                      totalItems={filteredInvoices.length} 
+                      pageSize={customInvoicePageSize} 
+                      onPageChange={setCustomInvoicePage} 
+                      onPageSizeChange={setCustomInvoicePageSize} 
+                    />
+                  </div>
+                );
+              })()}
             </>
           )}
 
@@ -2856,23 +3164,26 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 </div>
               </div>
 
-              <div className="table-container" style={{ margin: 0 }}>
-                <table className="school-table" style={{ margin: 0, fontSize: '0.85rem' }}>
-                  <thead>
-                    <tr>
-                      <th>Fee Title</th>
-                      <th>Total Fees</th>
-                      <th>Class Tier</th>
-                      <th style={{ textAlign: 'right' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {feeStructures.length === 0 ? (
-                      <tr>
-                        <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '30px' }}>No structures configured yet.</td>
-                      </tr>
-                    ) : (
-                      feeStructures.map((struct, idx) => (
+              {(() => {
+                const paginatedFeeStructures = feeStructures.slice((feeStructPage - 1) * feeStructPageSize, feeStructPage * feeStructPageSize);
+                return (
+                  <div className="table-container" style={{ margin: 0 }}>
+                    <table className="school-table" style={{ margin: 0, fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr>
+                          <th>Fee Title</th>
+                          <th>Total Fees</th>
+                          <th>Class Tier</th>
+                          <th style={{ textAlign: 'right' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {feeStructures.length === 0 ? (
+                          <tr>
+                            <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '30px' }}>No structures configured yet.</td>
+                          </tr>
+                        ) : (
+                          paginatedFeeStructures.map((struct, idx) => (
                         <tr key={idx}>
                           <td style={{ fontWeight: '600' }}>{struct.title}</td>
                           <td style={{ fontWeight: 'bold', color: 'var(--primary)' }}>₦{struct.amount.toLocaleString()}</td>
@@ -2896,11 +3207,20 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                             </button>
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                  <Pagination 
+                    currentPage={feeStructPage} 
+                    totalItems={feeStructures.length} 
+                    pageSize={feeStructPageSize} 
+                    onPageChange={setFeeStructPage} 
+                    onPageSizeChange={setFeeStructPageSize} 
+                  />
+                </div>
+              );
+            })()}
             </>
           )}
 
@@ -3075,12 +3395,12 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     <tbody>
                       {filteredList.length === 0 ? (
                         <tr>
-                          <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '30px' }}>
+                          <td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '30px' }}>
                             No payment records found matching your filters.
                           </td>
                         </tr>
                       ) : (
-                        filteredList.map((inv, idx) => {
+                        filteredList.slice((paymentPage - 1) * paymentPageSize, paymentPage * paymentPageSize).map((inv, idx) => {
                           const remaining = Math.max(0, inv.amount_due - inv.amount_paid);
                           return (
                             <tr key={idx}>
@@ -3128,6 +3448,13 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       )}
                     </tbody>
                   </table>
+                  <Pagination 
+                    currentPage={paymentPage} 
+                    totalItems={filteredList.length} 
+                    pageSize={paymentPageSize} 
+                    onPageChange={setPaymentPage} 
+                    onPageSizeChange={setPaymentPageSize} 
+                  />
                 </div>
               </div>
             );
@@ -3503,7 +3830,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 </div>
               </div>
 
-              {/* Search Controls */}
+              {/* Search & Filter Controls */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginBottom: '20px' }}>
                 <input
                   type="text"
@@ -3513,41 +3840,70 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   value={pinSearch}
                   onChange={(e) => setPinSearch(e.target.value)}
                 />
+                <select
+                  className="form-control"
+                  style={{ maxWidth: '200px', padding: '10px' }}
+                  value={pinStatusFilter}
+                  onChange={(e) => setPinStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">Active (Unused/Partial)</option>
+                  <option value="exhausted">Used (Exhausted)</option>
+                </select>
               </div>
 
-              <div className="table-container" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                <table className="school-table">
-                  <thead>
-                    <tr>
-                      <th>Result Checker PIN</th>
-                      <th>Term / Session</th>
-                      <th>Assigned Student</th>
-                      <th>Checks Remaining</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pins.filter(p => {
-                      const query = pinSearch.toLowerCase();
-                      return p.pin.toLowerCase().includes(query) ||
-                             (p.student_name && p.student_name.toLowerCase().includes(query)) ||
-                             (p.admission_number && p.admission_number.toLowerCase().includes(query));
-                    }).map((p, idx) => (
-                      <tr key={idx}>
-                        <td><strong style={{ fontSize: '1.1rem', letterSpacing: '0.05em' }}>{p.pin}</strong></td>
-                        <td>{p.term ? `${p.term} (${p.academic_year})` : 'Universal (Any Term/Session)'}</td>
-                        <td>{p.student_name ? `${p.student_name} (${p.admission_number})` : 'Unused Token'}</td>
-                        <td><strong>{5 - p.usage_count} / 5</strong></td>
-                        <td>
-                          <span className={`badge ${p.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
-                            {p.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              {(() => {
+                const filteredPins = pins.filter(p => {
+                  const query = pinSearch.toLowerCase();
+                  const matchesSearch = p.pin.toLowerCase().includes(query) ||
+                         (p.student_name && p.student_name.toLowerCase().includes(query)) ||
+                         (p.admission_number && p.admission_number.toLowerCase().includes(query));
+                  const matchesStatus = pinStatusFilter === 'all' || 
+                         (pinStatusFilter === 'active' ? p.status === 'active' : p.status === 'exhausted');
+                  return matchesSearch && matchesStatus;
+                });
+                const paginatedPins = filteredPins.slice((pinPage - 1) * pinPageSize, pinPage * pinPageSize);
+                
+                return (
+                  <div className="table-container" style={{ maxHeight: 'none', overflowY: 'visible' }}>
+                    <table className="school-table">
+                      <thead>
+                        <tr>
+                          <th>Result Checker PIN</th>
+                          <th>Term / Session</th>
+                          <th>Assigned Student</th>
+                          <th>Checks Remaining</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {paginatedPins.length === 0 ? (
+                          <tr><td colSpan="5" style={{textAlign: 'center', color: 'var(--text-secondary)'}}>No PINs found.</td></tr>
+                        ) : paginatedPins.map((p, idx) => (
+                          <tr key={idx}>
+                            <td><strong style={{ fontSize: '1.1rem', letterSpacing: '0.05em' }}>{p.pin}</strong></td>
+                            <td>{p.term ? `${p.term} (${p.academic_year})` : 'Universal (Any Term/Session)'}</td>
+                            <td>{p.student_name ? `${p.student_name} (${p.admission_number})` : 'Unused Token'}</td>
+                            <td><strong>{5 - p.usage_count} / 5</strong></td>
+                            <td>
+                              <span className={`badge ${p.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
+                                {p.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <Pagination 
+                      currentPage={pinPage} 
+                      totalItems={filteredPins.length} 
+                      pageSize={pinPageSize} 
+                      onPageChange={setPinPage} 
+                      onPageSizeChange={setPinPageSize} 
+                    />
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -4948,12 +5304,16 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       </tr>
                     </thead>
                     <tbody>
-                      {adminAttendanceReport.length === 0 ? (
-                        <tr>
-                          <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No attendance records found.</td>
-                        </tr>
-                      ) : (
-                        adminAttendanceReport.map((r, idx) => {
+                      {(() => {
+                        const paginatedReport = adminAttendanceReport.slice((collationPage - 1) * collationPageSize, collationPage * collationPageSize);
+                        if (paginatedReport.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No attendance records found.</td>
+                            </tr>
+                          );
+                        }
+                        return paginatedReport.map((r, idx) => {
                           const ratio = r.total_days > 0 ? Math.round((r.present_count / r.total_days) * 100) : 0;
                           return (
                             <tr key={idx}>
@@ -4976,10 +5336,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                               </td>
                             </tr>
                           );
-                        })
-                      )}
+                        });
+                      })()}
                     </tbody>
                   </table>
+                  <Pagination 
+                    currentPage={collationPage} 
+                    totalItems={adminAttendanceReport.length} 
+                    pageSize={collationPageSize} 
+                    onPageChange={setCollationPage} 
+                    onPageSizeChange={setCollationPageSize} 
+                  />
                 </div>
               )}
             </>
@@ -6070,8 +6437,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       {/* Section 1: Invoices Breakdown */}
                       <div style={{ marginTop: '10px' }}>
                         <h4 style={{ fontSize: '1.05rem', margin: '0 0 12px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}><Receipt size={20} color="var(--primary)" /> Fee Invoices Billed</h4>
-                        <div className="table-container" style={{ margin: 0, maxHeight: '250px', overflowY: 'auto', borderRadius: 'var(--radius-md)', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', border: '1px solid var(--border-color)' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                        <div className="table-container" style={{ margin: 0, minHeight: '300px', display: 'flex', flexDirection: 'column', borderRadius: 'var(--radius-md)', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', border: '1px solid var(--border-color)' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', flex: 1 }}>
                             <thead style={{ backgroundColor: 'var(--bg-secondary)', position: 'sticky', top: 0, zIndex: 1 }}>
                               <tr>
                                 <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Fee Title</th>
@@ -6084,10 +6451,12 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                               </tr>
                             </thead>
                             <tbody>
-                              {invs.length === 0 ? (
-                                <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '15px' }}>No invoices issued yet.</td></tr>
-                              ) : (
-                                invs.map((inv, idx) => {
+                              {(() => {
+                                const paginatedInvs = invs.slice((modalInvoicePage - 1) * modalInvoicePageSize, modalInvoicePage * modalInvoicePageSize);
+                                if (paginatedInvs.length === 0) {
+                                  return <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '15px' }}>No invoices issued yet.</td></tr>;
+                                }
+                                return paginatedInvs.map((inv, idx) => {
                                   const rem = inv.amount_due - inv.amount_paid;
                                   return (
                                     <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
@@ -6129,18 +6498,27 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                                       </td>
                                     </tr>
                                   );
-                                })
-                              )}
+                                });
+                              })()}
                             </tbody>
                           </table>
+                          <div style={{ padding: '10px 15px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)' }}>
+                            <Pagination 
+                              currentPage={modalInvoicePage} 
+                              totalItems={invs.length} 
+                              pageSize={modalInvoicePageSize} 
+                              onPageChange={setModalInvoicePage} 
+                              onPageSizeChange={setModalInvoicePageSize} 
+                            />
+                          </div>
                         </div>
                       </div>
 
                       {/* Section 2: Payment Receipts History */}
                       <div style={{ marginTop: '20px' }}>
                         <h4 style={{ fontSize: '1.05rem', margin: '0 0 12px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}><History size={20} color="var(--primary)" /> Payment Receipts History</h4>
-                        <div className="table-container" style={{ margin: 0, maxHeight: '250px', overflowY: 'auto', borderRadius: 'var(--radius-md)', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', border: '1px solid var(--border-color)' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                        <div className="table-container" style={{ margin: 0, minHeight: '300px', display: 'flex', flexDirection: 'column', borderRadius: 'var(--radius-md)', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', border: '1px solid var(--border-color)' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', flex: 1 }}>
                             <thead style={{ backgroundColor: 'var(--bg-secondary)', position: 'sticky', top: 0, zIndex: 1 }}>
                               <tr>
                                 <th style={{ padding: '12px 15px', textAlign: 'left', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem', letterSpacing: '0.5px' }}>Receipt #</th>
@@ -6152,10 +6530,12 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                               </tr>
                             </thead>
                             <tbody>
-                              {recs.length === 0 ? (
-                                <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '15px' }}>No payment receipts recorded yet.</td></tr>
-                              ) : (
-                                recs.map((rec, idx) => (
+                              {(() => {
+                                const paginatedRecs = recs.slice((modalReceiptPage - 1) * modalReceiptPageSize, modalReceiptPage * modalReceiptPageSize);
+                                if (paginatedRecs.length === 0) {
+                                  return <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '15px' }}>No payment receipts recorded yet.</td></tr>;
+                                }
+                                return paginatedRecs.map((rec, idx) => (
                                   <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                                     <td style={{ padding: '12px 15px' }}><code style={{ fontSize: '0.75rem', padding: '5px 8px', borderRadius: '4px', backgroundColor: 'var(--bg-surface)' }}>{rec.receipt_number}</code></td>
                                     <td style={{ padding: '12px 15px', color: 'var(--text-secondary)' }}>{rec.payment_date}</td>
@@ -6180,10 +6560,19 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                                       </button>
                                     </td>
                                   </tr>
-                                ))
-                              )}
+                                ));
+                              })()}
                             </tbody>
                           </table>
+                          <div style={{ padding: '10px 15px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-surface)' }}>
+                            <Pagination 
+                              currentPage={modalReceiptPage} 
+                              totalItems={recs.length} 
+                              pageSize={modalReceiptPageSize} 
+                              onPageChange={setModalReceiptPage} 
+                              onPageSizeChange={setModalReceiptPageSize} 
+                            />
+                          </div>
                         </div>
                       </div>
                     </>
