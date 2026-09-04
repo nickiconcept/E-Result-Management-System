@@ -4588,24 +4588,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Global Passmark (%)</label>
-                      <input type="number" className="form-control" value={settingsForm.global_pass_mark} onChange={e => setSettingsForm({ ...settingsForm, global_pass_mark: parseInt(e.target.value) })} min="0" max="100" />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Science Passmark (%)</label>
-                      <input type="number" className="form-control" value={settingsForm.science_pass_mark} onChange={e => setSettingsForm({ ...settingsForm, science_pass_mark: parseInt(e.target.value) })} min="0" max="100" />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Arts Passmark (%)</label>
-                      <input type="number" className="form-control" value={settingsForm.arts_pass_mark} onChange={e => setSettingsForm({ ...settingsForm, arts_pass_mark: parseInt(e.target.value) })} min="0" max="100" />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Commercial Passmark (%)</label>
-                      <input type="number" className="form-control" value={settingsForm.commercial_pass_mark} onChange={e => setSettingsForm({ ...settingsForm, commercial_pass_mark: parseInt(e.target.value) })} min="0" max="100" />
-                    </div>
-                  </div>
+
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
                     <button type="submit" className="btn btn-primary" style={{ padding: '12px 28px', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
