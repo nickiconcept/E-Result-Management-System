@@ -97,7 +97,14 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
         {onBack && (
           <button
             className="btn btn-secondary"
-            onClick={onBack}
+            onClick={() => {
+              if (selectedClassId) {
+                setSelectedClassId('');
+                setBulkData([]);
+              } else {
+                onBack();
+              }
+            }}
             style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}
           >
             <ArrowLeft size={16} /> Close Result
