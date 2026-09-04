@@ -32,7 +32,8 @@ import {
   ChevronRight,
   ClipboardList,
   X,
-  Calendar
+  Calendar,
+  Printer
 } from 'lucide-react';
 
 
@@ -70,10 +71,10 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
         icon: FileSpreadsheet,
         subItems: [
           { id: 'enter-marks', label: 'Enter Marks', icon: Edit3 },
-          { id: 'blank-scoresheet', label: 'Download Scoresheet', icon: Download },
+          { id: 'blank-scoresheet', label: 'Print Scoresheet', icon: Download },
           { id: 'broadsheet', label: 'Class Broadsheet', icon: Grid },
           { id: 'single', label: 'Single Result View', icon: FileText },
-          { id: 'bulk', label: 'Download Bulk Results', icon: Download },
+          { id: 'bulk', label: 'Print Results', icon: Download },
           { id: 'promotions', label: 'Student Promotions', icon: TrendingUp },
           { id: 'pins', label: 'Scratch Cards / PINs', icon: Key },
           { id: 'remarks', label: 'Manage Remarks', icon: Sparkles }
@@ -87,7 +88,8 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
           { id: 'invoices', label: 'Invoices & Billing', icon: Receipt },
           { id: 'custom', label: 'Other Fees', icon: Edit3 },
           { id: 'structures', label: 'Fee Structures', icon: Layers },
-          { id: 'report', label: 'Payment Records', icon: History }
+          { id: 'report', label: 'Payment Records', icon: History },
+          { id: 'print_receipts', label: 'Print Receipts', icon: Printer }
         ]
       },
       {

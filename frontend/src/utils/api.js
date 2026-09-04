@@ -642,6 +642,16 @@ const api = {
     const res = await fetch(`${API_BASE}/fees/report`, { headers: getHeaders() });
     return handleResponse(res);
   },
+  
+  getBulkReceipts: async (classId, term, session, startDate, endDate) => {
+    let url = `${API_BASE}/receipts/bulk?class_id=${classId}`;
+    if (term) url += `&term=${encodeURIComponent(term)}`;
+    if (session) url += `&session=${encodeURIComponent(session)}`;
+    if (startDate) url += `&start_date=${encodeURIComponent(startDate)}`;
+    if (endDate) url += `&end_date=${encodeURIComponent(endDate)}`;
+    const res = await fetch(url, { headers: getHeaders() });
+    return handleResponse(res);
+  },
 
   // Authentication Settings / Profile
   changePassword: async (oldPassword, newPassword) => {

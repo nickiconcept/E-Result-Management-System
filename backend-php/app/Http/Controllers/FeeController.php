@@ -76,10 +76,13 @@ class FeeController extends Controller
         $class_id = $request->input('class_id');
         $tier = $request->input('tier');
         $all_classes = filter_var($request->input('all_classes', false), FILTER_VALIDATE_BOOLEAN);
+        $student_id = $request->input('student_id');
 
         try {
             $studentIds = [];
-            if ($all_classes) {
+            if ($student_id) {
+                $studentIds = [$student_id];
+            } elseif ($all_classes) {
                 $studentIds = DB::table('students')->pluck('id')->toArray();
             } elseif ($class_id) {
                 $studentIds = DB::table('students')->where('class_id', $class_id)->pluck('id')->toArray();
@@ -91,7 +94,7 @@ class FeeController extends Controller
             }
 
             if (empty($studentIds)) {
-                return response()->json(['error' => 'No students found in the specified target Class/Tier.'], 400);
+                return response()->json(['error' => 'No students found in the specified target.'], 400);
             }
 
             foreach ($studentIds as $sId) {
@@ -289,6 +292,58 @@ class FeeController extends Controller
                 )
                 ->get();
             return response()->json($data);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getBulkReceipts(Request $request)
+    {
+        $user = auth('api')->user();
+        if (!$user || $user->role !== 'admin') return response()->json(['error' => 'Unauthorized'], 403);
+
+        $class_id = $request->input('class_id');
+        $term = $request->input('term');
+        $session = $request->input('session');
+        $start_date = $request->input('start_date');
+        $end_date = $request->input('end_date');
+
+        if (!$class_id) {
+            return response()->json(['error' => 'Class ID is required'], 400);
+        }
+
+        try {
+            $query = DB::table('fee_receipts as r')
+                ->join('fee_invoices as i', 'r.invoice_id', '=', 'i.id')
+                ->join('students as s', 'i.student_id', '=', 's.id')
+                ->join('users as u', 's.id', '=', 'u.id')
+                ->leftJoin('classes as c', 's.class_id', '=', 'c.id')
+                ->where('s.class_id', $class_id);
+
+            if ($term) {
+                $query->where('i.title', 'LIKE', '%' . $term . '%');
+            }
+            if ($session) {
+                $query->where('i.title', 'LIKE', '%' . $session . '%');
+            }
+            if ($start_date) {
+                $query->whereDate('r.payment_date', '>=', $start_date);
+            }
+            if ($end_date) {
+                $query->whereDate('r.payment_date', '<=', $end_date);
+            }
+
+            $receipts = $query->select(
+                'r.*',
+                'i.title',
+                'i.category',
+                'i.amount_due',
+                'u.full_name',
+                's.admission_number',
+                'c.name as class_name'
+            )->get();
+
+            return response()->json($receipts);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }

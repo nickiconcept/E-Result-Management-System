@@ -88,9 +88,9 @@ export default function BulkResultPrinter({ classes, sessions, currentTerm, curr
             <Download size={24} color="white" />
           </div>
           <div>
-            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Download Bulk Results</h3>
-            <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>
-              Select a class arm to view and download all student report cards in one continuous batch.
+            <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Print Results</h3>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.8)' }}>
+              Select a class arm to view and print all student report cards in one continuous batch.
             </p>
           </div>
         </div>

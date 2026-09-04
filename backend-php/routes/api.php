@@ -116,6 +116,7 @@ Route::group(['middleware' => ['auth:api', 'throttle:60,1']], function () {
     Route::put('/fees/structures/{id}', [\App\Http\Controllers\FeeController::class, 'updateStructure']);
     Route::delete('/fees/structures/{id}', [\App\Http\Controllers\FeeController::class, 'deleteStructure']);
     Route::get('/fees/report', [\App\Http\Controllers\FeeController::class, 'getReport']);
+    Route::get('/receipts/bulk', [\App\Http\Controllers\FeeController::class, 'getBulkReceipts']);
     Route::get('/fees/custom-invoices', [\App\Http\Controllers\FeeController::class, 'getCustomInvoices']);
     Route::post('/fees/custom-invoices-group/delete', [\App\Http\Controllers\FeeController::class, 'deleteCustomInvoiceGroup']);
     Route::post('/fees/custom-invoices-group/update', [\App\Http\Controllers\FeeController::class, 'updateCustomInvoiceGroup']);

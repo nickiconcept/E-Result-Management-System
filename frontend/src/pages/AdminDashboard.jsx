@@ -6,6 +6,7 @@ import StudentRegistrationForm from '../components/StudentRegistrationForm';
 import TeacherProfileCard from '../components/TeacherProfileCard';
 import SignaturePad from '../components/SignaturePad';
 import BulkResultPrinter from '../components/BulkResultPrinter';
+import BulkReceiptPrinter from '../components/BulkReceiptPrinter';
 import ClassBroadsheet from '../components/ClassBroadsheet';
 import ReportCard from '../components/ReportCard';
 import ManageGraduatesModal from '../components/ManageGraduatesModal';
@@ -399,6 +400,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [subjectForm, setSubjectForm] = useState({ name: '', tier: 'jss', class_ids: [] });
   const [assignForm, setAssignForm] = useState({ class_ids: [], subject_id: '', teacher_id: '' });
   const [feeForm, setFeeForm] = useState({ title: '', category: 'School Fees', amount: '', class_id: '', tier: '' });
+  const [showIndividualFeeModal, setShowIndividualFeeModal] = useState(false);
+  const [individualFeeForm, setIndividualFeeForm] = useState({ title: '', category: 'Other Fees', amount: '' });
   const [payForm, setPayForm] = useState({ invoice_id: '', amount_paid: '', payment_method: 'Cash', student_name: '' });
   const [pinCount, setPinCount] = useState(20);
 
@@ -1029,11 +1032,42 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const handleFeeInvoiceCreate = async (e) => {
     e.preventDefault();
     try {
-      await api.addFeeInvoice(feeForm);
+      const payload = { ...feeForm };
+      if (payload.tier === 'all') {
+        payload.all_classes = true;
+        payload.tier = '';
+      }
+      await api.addFeeInvoice(payload);
       setNotify('Fees invoice generated and posted successfully!');
       setShowFeeModal(false);
-      loadAllData();
       setFeeForm({ title: '', category: 'School Fees', amount: '', class_id: '', tier: '' });
+      // Optimistic load for speed
+      await Promise.all([
+        loadCustomInvoices(),
+        loadFeesReport()
+      ]);
+    } catch (err) {
+      setErrorMsg(err.message);
+    }
+  };
+
+  const handleIndividualFeeSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedStudentForHistory) return;
+    const studentId = selectedStudentForHistory.student_id || selectedStudentForHistory.id;
+    try {
+      await api.addFeeInvoice({
+        ...individualFeeForm,
+        student_id: studentId
+      });
+      setNotify('Individual fee posted successfully!');
+      setShowIndividualFeeModal(false);
+      setIndividualFeeForm({ title: '', category: 'Other Fees', amount: '' });
+      // Refresh only the specific student's ledger and fees report
+      await Promise.all([
+        handleOpenStudentPaymentHistory(studentId, selectedStudentForHistory),
+        loadFeesReport()
+      ]);
     } catch (err) {
       setErrorMsg(err.message);
     }
@@ -1176,11 +1210,19 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   // ==========================================
   const handleUserStatusChange = async (userId, newStatus) => {
     try {
+      // Optimistic update for instant UI feedback
+      setStudents(prev => prev.map(s => s.id === userId ? { ...s, status: newStatus } : s));
+      setTeachers(prev => prev.map(t => t.id === userId ? { ...t, status: newStatus } : t));
+
       await api.updateUserStatus(userId, newStatus);
       setNotify('User status updated successfully.');
-      loadAllData();
+      
+      // Silently fetch to ensure data consistency
+      api.getStudents().then(data => setStudents([...data].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))));
+      api.getTeachers().then(data => setTeachers([...data].sort((a, b) => (a.full_name || '').localeCompare(b.full_name || ''))));
     } catch (err) {
       setErrorMsg('Failed to update status: ' + err.message);
+      loadAllData(); // Revert on failure
     }
   };
 
@@ -3605,6 +3647,18 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             );
           })()}
 
+          {/* SUBTAB 5: BULK PRINT RECEIPTS */}
+          {activeFeesSubTab === 'print_receipts' && (
+            <BulkReceiptPrinter
+              classes={classes}
+              sessions={sessions}
+              currentTerm={settings?.active_term}
+              currentSession={settings?.active_session}
+              settings={settings}
+              onClose={() => setActiveFeesSubTab('invoices')}
+            />
+          )}
+
         </div>
       )}
 
@@ -5945,6 +5999,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   <label>Option B: Entire School Level</label>
                   <select className="form-control" value={feeForm.tier} onChange={(e) => setFeeForm({ ...feeForm, tier: e.target.value, class_id: '' })}>
                     <option value="">Choose School Level...</option>
+                    <option value="all">All School (Every Student)</option>
                     <option value="nursery">Nursery School (Nursery 1-3)</option>
                     <option value="primary">Primary School (Primary 1-6)</option>
                     <option value="jss">Junior Secondary (JSS)</option>
@@ -6236,7 +6291,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   className="form-control" 
                   readOnly 
                   style={{ backgroundColor: 'var(--bg-secondary)', cursor: 'not-allowed' }}
-                  value={editingCustomInvoice.class_id ? `Class ID: ${editingCustomInvoice.class_id}` : `Tier: ${editingCustomInvoice.tier ? editingCustomInvoice.tier.toUpperCase() : 'All'}`} 
+                  value={editingCustomInvoice.class_id ? (classes.find(c => c.id === editingCustomInvoice.class_id)?.name || `Class ID: ${editingCustomInvoice.class_id}`) : `Tier: ${editingCustomInvoice.tier ? editingCustomInvoice.tier.toUpperCase() : 'All'}`} 
                 />
               </div>
               <div className="form-group">
@@ -6390,7 +6445,44 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
                       {/* Section 1: Invoices Breakdown */}
                       <div style={{ marginTop: '10px' }}>
-                        <h4 style={{ fontSize: '1.05rem', margin: '0 0 12px 0', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}><Receipt size={20} color="var(--primary)" /> Fee Invoices Billed</h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <h4 style={{ fontSize: '1.05rem', margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Receipt size={20} color="var(--primary)" /> Fee Invoices Billed
+                          </h4>
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '6px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px' }}
+                            onClick={() => setShowIndividualFeeModal(!showIndividualFeeModal)}
+                          >
+                            <Plus size={14} /> Add Fee for Student
+                          </button>
+                        </div>
+
+                        {showIndividualFeeModal && (
+                          <div style={{ background: 'var(--bg-secondary)', padding: '15px', borderRadius: 'var(--radius-md)', marginBottom: '15px', border: '1px solid var(--border-color)' }}>
+                            <form onSubmit={handleIndividualFeeSubmit} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                              <div style={{ flex: '1', minWidth: '150px' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Fee Title / Description</label>
+                                <input type="text" className="form-control" placeholder="e.g. Caution Fee" required value={individualFeeForm.title} onChange={e => setIndividualFeeForm({...individualFeeForm, title: e.target.value})} />
+                              </div>
+                              <div style={{ width: '150px' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Category</label>
+                                <select className="form-control" value={individualFeeForm.category} onChange={e => setIndividualFeeForm({...individualFeeForm, category: e.target.value})}>
+                                  <option value="School Fees">School Fees</option>
+                                  <option value="Exams Fees">Exams Fees</option>
+                                  <option value="Lesson Fees">Lesson Fees</option>
+                                  <option value="Other Fees">Other Fees</option>
+                                </select>
+                              </div>
+                              <div style={{ width: '120px' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>Amount (,)</label>
+                                <input type="number" className="form-control" placeholder="10000" required value={individualFeeForm.amount} onChange={e => setIndividualFeeForm({...individualFeeForm, amount: e.target.value})} />
+                              </div>
+                              <button type="submit" className="btn btn-primary" style={{ padding: '8px 16px', height: '38px' }}>Add Fee</button>
+                            </form>
+                          </div>
+                        )}
+
                         <div className="table-container" style={{ margin: 0, minHeight: '300px', display: 'flex', flexDirection: 'column', borderRadius: 'var(--radius-md)', boxShadow: '0 2px 10px rgba(0,0,0,0.03)', border: '1px solid var(--border-color)' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', flex: 1 }}>
                             <thead style={{ backgroundColor: 'var(--bg-secondary)', position: 'sticky', top: 0, zIndex: 1 }}>
