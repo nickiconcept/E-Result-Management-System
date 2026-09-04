@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { History, RefreshCw } from 'lucide-react';
 import api from '../utils/api';
+import Pagination from './Pagination';
 
 export default function ActivityLogsTab() {
   const [activityLogs, setActivityLogs] = useState([]);
@@ -42,7 +43,17 @@ export default function ActivityLogsTab() {
 
   const getRoleBadge = (r) => ({ admin: { bg: 'rgba(239,68,68,0.1)', c: '#dc2626' }, teacher: { bg: 'rgba(59,130,246,0.1)', c: '#1d4ed8' }, form_master: { bg: 'rgba(16,185,129,0.1)', c: '#065f46' }, student: { bg: 'rgba(245,158,11,0.1)', c: '#92400e' } }[r] || { bg: 'rgba(107,114,128,0.1)', c: '#374151' });
   const getModBadge = (m) => ({ auth: { bg: 'rgba(99,102,241,0.1)', c: '#4338ca' }, students: { bg: 'rgba(6,182,212,0.1)', c: '#0e7490' }, teachers: { bg: 'rgba(249,115,22,0.1)', c: '#c2410c' }, finance: { bg: 'rgba(34,197,94,0.1)', c: '#15803d' }, results: { bg: 'rgba(168,85,247,0.1)', c: '#7e22ce' }, settings: { bg: 'rgba(107,114,128,0.1)', c: '#374151' } }[m] || { bg: 'rgba(107,114,128,0.08)', c: '#374151' });
-  const totalPages = logsMeta.last_page || 1;
+
+  const handlePageChange = (page) => {
+    setLogsPage(page);
+    fetchLogs(page, logsPageSize, logsFilters);
+  };
+
+  const handlePageSizeChange = (size) => {
+    setLogsPageSize(size);
+    setLogsPage(1);
+    fetchLogs(1, size, logsFilters);
+  };
 
   return (
     <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
@@ -114,19 +125,13 @@ export default function ActivityLogsTab() {
         </table>
       </div>
       {logsMeta.total > 0 && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 0', flexWrap: 'wrap', gap: '12px', borderTop: '1px solid var(--border-color)', marginTop: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            <span>Showing {logsMeta.from || 0}–{logsMeta.to || 0} of {logsMeta.total} entries</span>
-            <select value={logsPageSize} onChange={(e) => { const s = Number(e.target.value); setLogsPageSize(s); setLogsPage(1); fetchLogs(1, s, logsFilters); }} style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '0.85rem' }}>
-              {[20, 30, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <button onClick={() => { const np = logsPage - 1; setLogsPage(np); fetchLogs(np, logsPageSize, logsFilters); }} disabled={logsPage === 1} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: logsPage === 1 ? 'var(--bg-secondary)' : 'var(--bg-primary)', cursor: logsPage === 1 ? 'not-allowed' : 'pointer' }}>&#8249;</button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => { const p = Math.max(1, logsPage - 2) + i; if (p > totalPages) return null; return (<button key={p} onClick={() => { setLogsPage(p); fetchLogs(p, logsPageSize, logsFilters); }} style={{ width: '32px', height: '32px', borderRadius: '6px', border: p === logsPage ? 'none' : '1px solid var(--border-color)', backgroundColor: p === logsPage ? 'var(--primary)' : 'var(--bg-primary)', color: p === logsPage ? 'white' : 'var(--text-primary)', fontWeight: p === logsPage ? '700' : '400', cursor: 'pointer' }}>{p}</button>); })}
-            <button onClick={() => { const np = logsPage + 1; setLogsPage(np); fetchLogs(np, logsPageSize, logsFilters); }} disabled={logsPage === totalPages} style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: logsPage === totalPages ? 'var(--bg-secondary)' : 'var(--bg-primary)', cursor: logsPage === totalPages ? 'not-allowed' : 'pointer' }}>&#8250;</button>
-          </div>
-        </div>
+        <Pagination 
+          currentPage={logsPage} 
+          totalItems={logsMeta.total} 
+          pageSize={logsPageSize} 
+          onPageChange={handlePageChange} 
+          onPageSizeChange={handlePageSizeChange} 
+        />
       )}
     </div>
   );
