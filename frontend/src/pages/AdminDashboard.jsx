@@ -3751,7 +3751,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 <div style={{ padding: '30px', textAlign: 'center', color: 'var(--primary)' }}>
                   <h4>Loading Class Broadsheet...</h4>
                 </div>
-              ) : adminBroadsheetData ? (
+              ) : (
                 <ClassBroadsheet
                   data={adminBroadsheetData}
                   className={classes.find(c => c.id === parseInt(adminBroadsheetClassId))?.name || 'Class'}
@@ -3766,10 +3766,6 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   }}
                   selectedClassId={adminBroadsheetClassId}
                 />
-              ) : (
-                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                  <p>Select a class arm above to view its broadsheet.</p>
-                </div>
               )}
             </div>
           )}
