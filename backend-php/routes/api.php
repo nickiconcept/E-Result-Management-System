@@ -121,9 +121,6 @@ Route::group(['middleware' => ['auth:api', 'throttle:60,1']], function () {
     Route::post('/fees/custom-invoices-group/update', [\App\Http\Controllers\FeeController::class, 'updateCustomInvoiceGroup']);
 
     // System Settings & Sessions
-    // Route::get('/settings', [\App\Http\Controllers\SystemController::class, 'getSettings']); // OVERRIDES UNPROTECTED ROUTE!
-    // Route::post('/settings', [\App\Http\Controllers\SystemController::class, 'updateSettings']); // Removed duplicate
-    
     Route::get('/sessions', [\App\Http\Controllers\SystemController::class, 'getSessions']);
     Route::post('/sessions', [\App\Http\Controllers\SystemController::class, 'createSession']);
     Route::post('/sessions/set-active', [\App\Http\Controllers\SystemController::class, 'setActiveSession']);
@@ -140,24 +137,7 @@ Route::group(['middleware' => ['auth:api', 'throttle:60,1']], function () {
 
     // Catch-all MVP stub just in case
     // Class-subject-teacher assignments with all names resolved
-    Route::get('/class-subjects', function() {
-        $rows = \Illuminate\Support\Facades\DB::table('class_subjects')
-            ->join('classes', 'class_subjects.class_id', '=', 'classes.id')
-            ->join('subjects', 'class_subjects.subject_id', '=', 'subjects.id')
-            ->leftJoin('users', 'class_subjects.teacher_id', '=', 'users.id')
-            ->select(
-                'class_subjects.class_id',
-                'class_subjects.subject_id',
-                'class_subjects.teacher_id',
-                'classes.name as class_name',
-                'subjects.name as subject_name',
-                'users.full_name as teacher_name'
-            )
-            ->orderBy('classes.name')
-            ->orderBy('subjects.name')
-            ->get();
-        return response()->json($rows);
-    });
+    Route::get('/class-subjects', [\App\Http\Controllers\SubjectController::class, 'classSubjects']);
 
     Route::get('/fee-invoices', [\App\Http\Controllers\FeeInvoiceController::class, 'index']);
     Route::post('/fee-invoices', [\App\Http\Controllers\FeeInvoiceController::class, 'store']);

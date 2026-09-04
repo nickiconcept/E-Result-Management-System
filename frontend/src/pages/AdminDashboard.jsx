@@ -646,13 +646,11 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
   useEffect(() => {
     if (activeSubTab === 'broadsheet') {
-      const targetClassId = adminBroadsheetClassId || (classes && classes.length > 0 ? classes[0].id : '');
-      if (targetClassId) {
-        if (!adminBroadsheetClassId) setAdminBroadsheetClassId(targetClassId);
-        fetchAdminBroadsheet(targetClassId);
+      if (adminBroadsheetClassId) {
+        fetchAdminBroadsheet(adminBroadsheetClassId);
       }
     }
-  }, [activeSubTab, classes]);
+  }, [activeSubTab, adminBroadsheetClassId]);
 
   const loadSessions = async () => {
     try {
@@ -2752,10 +2750,10 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div>
-                  <h3>Custom Invoices</h3>
+                  <h3>Other Fees (Custom Invoices)</h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Manage ad-hoc invoices assigned to classes or cohorts.</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => { setNewFeeStructureForm({ title: '', category: 'Uniform/Books', amount: '', tier: 'jss' }); setShowFeeModal(true); }}>+ Bill Students</button>
+                <button className="btn btn-primary" onClick={() => { setNewFeeStructureForm({ title: '', category: 'Uniform/Books', amount: '', tier: 'jss' }); setShowFeeModal(true); }}>+ Add Other Fees</button>
               </div>
 
               <div className="table-container">
@@ -2821,17 +2819,26 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Define default termly school fees billed per education levels.</p>
                   </div>
                 </div>
-                <button 
-                  className="btn btn-primary" 
-                  onClick={() => {
-                    setEditingFeeStructure(null);
-                    setNewFeeStructureForm({ title: '', category: 'School Fees', amount: '', tier: 'jss' });
-                    setShowFeeStructureModal(true);
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}
-                >
-                  <Plus size={16} /> Add Structure
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={handleGenerateTermlyFee}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}
+                  >
+                    Generate Termly Fee
+                  </button>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => {
+                      setEditingFeeStructure(null);
+                      setNewFeeStructureForm({ title: '', category: 'School Fees', amount: '', tier: 'jss' });
+                      setShowFeeStructureModal(true);
+                    }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}
+                  >
+                    <Plus size={16} /> Add Structure
+                  </button>
+                </div>
               </div>
 
               <div className="table-container" style={{ margin: 0 }}>
@@ -3433,11 +3440,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               ) : adminBroadsheetData ? (
                 <ClassBroadsheet
                   data={adminBroadsheetData}
-                  className={classes.find(c => c.id === parseInt(adminBroadsheetClassId || classes[0]?.id))?.name || 'Class'}
+                  className={classes.find(c => c.id === parseInt(adminBroadsheetClassId))?.name || 'Class'}
                   term={settings?.active_term}
                   session={settings?.active_session}
                   settings={settings}
                   onBack={() => setActiveSubTab('overview')}
+                  classes={classes}
+                  onClassSelect={(id) => {
+                    setAdminBroadsheetClassId(id);
+                    fetchAdminBroadsheet(id);
+                  }}
+                  selectedClassId={adminBroadsheetClassId}
                 />
               ) : (
                 <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-secondary)' }}>
@@ -5216,12 +5229,24 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 <input type="file" accept="image/*" className="form-control" onChange={(e) => {
                   const file = e.target.files[0];
                   if (file) {
+                    if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+                      setErrorMsg('Passport photo must be a JPG, JPEG, or PNG file.');
+                      return;
+                    }
+                    if (file.size > 150 * 1024) {
+                      setErrorMsg('Passport photo must be less than 150KB.');
+                      return;
+                    }
                     const reader = new FileReader();
                     reader.onloadend = () => setTeacherForm({ ...teacherForm, passport_photo: reader.result });
                     reader.readAsDataURL(file);
                   }
-                }} />
-                {teacherForm.passport_photo && <span style={{ marginLeft: '10px', color: 'var(--success)' }}>✓ Added</span>}
+                }} required={!teacherForm.passport_photo} />
+                {teacherForm.passport_photo && (
+                  <div style={{ marginLeft: '15px' }}>
+                    <img src={teacherForm.passport_photo} alt="Preview" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%', border: '2px solid var(--primary)' }} />
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
@@ -5254,29 +5279,29 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div className="form-group">
                   <label>Email Address</label>
-                  <input type="email" className="form-control" value={teacherForm.email} onChange={(e) => setTeacherForm({ ...teacherForm, email: e.target.value })} />
+                  <input type="email" className="form-control" required value={teacherForm.email} onChange={(e) => setTeacherForm({ ...teacherForm, email: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label>Phone Number</label>
-                  <input type="text" className="form-control" value={teacherForm.phone_number} onChange={(e) => setTeacherForm({ ...teacherForm, phone_number: e.target.value })} />
+                  <input type="text" className="form-control" required value={teacherForm.phone_number} onChange={(e) => setTeacherForm({ ...teacherForm, phone_number: e.target.value })} />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div className="form-group">
                   <label>Date of Birth</label>
-                  <input type="date" className="form-control" value={teacherForm.date_of_birth} onChange={(e) => setTeacherForm({ ...teacherForm, date_of_birth: e.target.value })} />
+                  <input type="date" className="form-control" required value={teacherForm.date_of_birth} onChange={(e) => setTeacherForm({ ...teacherForm, date_of_birth: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label>Discipline</label>
-                  <input type="text" className="form-control" placeholder="e.g. Mathematics" value={teacherForm.discipline} onChange={(e) => setTeacherForm({ ...teacherForm, discipline: e.target.value })} />
+                  <input type="text" className="form-control" required placeholder="e.g. Mathematics" value={teacherForm.discipline} onChange={(e) => setTeacherForm({ ...teacherForm, discipline: e.target.value })} />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div className="form-group">
                   <label>Qualification</label>
-                  <select className="form-control" value={teacherForm.qualification} onChange={(e) => setTeacherForm({ ...teacherForm, qualification: e.target.value })}>
+                  <select className="form-control" required value={teacherForm.qualification} onChange={(e) => setTeacherForm({ ...teacherForm, qualification: e.target.value })}>
                     <option value="">Select Qualification</option>
                     <option value="M.Sc">M.Sc</option>
                     <option value="B.Sc">B.Sc</option>
@@ -5288,7 +5313,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 </div>
                 <div className="form-group">
                   <label>Category of Employment</label>
-                  <select className="form-control" value={teacherForm.employment_category} onChange={(e) => setTeacherForm({ ...teacherForm, employment_category: e.target.value })}>
+                  <select className="form-control" required value={teacherForm.employment_category} onChange={(e) => setTeacherForm({ ...teacherForm, employment_category: e.target.value })}>
                     <option value="">Select Category</option>
                     <option value="Full Time">Full Time</option>
                     <option value="Part Time">Part Time</option>
@@ -5302,17 +5327,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
               <div className="form-group">
                 <label>Home Address</label>
-                <input type="text" className="form-control" value={teacherForm.address} onChange={(e) => setTeacherForm({ ...teacherForm, address: e.target.value })} />
+                <input type="text" className="form-control" required value={teacherForm.address} onChange={(e) => setTeacherForm({ ...teacherForm, address: e.target.value })} />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div className="form-group">
                   <label>State of Residence</label>
-                  <input type="text" className="form-control" value={teacherForm.state_of_residence} onChange={(e) => setTeacherForm({ ...teacherForm, state_of_residence: e.target.value })} />
+                  <input type="text" className="form-control" required value={teacherForm.state_of_residence} onChange={(e) => setTeacherForm({ ...teacherForm, state_of_residence: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label>LGA of Residence</label>
-                  <input type="text" className="form-control" value={teacherForm.lga_of_residence} onChange={(e) => setTeacherForm({ ...teacherForm, lga_of_residence: e.target.value })} />
+                  <input type="text" className="form-control" required value={teacherForm.lga_of_residence} onChange={(e) => setTeacherForm({ ...teacherForm, lga_of_residence: e.target.value })} />
                 </div>
               </div>
 
@@ -5835,6 +5860,16 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   required 
                   value={editingCustomInvoice.title} 
                   onChange={(e) => setEditingCustomInvoice({ ...editingCustomInvoice, title: e.target.value })} 
+                />
+              </div>
+              <div className="form-group">
+                <label>Target Class / Tier (Read Only)</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  readOnly 
+                  style={{ backgroundColor: 'var(--bg-secondary)', cursor: 'not-allowed' }}
+                  value={editingCustomInvoice.class_id ? `Class ID: ${editingCustomInvoice.class_id}` : `Tier: ${editingCustomInvoice.tier ? editingCustomInvoice.tier.toUpperCase() : 'All'}`} 
                 />
               </div>
               <div className="form-group">

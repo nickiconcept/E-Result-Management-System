@@ -15,6 +15,10 @@ export default function TeacherProfileCard({ teacher, onClose, onUpdate }) {
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+        setError('Passport photo must be a JPG, JPEG, or PNG file.');
+        return;
+      }
       if (file.size > 150 * 1024) {
         setError('Passport photo must be less than 150KB.');
         return;
@@ -159,11 +163,11 @@ export default function TeacherProfileCard({ teacher, onClose, onUpdate }) {
                   </div>
                   <div className="form-group">
                     <label>Surname</label>
-                    <input type="text" className="form-control" name="surname" value={formData.surname || ''} onChange={handleChange} />
+                    <input type="text" className="form-control" name="surname" required value={formData.surname || ''} onChange={handleChange} />
                   </div>
                   <div className="form-group">
                     <label>First Name</label>
-                    <input type="text" className="form-control" name="first_name" value={formData.first_name || ''} onChange={handleChange} />
+                    <input type="text" className="form-control" name="first_name" required value={formData.first_name || ''} onChange={handleChange} />
                   </div>
                   <div className="form-group">
                     <label>Other Names</label>
@@ -171,7 +175,7 @@ export default function TeacherProfileCard({ teacher, onClose, onUpdate }) {
                   </div>
                   <div className="form-group">
                     <label>Phone Number</label>
-                    <input type="text" className="form-control" name="phone_number" value={formData.phone_number || ''} onChange={handleChange} />
+                    <input type="text" className="form-control" name="phone_number" required value={formData.phone_number || ''} onChange={handleChange} />
                   </div>
                   <div className="form-group">
                     <label>Date of Birth</label>
@@ -179,23 +183,15 @@ export default function TeacherProfileCard({ teacher, onClose, onUpdate }) {
                   </div>
                   <div className="form-group">
                     <label>Discipline</label>
-                    <input type="text" className="form-control" name="discipline" value={formData.discipline || ''} onChange={handleChange} />
+                    <input type="text" className="form-control" name="discipline" required value={formData.discipline || ''} onChange={handleChange} />
                   </div>
                   <div className="form-group">
-                    <label>Qualification</label>
-                    <select className="form-control" name="qualification" value={formData.qualification || ''} onChange={handleChange}>
-                      <option value="">Select Qualification</option>
-                      <option value="M.Sc">M.Sc</option>
-                      <option value="B.Sc">B.Sc</option>
-                      <option value="B.Ed">B.Ed</option>
-                      <option value="B.A">B.A</option>
-                      <option value="NCE">NCE</option>
-                      <option value="Others">Others</option>
-                    </select>
+                    <label>Email</label>
+                    <input type="email" className="form-control" name="email" required value={formData.email || ''} onChange={handleChange} />
                   </div>
                   <div className="form-group">
-                    <label>Category of Employment</label>
-                    <select className="form-control" name="employment_category" value={formData.employment_category || ''} onChange={handleChange}>
+                    <label>Employment Category</label>
+                    <select className="form-control" name="employment_category" required value={formData.employment_category || ''} onChange={handleChange}>
                       <option value="">Select Category</option>
                       <option value="Full Time">Full Time</option>
                       <option value="Part Time">Part Time</option>
@@ -205,21 +201,33 @@ export default function TeacherProfileCard({ teacher, onClose, onUpdate }) {
                       <option value="Others">Others</option>
                     </select>
                   </div>
+                  <div className="form-group">
+                    <label>Qualification</label>
+                    <select className="form-control" name="qualification" required value={formData.qualification || ''} onChange={handleChange}>
+                      <option value="">Select Qualification</option>
+                      <option value="M.Sc">M.Sc</option>
+                      <option value="B.Sc">B.Sc</option>
+                      <option value="B.Ed">B.Ed</option>
+                      <option value="B.A">B.A</option>
+                      <option value="NCE">NCE</option>
+                      <option value="Others">Others</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="form-group" style={{ marginTop: '10px' }}>
                   <label>Residential Address</label>
-                  <textarea className="form-control" name="address" value={formData.address || ''} onChange={handleChange}></textarea>
+                  <textarea className="form-control" name="address" required value={formData.address || ''} onChange={handleChange}></textarea>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '10px' }}>
                   <div className="form-group">
-                    <label>State of Residence</label>
-                    <input type="text" className="form-control" name="state_of_residence" value={formData.state_of_residence || ''} onChange={handleChange} />
+                    <label>LGA</label>
+                    <input type="text" className="form-control" name="lga_of_residence" required value={formData.lga_of_residence || ''} onChange={handleChange} />
                   </div>
                   <div className="form-group">
-                    <label>LGA of Residence</label>
-                    <input type="text" className="form-control" name="lga_of_residence" value={formData.lga_of_residence || ''} onChange={handleChange} />
+                    <label>State of Residence</label>
+                    <input type="text" className="form-control" name="state_of_residence" required value={formData.state_of_residence || ''} onChange={handleChange} />
                   </div>
                 </div>
 

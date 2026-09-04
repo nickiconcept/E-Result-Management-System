@@ -15,6 +15,10 @@ export default function StudentRegistrationForm({ student, onClose, onUpdate }) 
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!['image/jpeg', 'image/jpg', 'image/png'].includes(file.type)) {
+        setError('Passport photo must be a JPG, JPEG, or PNG file.');
+        return;
+      }
       if (file.size > 150 * 1024) {
         setError('Passport photo must be less than 150KB.');
         return;
@@ -163,15 +167,15 @@ export default function StudentRegistrationForm({ student, onClose, onUpdate }) 
                   </div>
                   <div className="form-group">
                     <label>Admission No</label>
-                    <input type="text" className="form-control" name="custom_admission_number" value={formData.custom_admission_number || formData.admission_number || ''} onChange={handleChange} />
+                    <input type="text" className="form-control" name="custom_admission_number" value={formData.custom_admission_number || formData.admission_number || ''} onChange={handleChange} required />
                   </div>
                   <div className="form-group">
                     <label>Date of Birth</label>
-                    <input type="date" className="form-control" name="date_of_birth" value={formData.date_of_birth || ''} onChange={handleChange} />
+                    <input type="date" className="form-control" name="date_of_birth" value={formData.date_of_birth || ''} onChange={handleChange} required />
                   </div>
                   <div className="form-group">
                     <label>Sex</label>
-                    <select className="form-control" name="sex" value={formData.sex || ''} onChange={handleChange}>
+                    <select className="form-control" name="sex" value={formData.sex || ''} onChange={handleChange} required>
                       <option value="">Select...</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
@@ -179,35 +183,35 @@ export default function StudentRegistrationForm({ student, onClose, onUpdate }) 
                   </div>
                   <div className="form-group">
                     <label>Religion</label>
-                    <input type="text" className="form-control" name="religion" value={formData.religion || ''} onChange={handleChange} />
+                    <input type="text" className="form-control" name="religion" value={formData.religion || ''} onChange={handleChange} required />
                   </div>
                   <div className="form-group">
                     <label>Last School</label>
-                    <input type="text" className="form-control" name="last_school_attended" value={formData.last_school_attended || ''} onChange={handleChange} />
+                    <input type="text" className="form-control" name="last_school_attended" value={formData.last_school_attended || ''} onChange={handleChange} required />
                   </div>
                 </div>
 
                 <div className="form-group" style={{ marginTop: '10px' }}>
                   <label>Residential Address</label>
-                  <textarea className="form-control" name="address_residence" value={formData.address_residence || ''} onChange={handleChange}></textarea>
+                  <textarea className="form-control" name="address_residence" value={formData.address_residence || ''} onChange={handleChange} required></textarea>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '10px' }}>
                   <div className="form-group">
                     <label>LGA</label>
-                    <input type="text" className="form-control" name="local_government" value={formData.local_government || ''} onChange={handleChange} />
+                    <input type="text" className="form-control" name="local_government" value={formData.local_government || ''} onChange={handleChange} required />
                   </div>
                   <div className="form-group">
                     <label>State of Origin</label>
-                    <input type="text" className="form-control" name="state_of_origin" value={formData.state_of_origin || ''} onChange={handleChange} />
+                    <input type="text" className="form-control" name="state_of_origin" value={formData.state_of_origin || ''} onChange={handleChange} required />
                   </div>
                   <div className="form-group">
                     <label>Parent/Guardian Name</label>
-                    <input type="text" className="form-control" name="parent_name" value={formData.parent_name || ''} onChange={handleChange} />
+                    <input type="text" className="form-control" name="parent_name" value={formData.parent_name || ''} onChange={handleChange} required />
                   </div>
                   <div className="form-group">
                     <label>Parent Phone</label>
-                    <input type="text" className="form-control" name="parent_phone" value={formData.parent_phone || ''} onChange={handleChange} />
+                    <input type="text" className="form-control" name="parent_phone" value={formData.parent_phone || ''} onChange={handleChange} required />
                   </div>
                 </div>
 

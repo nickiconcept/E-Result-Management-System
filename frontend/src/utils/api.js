@@ -475,14 +475,7 @@ const api = {
   },
 
   // Student Promotion (Admin)
-  autoPromote: async (payload) => {
-    const res = await fetch(`${API_BASE}/students/auto-promote`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify(payload)
-    });
-    return handleResponse(res);
-  },
+
   promoteBulk: async (source_class_id, target_class_id, selected_student_ids = []) => {
     const res = await fetch(`${API_BASE}/students/promote-bulk`, {
       method: 'POST',

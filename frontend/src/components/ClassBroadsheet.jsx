@@ -2,7 +2,31 @@ import React from 'react';
 import { ArrowLeft, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
-export default function ClassBroadsheet({ data, className, term, session, settings, onBack }) {
+export default function ClassBroadsheet({ data, className, term, session, settings, onBack, classes, onClassSelect, selectedClassId }) {
+  if (!selectedClassId || selectedClassId === "") {
+    return (
+      <div style={{ padding: '40px 20px', textAlign: 'center', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-md)' }}>
+        <h3 style={{ marginBottom: '20px', color: 'var(--text-primary)' }}>Select a Class</h3>
+        <select 
+          className="form-control" 
+          style={{ maxWidth: '300px', margin: '0 auto' }}
+          value={selectedClassId || ''}
+          onChange={(e) => onClassSelect && onClassSelect(e.target.value)}
+        >
+          <option value="">-- Select Class --</option>
+          {(classes || []).map(c => (
+            <option key={c.id} value={c.id}>{c.name}</option>
+          ))}
+        </select>
+        {onBack && (
+          <button className="btn btn-secondary" onClick={onBack} style={{ marginTop: '20px', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            <ArrowLeft size={16} /> Back
+          </button>
+        )}
+      </div>
+    );
+  }
+
   if (!data || !Array.isArray(data.subjects) || (!Array.isArray(data.rows) && !Array.isArray(data.students))) {
     return <p style={{ padding: '20px', color: 'var(--text-secondary)' }}>Loading broadsheet data...</p>;
   }
@@ -216,34 +240,51 @@ export default function ClassBroadsheet({ data, className, term, session, settin
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {onBack && (
-        <div className="no-print">
-          <button className="btn btn-secondary" onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
-            <ArrowLeft size={16} /> Back
-          </button>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>{className} Master Broadsheet</h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '2px 0 0 0' }}>
-              Academic Period: {session} | {term}
-            </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+          {onBack && (
+            <div className="no-print">
+              <button className="btn btn-secondary" onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem' }}>
+                <ArrowLeft size={16} /> Back
+              </button>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '10px' }} className="no-print">
+            <button className="btn btn-secondary" onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Download size={16} /> Export to Excel
+            </button>
+            <button className="btn btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Download size={16} /> Download PDF
+            </button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }} className="no-print">
-          <button className="btn btn-secondary" onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Download size={16} /> Export to Excel
-          </button>
-          <button className="btn btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Download size={16} /> Download PDF
-          </button>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold', margin: 0 }}>{className} Master Broadsheet</h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: '2px 0 0 0' }}>
+                Academic Period: {session} | {term}
+              </p>
+            </div>
+          </div>
+          <div className="no-print">
+            <select 
+              className="form-control" 
+              style={{ width: '250px' }}
+              value={selectedClassId || ''}
+              onChange={(e) => onClassSelect && onClassSelect(e.target.value)}
+            >
+              <option value="">-- Select Class --</option>
+              {(classes || []).map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      <div className="broadsheet-scroll print-area" ref={broadsheetRef}>
+      <div className="broadsheet-scroll print-area" ref={broadsheetRef} style={{ overflowX: 'auto', width: '100%' }}>
         {/* Print Only Header */}
         <div className="only-print" style={{ textAlign: 'center', marginBottom: '15px', display: 'none' }}>
           <h2 style={{ fontSize: '1.5rem', fontFamily: 'Times New Roman' }}>JERE MODEL ACADEMY</h2>

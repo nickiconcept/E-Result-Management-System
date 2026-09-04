@@ -150,4 +150,24 @@ class SubjectController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+    public function classSubjects()
+    {
+        $rows = DB::table('class_subjects')
+            ->join('classes', 'class_subjects.class_id', '=', 'classes.id')
+            ->join('subjects', 'class_subjects.subject_id', '=', 'subjects.id')
+            ->leftJoin('users', 'class_subjects.teacher_id', '=', 'users.id')
+            ->select(
+                'class_subjects.class_id',
+                'class_subjects.subject_id',
+                'class_subjects.teacher_id',
+                'classes.name as class_name',
+                'subjects.name as subject_name',
+                'users.full_name as teacher_name'
+            )
+            ->orderBy('classes.name')
+            ->orderBy('subjects.name')
+            ->get();
+        return response()->json($rows);
+    }
 }
