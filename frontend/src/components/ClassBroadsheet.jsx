@@ -239,7 +239,7 @@ export default function ClassBroadsheet({ data, className, term, session, settin
   const totalCols = 2 + (subjects.length * colsPerSubject) + endCols;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0, width: '100%' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
           {onBack && (
@@ -249,6 +249,19 @@ export default function ClassBroadsheet({ data, className, term, session, settin
               </button>
             </div>
           )}
+          <div className="no-print">
+            <select 
+              className="form-control" 
+              style={{ width: '250px' }}
+              value={selectedClassId || ''}
+              onChange={(e) => onClassSelect && onClassSelect(e.target.value)}
+            >
+              <option value="">-- Select Class --</option>
+              {(classes || []).map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
           <div style={{ display: 'flex', gap: '10px' }} className="no-print">
             <button className="btn btn-secondary" onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Download size={16} /> Export to Excel
@@ -268,23 +281,10 @@ export default function ClassBroadsheet({ data, className, term, session, settin
               </p>
             </div>
           </div>
-          <div className="no-print">
-            <select 
-              className="form-control" 
-              style={{ width: '250px' }}
-              value={selectedClassId || ''}
-              onChange={(e) => onClassSelect && onClassSelect(e.target.value)}
-            >
-              <option value="">-- Select Class --</option>
-              {(classes || []).map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
         </div>
       </div>
 
-      <div className="broadsheet-scroll print-area" ref={broadsheetRef} style={{ overflowX: 'auto', width: '100%' }}>
+      <div className="broadsheet-scroll print-area hide-scrollbar" ref={broadsheetRef} style={{ overflowX: 'auto', width: '100%' }}>
         {/* Print Only Header */}
         <div className="only-print" style={{ textAlign: 'center', marginBottom: '15px', display: 'none' }}>
           <h2 style={{ fontSize: '1.5rem', fontFamily: 'Times New Roman' }}>JERE MODEL ACADEMY</h2>

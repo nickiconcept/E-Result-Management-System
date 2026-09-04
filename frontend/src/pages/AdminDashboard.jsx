@@ -3745,23 +3745,6 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Select a class arm to view master score broadsheet, export to Excel CSV, or print.</p>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', padding: '10px 15px', borderRadius: 'var(--radius-md)', backdropFilter: 'blur(5px)' }}>
-                  <label style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'rgba(255,255,255,0.9)' }}>Select Class:</label>
-                  <select
-                    className="form-control"
-                    style={{ width: '220px', padding: '10px' }}
-                    value={adminBroadsheetClassId || (classes[0]?.id || '')}
-                    onChange={(e) => {
-                      const cid = e.target.value;
-                      setAdminBroadsheetClassId(cid);
-                      fetchAdminBroadsheet(cid);
-                    }}
-                  >
-                    {classes.map((cls, idx) => (
-                      <option key={idx} value={cls.id}>{cls.name}</option>
-                    ))}
-                  </select>
-                </div>
               </div>
 
               {adminBroadsheetLoading ? (

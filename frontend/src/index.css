@@ -1466,3 +1466,13 @@ body.dark .icon-3d {
   overflow-x: visible !important;
   overflow-y: visible !important;
 }
+
+ . h i d e - s c r o l l b a r   { 
+     - m s - o v e r f l o w - s t y l e :   n o n e ;   / *   I E   a n d   E d g e   * / 
+     s c r o l l b a r - w i d t h :   n o n e ;   / *   F i r e f o x   * / 
+ } 
+ 
+ . h i d e - s c r o l l b a r : : - w e b k i t - s c r o l l b a r   { 
+     d i s p l a y :   n o n e ;   / *   C h r o m e ,   S a f a r i   a n d   O p e r a   * / 
+ }  
+ 
