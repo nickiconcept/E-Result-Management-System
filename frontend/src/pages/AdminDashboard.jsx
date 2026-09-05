@@ -7,6 +7,7 @@ import TeacherProfileCard from '../components/TeacherProfileCard';
 import SignaturePad from '../components/SignaturePad';
 import BulkResultPrinter from '../components/BulkResultPrinter';
 import BulkReceiptPrinter from '../components/BulkReceiptPrinter';
+import PrintPinCards from '../components/PrintPinCards';
 import ClassBroadsheet from '../components/ClassBroadsheet';
 import ReportCard from '../components/ReportCard';
 import ManageGraduatesModal from '../components/ManageGraduatesModal';
@@ -60,7 +61,8 @@ import {
   Hourglass,
   UploadCloud,
   Star,
-  Trash
+  Trash,
+  Printer
 } from 'lucide-react';
 
 // Modern Bar Chart Component
@@ -371,6 +373,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   const [showEditSkillModal, setShowEditSkillModal] = useState(false);
   const [skillEditForm, setSkillEditForm] = useState({ id: '', name: '', category: 'affective', target_section: 'secondary' });
   const [showBulkPrintModal, setShowBulkPrintModal] = useState(false);
+  const [showPrintPinsModal, setShowPrintPinsModal] = useState(false);
 
   // Selected details
   const [selectedStudentForForm, setSelectedStudentForForm] = useState(null);
@@ -3857,6 +3860,9 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   </div>
 
                   <button className="btn btn-primary" style={{ alignSelf: 'flex-end', padding: '9px 18px' }} onClick={handleGeneratePins}>Bulk Generate</button>
+                  <button className="btn btn-secondary" style={{ alignSelf: 'flex-end', padding: '9px 18px', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setShowPrintPinsModal(true)}>
+                    <Printer size={16} /> Print Filtered PINs
+                  </button>
                 </div>
               </div>
 
@@ -3892,9 +3898,9 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                   
                   let matchesStatus = true;
                   if (pinStatusFilter === 'active') {
-                    matchesStatus = p.status === 'active' && p.checks_remaining < parseInt(settingsForm?.pin_max_checks || 5);
+                    matchesStatus = p.status === 'active' && p.usage_count > 0;
                   } else if (pinStatusFilter === 'not_used') {
-                    matchesStatus = p.status === 'active' && p.checks_remaining === parseInt(settingsForm?.pin_max_checks || 5);
+                    matchesStatus = p.status === 'active' && (!p.usage_count || p.usage_count === 0);
                   } else if (pinStatusFilter === 'exhausted') {
                     matchesStatus = p.status === 'exhausted';
                   }
@@ -3923,7 +3929,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                             <td><strong style={{ fontSize: '1.1rem', letterSpacing: '0.05em' }}>{p.pin}</strong></td>
                             <td>{p.term ? `${p.term} (${p.academic_year})` : 'Universal (Any Term/Session)'}</td>
                             <td>{p.student_name ? `${p.student_name} (${p.admission_number})` : 'Unused Token'}</td>
-                            <td><strong>{5 - p.usage_count} / 5</strong></td>
+                            <td><strong>{Math.max(0, parseInt(settingsForm?.pin_max_checks || 5) - p.usage_count)} / {parseInt(settingsForm?.pin_max_checks || 5)}</strong></td>
                             <td>
                               <span className={`badge ${p.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
                                 {p.status}
@@ -6696,6 +6702,30 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           currentSession={settings?.active_session}
           settings={settings}
           onClose={() => setShowBulkPrintModal(false)}
+        />
+      )}
+
+      {/* Print PIN Cards Modal */}
+      {showPrintPinsModal && (
+        <PrintPinCards
+          pins={pins.filter(p => {
+            const query = pinSearch.toLowerCase();
+            const matchesSearch = p.pin.toLowerCase().includes(query) ||
+                   (p.student_name && p.student_name.toLowerCase().includes(query)) ||
+                   (p.admission_number && p.admission_number.toLowerCase().includes(query));
+            
+            let matchesStatus = true;
+            if (pinStatusFilter === 'active') {
+              matchesStatus = p.status === 'active' && p.usage_count > 0;
+            } else if (pinStatusFilter === 'not_used') {
+              matchesStatus = p.status === 'active' && (!p.usage_count || p.usage_count === 0);
+            } else if (pinStatusFilter === 'exhausted') {
+              matchesStatus = p.status === 'exhausted';
+            }
+            return matchesSearch && matchesStatus;
+          })}
+          settings={settings}
+          onClose={() => setShowPrintPinsModal(false)}
         />
       )}
 
