@@ -4,7 +4,7 @@ import ClassBroadsheet from '../components/ClassBroadsheet';
 import Toast from '../components/Toast';
 import StudentRegistrationForm from '../components/StudentRegistrationForm';
 import RemarksManager from '../components/RemarksManager';
-import { ArrowLeft, Edit3, CheckSquare, BarChart2, FileSpreadsheet, FileText, Save, Search, Users, Award, CheckCircle, XCircle, Plus, Lock, Printer, BookOpen, Clock, UploadCloud, CheckCircle2, Hourglass, Eye, Sparkles } from 'lucide-react';
+import { ArrowLeft, Pencil, CheckSquare, BarChart2, FileSpreadsheet, FileText, Save, Search, Users, Award, CheckCircle, XCircle, Plus, Lock, Printer, BookOpen, Clock, UploadCloud, CircleCheck, Hourglass, Eye, Sparkles } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import html2pdf from 'html2pdf.js';
 import { Download } from 'lucide-react';
@@ -529,7 +529,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                       <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{assign.subject_name}</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: '600', color: 'var(--primary)', marginTop: 'auto' }}>
-                      <Edit3 size={14} /> Enter Marks
+                      <Pencil size={14} /> Enter Marks
                     </div>
                   </button>
                 ))
@@ -651,7 +651,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                   <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#1e40af' }}>{resultProgress?.summary?.total || 0}</div>
                 </div>
                 <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.15)', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.85rem', fontWeight: '600' }}><CheckCircle2 size={16} /> Fully Uploaded</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.85rem', fontWeight: '600' }}><CircleCheck size={16} /> Fully Uploaded</div>
                   <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#065f46' }}>{resultProgress?.summary?.completed || 0}</div>
                 </div>
                 <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.15)', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}>
@@ -703,7 +703,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                             backgroundColor: item.status === 'Completed' ? 'rgba(16, 185, 129, 0.1)' : item.status === 'In Progress' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                             color: item.status === 'Completed' ? '#10b981' : item.status === 'In Progress' ? '#d97706' : '#ef4444'
                           }}>
-                            {item.status === 'Completed' ? <CheckCircle2 size={14} /> : item.status === 'In Progress' ? <Hourglass size={14} /> : <Clock size={14} />}
+                            {item.status === 'Completed' ? <CircleCheck size={14} /> : item.status === 'In Progress' ? <Hourglass size={14} /> : <Clock size={14} />}
                             {item.status}
                           </div>
                         </td>
@@ -748,7 +748,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)' }}>
-                <Edit3 size={24} color="white" />
+                <Pencil size={24} color="white" />
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700' }}>Enter Marks</h3>
@@ -786,7 +786,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', fontWeight: '600', color: '#d97706' }}>
-                      <Edit3 size={13} /> Enter Marks →
+                      <Pencil size={13} /> Enter Marks →
                     </div>
                   </button>
                 ))
@@ -808,7 +808,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                 title="Back to overview"
               >←</button>
               <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)' }}>
-                <Edit3 size={24} color="white" />
+                <Pencil size={24} color="white" />
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700' }}>{selectedClassSubject.subject_name}</h3>
@@ -1225,6 +1225,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
             term={settings.active_term}
             session={settings.active_session}
             settings={settings}
+            hideExport={true}
           />
         </div>
       )}
@@ -1642,7 +1643,7 @@ export default function TeacherDashboard({ user, settings, activeTab, subTab }) 
                                 title="Edit Student"
                                 style={{ padding: '6px 12px', borderRadius: '8px', border: '1px solid rgba(59,130,246,0.3)', backgroundColor: 'rgba(59,130,246,0.08)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem', fontWeight: '600', color: '#2563eb', transition: 'all 0.2s' }}
                               >
-                                <Edit3 size={14} /> Edit
+                                <Pencil size={14} /> Edit
                               </button>
                             )}
                           </div>

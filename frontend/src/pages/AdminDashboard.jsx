@@ -28,7 +28,7 @@ import {
   CheckSquare,
   BarChart2,
   FileSpreadsheet,
-  Edit3,
+  Pencil,
   Grid,
   Key,
   CreditCard,
@@ -57,7 +57,7 @@ import {
   UserPlus,
   User,
   Clock,
-  CheckCircle2,
+  CircleCheck,
   Hourglass,
   UploadCloud,
   Star,
@@ -1901,7 +1901,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                     <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#1e40af' }}>{adminResultProgress?.summary?.total || 0}</div>
                   </div>
                   <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.15)', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.85rem', fontWeight: '600' }}><CheckCircle2 size={16} /> Fully Uploaded</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontSize: '0.85rem', fontWeight: '600' }}><CircleCheck size={16} /> Fully Uploaded</div>
                     <div style={{ fontSize: '1.8rem', fontWeight: '800', color: '#065f46' }}>{adminResultProgress?.summary?.completed || 0}</div>
                   </div>
                   <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.15)', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'transform 0.2s', cursor: 'default' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}>
@@ -2006,7 +2006,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                               backgroundColor: item.status === 'Completed' ? 'rgba(16, 185, 129, 0.1)' : item.status === 'In Progress' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                               color: item.status === 'Completed' ? '#10b981' : item.status === 'In Progress' ? '#d97706' : '#ef4444'
                             }}>
-                              {item.status === 'Completed' ? <CheckCircle2 size={14} /> : item.status === 'In Progress' ? <Hourglass size={14} /> : <Clock size={14} />}
+                              {item.status === 'Completed' ? <CircleCheck size={14} /> : item.status === 'In Progress' ? <Hourglass size={14} /> : <Clock size={14} />}
                               {item.status}
                             </div>
                           </td>
@@ -2422,7 +2422,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                           title="Edit"
                           onClick={() => handleEditClassClick(c)}
                         >
-                          <Edit3 size={16} />
+                          <Pencil size={16} />
                         </button>
                         <button
                           className="btn btn-danger btn-sm"
@@ -2538,7 +2538,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                           title="Edit"
                           onClick={() => handleEditSubjectClick(sub)}
                         >
-                          <Edit3 size={16} />
+                          <Pencil size={16} />
                         </button>
                         <button
                           className="btn btn-danger btn-sm"
@@ -2657,7 +2657,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                           title="Edit Teacher"
                           onClick={() => handleEditClassSubjectClick(cs)}
                         >
-                          <Edit3 size={16} />
+                          <Pencil size={16} />
                         </button>
                       </td>
                     </tr>
@@ -3230,7 +3230,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                               title="Edit"
                               onClick={() => handleEditFeeStructureClick(struct)}
                             >
-                              <Edit3 size={16} />
+                              <Pencil size={16} />
                             </button>
                             <button
                               className="btn btn-danger btn-sm"
@@ -3791,7 +3791,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
           {/* Sub-Tab 2: Class Broadsheet */}
           {resultsSubTab === 'broadsheet' && (
-            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+            <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)', minWidth: 0, maxWidth: '100%', overflowX: 'auto' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                   <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
@@ -3957,7 +3957,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                   <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
-                    <Edit3 size={24} color="white" />
+                    <Pencil size={24} color="white" />
                   </div>
                   <div>
                     <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700', letterSpacing: '0.5px' }}>Enter Student Marks</h3>
@@ -4583,7 +4583,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
                   <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
-                      <Edit3 size={18} style={{ color: 'var(--primary)' }} />
+                      <Pencil size={18} style={{ color: 'var(--primary)' }} />
                       Allow Form Masters to Edit Student Info
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.9rem' }}>
@@ -4713,7 +4713,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
                 <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '24px', marginBottom: '32px' }}>
                   <h4 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Edit3 size={18} /> Test & Exam Column Names
+                    <Pencil size={18} /> Test & Exam Column Names
                   </h4>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
                     <div className="form-group" style={{ margin: 0 }}>
@@ -4898,7 +4898,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                                       setShowEditSkillModal(true);
                                     }}
                                   >
-                                    <Edit3 size={14} />
+                                    <Pencil size={14} />
                                   </button>
                                   <button className="btn btn-danger" title="Delete" style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => handleSkillDelete(s.id, s.category)}><Trash2 size={14} /></button>
                                 </td>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { Sparkles, Edit3, Save, X, User } from 'lucide-react';
+import { Sparkles, Pencil, Save, X, User } from 'lucide-react';
 import Toast from './Toast';
 
 export default function RemarksManager({ classId, term, session, type, generationMode, onBack }) {
@@ -91,7 +91,7 @@ export default function RemarksManager({ classId, term, session, type, generatio
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)' }}>
-            <Edit3 size={24} color="white" />
+            <Pencil size={24} color="white" />
           </div>
           <div>
             <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700' }}>Manage {type === 'teacher' ? 'Class Teacher' : 'Principal'} Remarks</h3>

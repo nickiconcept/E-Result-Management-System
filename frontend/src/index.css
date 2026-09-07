@@ -1474,3 +1474,20 @@ body.dark .icon-3d {
 .hide-scrollbar::-webkit-scrollbar {
   display: none; /* Chrome, Safari and Opera */
 }
+
+/* Custom Scrollbar for Broadsheet */
+.broadsheet-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.broadsheet-scroll::-webkit-scrollbar-track {
+  background: var(--bg-surface-elevated, #f1f5f9);
+  border-radius: 4px;
+}
+.broadsheet-scroll::-webkit-scrollbar-thumb {
+  background: var(--primary, #3b82f6);
+  border-radius: 4px;
+}
+.broadsheet-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-hover, #2563eb);
+}

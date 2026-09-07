@@ -12,7 +12,7 @@ import {
   BarChart2,
   FileSpreadsheet,
   Download,
-  Edit3,
+  Pencil,
   Grid,
   Key,
   CreditCard,
@@ -70,7 +70,7 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
         label: 'Student Results',
         icon: FileSpreadsheet,
         subItems: [
-          { id: 'enter-marks', label: 'Enter Marks', icon: Edit3 },
+          { id: 'enter-marks', label: 'Enter Marks', icon: Pencil },
           { id: 'blank-scoresheet', label: 'Print Scoresheet', icon: Download },
           { id: 'broadsheet', label: 'Class Broadsheet', icon: Grid },
           { id: 'single', label: 'Single Result View', icon: FileText },
@@ -86,7 +86,7 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
         icon: CreditCard,
         subItems: [
           { id: 'invoices', label: 'Invoices & Billing', icon: Receipt },
-          { id: 'custom', label: 'Other Fees', icon: Edit3 },
+          { id: 'custom', label: 'Other Fees', icon: Pencil },
           { id: 'structures', label: 'Fee Structures', icon: Layers },
           { id: 'report', label: 'Payment Records', icon: History },
           { id: 'print_receipts', label: 'Print Receipts', icon: Printer }
@@ -108,7 +108,7 @@ export default function Sidebar({ role, activeTab, subTab, onSelectTab, onLogout
     teacher: [
       { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
       { id: 'students', label: 'My Students', icon: Users },
-      { id: 'grades', label: 'Enter Marks', icon: Edit3 },
+      { id: 'grades', label: 'Enter Marks', icon: Pencil },
       {
         id: 'attendance',
         label: 'Attendance',

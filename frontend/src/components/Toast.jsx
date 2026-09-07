@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { CheckCircle2, AlertTriangle, Info, X } from 'lucide-react';
+import { CircleCheck, AlertTriangle, Info, X } from 'lucide-react';
 
 const Toast = ({ message, type = 'success', onClose, duration = 4000 }) => {
   useEffect(() => {
@@ -60,7 +60,7 @@ const Toast = ({ message, type = 'success', onClose, duration = 4000 }) => {
       ) : isInfo ? (
         <Info size={20} style={{ flexShrink: 0 }} />
       ) : (
-        <CheckCircle2 size={20} style={{ flexShrink: 0 }} />
+        <CircleCheck size={20} style={{ flexShrink: 0 }} />
       )}
 
       <span style={{ flex: 1, lineHeight: '1.4' }}>{message}</span>

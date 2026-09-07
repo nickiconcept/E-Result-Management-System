@@ -2,8 +2,8 @@ import React from 'react';
 import { ArrowLeft, Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 
-export default function ClassBroadsheet({ data, className, term, session, settings, onBack, classes, onClassSelect, selectedClassId }) {
-  if (!selectedClassId || selectedClassId === "") {
+export default function ClassBroadsheet({ data, className, term, session, settings, onBack, classes, onClassSelect, selectedClassId, hideExport }) {
+  if (onClassSelect && (!selectedClassId || selectedClassId === "")) {
     return (
       <div style={{ padding: '40px 20px', textAlign: 'center', backgroundColor: 'var(--bg-surface)', borderRadius: 'var(--radius-md)' }}>
         <h3 style={{ marginBottom: '20px', color: 'var(--text-primary)' }}>Select a Class</h3>
@@ -48,7 +48,7 @@ export default function ClassBroadsheet({ data, className, term, session, settin
       r.grades.forEach(g => {
         const t1 = g.term1 !== '-' ? Number(g.term1 || 0) : 0;
         const t2 = g.term2 !== '-' ? Number(g.term2 || 0) : 0;
-        const score = Number(g.score || 0);
+        const score = g.score !== '-' ? Number(g.score || 0) : 0;
         const cum = g.cum_avg !== '-' ? Number(g.cum_avg || 0) : 0;
 
         mappedGrades[g.subject_id] = {
@@ -239,7 +239,7 @@ export default function ClassBroadsheet({ data, className, term, session, settin
   const totalCols = 2 + (subjects.length * colsPerSubject) + endCols;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0, width: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0, maxWidth: '100%', width: '100%', overflow: 'hidden' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
           {onBack && (
@@ -249,27 +249,31 @@ export default function ClassBroadsheet({ data, className, term, session, settin
               </button>
             </div>
           )}
-          <div className="no-print">
-            <select 
-              className="form-control" 
-              style={{ width: '250px' }}
-              value={selectedClassId || ''}
-              onChange={(e) => onClassSelect && onClassSelect(e.target.value)}
-            >
-              <option value="">-- Select Class --</option>
-              {(classes || []).map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: 'flex', gap: '10px' }} className="no-print">
-            <button className="btn btn-secondary" onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Download size={16} /> Export to Excel
-            </button>
-            <button className="btn btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Download size={16} /> Download PDF
-            </button>
-          </div>
+          {onClassSelect && (
+            <div className="no-print">
+              <select 
+                className="form-control" 
+                style={{ width: '250px' }}
+                value={selectedClassId || ''}
+                onChange={(e) => onClassSelect(e.target.value)}
+              >
+                <option value="">-- Select Class --</option>
+                {(classes || []).map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {!hideExport && (
+            <div style={{ display: 'flex', gap: '10px' }} className="no-print">
+              <button className="btn btn-secondary" onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Download size={16} /> Export to Excel
+              </button>
+              <button className="btn btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Download size={16} /> Download PDF
+              </button>
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
@@ -284,7 +288,7 @@ export default function ClassBroadsheet({ data, className, term, session, settin
         </div>
       </div>
 
-      <div className="broadsheet-scroll print-area hide-scrollbar" ref={broadsheetRef} style={{ overflowX: 'auto', width: '100%' }}>
+      <div className="broadsheet-scroll print-area" ref={broadsheetRef} style={{ overflowX: 'auto', width: '100%', whiteSpace: 'nowrap' }}>
         {/* Print Only Header */}
         <div className="only-print" style={{ textAlign: 'center', marginBottom: '15px', display: 'none' }}>
           <h2 style={{ fontSize: '1.5rem', fontFamily: 'Times New Roman' }}>JERE MODEL ACADEMY</h2>
