@@ -14,29 +14,20 @@ export default function PrintPinCards({ pins, settings, onClose }) {
           size: A4 portrait;
           margin: 10mm;
         }
-        body * {
-          visibility: hidden;
-        }
-        #pin-print-area, #pin-print-area * {
-          visibility: visible;
-        }
         #pin-print-area {
-          position: absolute;
-          left: 0;
-          top: 0;
           width: 100%;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
         .pin-grid {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 15px;
-          justify-content: center;
+          display: grid !important;
+          grid-template-columns: repeat(2, 80mm) !important;
+          gap: 15px !important;
+          justify-content: center !important;
         }
         .pin-card {
-          width: 85mm;
-          height: 54mm;
+          width: 80mm;
+          height: 50mm;
           border: 1px solid #cbd5e1;
           border-radius: 8px;
           padding: 4mm;
@@ -48,13 +39,14 @@ export default function PrintPinCards({ pins, settings, onClose }) {
           box-sizing: border-box;
           color: #0f172a;
           font-family: 'Inter', system-ui, -apple-system, sans-serif;
+          overflow: hidden;
         }
       }
       /* Screen preview styles for the cards */
       .pin-card-preview {
         font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        width: 85mm;
-        height: 54mm;
+        width: 80mm;
+        height: 50mm;
         border: 1px solid #cbd5e1;
         border-radius: 8px;
         padding: 4mm;
@@ -65,6 +57,7 @@ export default function PrintPinCards({ pins, settings, onClose }) {
         box-sizing: border-box;
         color: #0f172a;
         box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        overflow: hidden;
       }
     `;
     document.head.appendChild(style);
@@ -93,21 +86,21 @@ export default function PrintPinCards({ pins, settings, onClose }) {
         </div>
 
         <div className="no-print" style={{ background: '#f8fafc', padding: '15px', borderRadius: '8px', borderLeft: '4px solid #3b82f6', marginBottom: '20px', color: '#334155' }}>
-          <strong>Printing Instructions:</strong> For best results, use A4 paper size, select "Portrait" layout, and turn off "Headers and Footers" in your printer settings. The cards are sized at 85mm x 54mm (standard CR80 ID Card size) and will fit up to 10 per page.
+          <strong>Printing Instructions:</strong> For best results, use A4 paper size, select "Portrait" layout, and turn off "Headers and Footers" in your printer settings. The cards are sized at 80mm x 50mm (compact ID Card size) and will fit up to 10 per page.
         </div>
 
         {/* Printable Area */}
         <div id="pin-print-area">
-          <div className="pin-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 85mm)', gap: '15px', justifyContent: 'center' }}>
+          <div className="pin-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, 80mm)', gap: '15px', justifyContent: 'center' }}>
             {pins.map((pin, index) => (
               <div key={index} className="pin-card pin-card-preview">
                 
                 {/* Card Header (School Name) */}
                 <div style={{ textAlign: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px', marginBottom: '8px' }}>
-                  <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#1e293b' }}>
+                  <h4 style={{ margin: 0, fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {settings?.landing_school_name || 'Jere Model Academy'}
                   </h4>
-                  <div style={{ fontSize: '0.55rem', color: '#64748b', marginTop: '3px', fontWeight: '500' }}>
+                  <div style={{ fontSize: '0.5rem', color: '#64748b', marginTop: '3px', fontWeight: '500', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     {settings?.landing_address || 'Opposite Jabal-Annur Mosque, New Abuja Road, Jere Kagarko LGA, Kaduna State.'}
                   </div>
                 </div>
@@ -117,7 +110,7 @@ export default function PrintPinCards({ pins, settings, onClose }) {
                   {/* QR Code Section */}
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
                     <div style={{ padding: '4px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                       <QRCode value={`https://jereacademy.com/?pin=${pin.pin}`} size={40} />
+                       <QRCode value={`https://jereacademy.com/?pin=${pin.pin}`} size={36} />
                     </div>
                     <span style={{ fontSize: '0.45rem', color: '#94a3b8', fontWeight: '600', letterSpacing: '0.5px' }}>SCAN TO VERIFY</span>
                   </div>
@@ -129,18 +122,14 @@ export default function PrintPinCards({ pins, settings, onClose }) {
                     </div>
                     
                     {/* The PIN Code (No border, exposed) */}
-                    <div style={{ fontSize: '1.4rem', fontWeight: '900', letterSpacing: '3px', fontFamily: 'monospace', color: '#0f172a', margin: '4px 0' }}>
+                    <div style={{ fontSize: '1.4rem', fontWeight: '900', letterSpacing: '1px', fontFamily: 'monospace', color: '#0f172a', margin: '4px 0' }}>
                       {pin.pin}
-                    </div>
-
-                    <div style={{ fontSize: '0.6rem', color: '#64748b', marginTop: '2px', fontWeight: '500' }}>
-                      <strong>Term:</strong> {pin.term || settings?.active_term || 'Current'} &nbsp;|&nbsp; <strong>Year:</strong> {pin.academic_year || settings?.active_session || 'Current'}
                     </div>
                   </div>
                 </div>
 
                 {/* Card Footer (Instructions) */}
-                <div style={{ textAlign: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '6px', marginTop: '8px', fontSize: '0.55rem', color: '#64748b' }}>
+                <div style={{ textAlign: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '6px', marginTop: '8px', fontSize: '0.5rem', color: '#64748b' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', fontWeight: '700', color: '#334155', marginBottom: '3px' }}>
                     <ShieldCheck size={10} /> Valid for {settings?.pin_max_checks || 5} checks. Do not share.
                   </div>

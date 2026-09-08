@@ -15,6 +15,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import Toast from '../components/Toast';
 import StatCard from '../components/StatCard';
 import Pagination from '../components/Pagination';
+import { useGlobalUI } from '../contexts/GlobalUIContext';
 import {
   ArrowLeft,
   LayoutDashboard,
@@ -500,8 +501,9 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   });
 
   // Notifications
-  const [notify, setNotify] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
+  const { showToast, confirm, showAlert } = useGlobalUI();
+  const setNotify = (msg) => { if (msg) showAlert(msg, 'success'); };
+  const setErrorMsg = (msg) => { if (msg) showAlert(msg, 'error'); };
 
   // Academic Sessions Management
   const [sessions, setSessions] = useState([]);
@@ -925,7 +927,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   };
 
   const handleDeleteStudent = async (studentId) => {
-    if (!window.confirm("Are you sure you want to delete this student? This action cannot be undone.")) return;
+    const confirmed = await confirm({ title: 'Delete Student', message: 'Are you sure you want to delete this student? This action cannot be undone.', confirmText: 'Delete', type: 'danger' });
+    if (!confirmed) return;
     try {
       await api.deleteStudent(studentId);
       setNotify("Student deleted successfully!");
@@ -936,7 +939,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   };
 
   const handleDeleteTeacher = async (teacherId) => {
-    if (!window.confirm("Are you sure you want to delete this teacher? This action cannot be undone.")) return;
+    const confirmed = await confirm({ title: 'Delete Teacher', message: 'Are you sure you want to delete this teacher? This action cannot be undone.', confirmText: 'Delete', type: 'danger' });
+    if (!confirmed) return;
     try {
       await api.deleteTeacher(teacherId);
       setNotify("Teacher deleted successfully.");
@@ -1101,7 +1105,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   };
 
   const handleSkillDelete = async (id, category) => {
-    if (!window.confirm('Are you sure you want to delete this skill?')) return;
+    const confirmed = await confirm({ title: 'Delete Skill', message: 'Are you sure you want to delete this skill?', confirmText: 'Delete', type: 'danger' });
+    if (!confirmed) return;
     try {
       await api.deleteSkill(id, category);
       setNotify('Skill deleted successfully!');
@@ -1289,7 +1294,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   };
 
   const handleDeleteClass = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this class? This will also unassign form masters.')) return;
+    const confirmed = await confirm({ title: 'Delete Class', message: 'Are you sure you want to delete this class? This will also unassign form masters.', confirmText: 'Delete', type: 'danger' });
+    if (!confirmed) return;
     try {
       await api.deleteClass(id);
       setNotify('Class deleted successfully!');
@@ -1342,7 +1348,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   };
 
   const handleDeleteSubject = async (subjectId) => {
-    if (!window.confirm('Are you sure you want to delete this subject? This will delete all mapped grades and schemes of work for this subject.')) {
+    const confirmed = await confirm({ title: 'Delete Subject', message: 'Are you sure you want to delete this subject? This will delete all mapped grades and schemes of work for this subject.', confirmText: 'Delete', type: 'danger' });
+    if (!confirmed) {
       return;
     }
     setNotify('');
@@ -1360,7 +1367,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   // FEE STRUCTURE CRUD LOGIC
   // ==========================================
     const handleDeleteCustomInvoiceGroup = async (group) => {
-    if (!window.confirm(`Are you sure you want to delete all invoices for ${group.title}?`)) return;
+    const confirmed = await confirm({ title: 'Delete Invoices', message: `Are you sure you want to delete all invoices for ${group.title}?`, confirmText: 'Delete', type: 'danger' });
+    if (!confirmed) return;
     try {
       await api.deleteCustomInvoiceGroup(group);
       loadCustomInvoices();
@@ -1427,7 +1435,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   };
 
   const handleDeleteFeeStructure = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this fee structure?')) return;
+    const confirmed = await confirm({ title: 'Delete Fee Structure', message: 'Are you sure you want to delete this fee structure?', confirmText: 'Delete', type: 'danger' });
+    if (!confirmed) return;
     setNotify('');
     setErrorMsg('');
     try {
@@ -1440,7 +1449,8 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   };
 
   const handleGenerateTermlyFee = async () => {
-    if (!window.confirm('Are you sure you want to generate school fees for all active students for this term?')) return;
+    const confirmed = await confirm({ title: 'Generate Fees', message: 'Are you sure you want to generate school fees for all active students for this term?', confirmText: 'Generate', type: 'primary' });
+    if (!confirmed) return;
     setNotify('');
     setErrorMsg('');
     setLoading(true);
@@ -1738,9 +1748,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-      {/* Toast Notifications */}
-      <Toast message={notify} type="success" onClose={() => setNotify('')} duration={4000} />
-      <Toast message={errorMsg} type="error" onClose={() => setErrorMsg('')} duration={5000} />
+      {/* Toast Notifications are now handled by GlobalUIProvider */}
 
 
 
@@ -2457,7 +2465,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           TAB 5: SUBJECTS CURRICULUM MANAGEMENT
           ======================================================= */}
       {activeSubTab === 'subjects' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
           
           {/* Sub-Tab Navigation handled by Sidebar */}
 
@@ -2683,7 +2691,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           )}
 
         {subjectsSubTab === 'schemes' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
 
           {/* Filter Bar */}
           <div className="glass-panel" style={{ padding: '20px', backgroundColor: 'var(--bg-surface)' }}>
@@ -3669,7 +3677,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           TAB: STUDENT RESULTS WORKSPACE (BULK PRINT, BROADSHEET & PINS)
           ======================================================= */}
       {activeSubTab === 'student-results' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
           
           {/* Sub-Tab Navigation handled by Sidebar */}
 
@@ -4450,7 +4458,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           TAB 7: SYSTEM PORTAL SETTINGS
           ======================================================= */}
       {activeSubTab === 'settings' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
           
           {/* Sub-Tab Navigation handled by Sidebar */}
 

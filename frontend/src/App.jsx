@@ -6,8 +6,9 @@ import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import api from './utils/api';
+import { GlobalUIProvider } from './contexts/GlobalUIContext';
 
-export default function App() {
+function AppContent() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.replace('#/', '').replace('#', '');
@@ -284,5 +285,13 @@ export default function App() {
         />
       )}
     </DashboardLayout>
+  );
+}
+
+export default function App() {
+  return (
+    <GlobalUIProvider>
+      <AppContent />
+    </GlobalUIProvider>
   );
 }
