@@ -337,7 +337,8 @@ class FeeController extends Controller
                 'r.*',
                 'i.title',
                 'i.category',
-                'i.amount_due',
+                'i.amount_due as true_amount_due',
+                'i.amount_paid as true_amount_paid',
                 'u.full_name',
                 's.admission_number',
                 'c.name as class_name'

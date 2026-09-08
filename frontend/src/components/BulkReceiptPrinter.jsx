@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../utils/api';
-import { ArrowLeft, Printer, Search, FileText } from 'lucide-react';
+import { ArrowLeft, Printer, Search, FileText, Receipt } from 'lucide-react';
 
 export default function BulkReceiptPrinter({ classes, sessions, currentTerm, currentSession, settings, onClose }) {
   const [selectedClassId, setSelectedClassId] = useState(classes && classes.length > 0 ? classes[0].id : '');
@@ -64,7 +64,7 @@ export default function BulkReceiptPrinter({ classes, sessions, currentTerm, cur
             gap: 20px;
           }
           
-          /* Print Styles for A4 Landscape - 4 receipts per page */
+          /* Print Styles for A4 Landscape - 3 receipts per page */
           @media print {
             body * {
               visibility: hidden;
@@ -88,17 +88,15 @@ export default function BulkReceiptPrinter({ classes, sessions, currentTerm, cur
 
             .receipts-grid {
               display: grid !important;
-              grid-template-columns: 1fr 1fr !important;
-              grid-template-rows: 1fr 1fr !important;
+              grid-template-columns: repeat(3, 1fr) !important;
               gap: 10px !important;
               width: 100% !important;
-              height: 100% !important;
             }
 
             .receipt-wrapper {
               page-break-inside: avoid !important;
               break-inside: avoid !important;
-              height: 95mm; /* roughly half of A4 landscape height minus margins */
+              height: 195mm; /* A4 landscape height minus margins */
               box-sizing: border-box;
             }
 
@@ -168,58 +166,116 @@ export default function BulkReceiptPrinter({ classes, sessions, currentTerm, cur
 
       <div className="receipts-grid" id="printable-receipts">
         {receipts.map((rec, index) => {
-          const isFourth = (index + 1) % 4 === 0;
+          const isThird = (index + 1) % 3 === 0;
           return (
             <React.Fragment key={rec.id}>
               <div className="receipt-wrapper" style={{ 
+                fontFamily: '"Inter", "Segoe UI", sans-serif',
                 border: '1px solid #ccc', 
                 backgroundColor: '#fff', 
-                padding: '15px', 
+                padding: '20px 15px', 
                 borderRadius: '8px', 
                 boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                color: '#000'
               }}>
-                <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '8px', marginBottom: '10px' }}>
-                  <h3 style={{ margin: '0', fontSize: '1rem' }}>{settings?.landing_school_name || 'Jere Model Academy'}</h3>
-                  <p style={{ margin: '2px 0', fontSize: '0.7rem' }}>{settings?.landing_tagline || 'KADUNA STATE, NIGERIA'}</p>
-                  <p style={{ margin: '2px 0', fontSize: '0.75rem', fontWeight: 'bold' }}>OFFICIAL PAYMENT RECEIPT</p>
-                </div>
-
-                <div style={{ fontSize: '0.75rem', lineHeight: '1.4', flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <strong>RECEIPT NO:</strong> <span>{rec.receipt_number}</span>
+                <div style={{ textAlign: 'center', paddingBottom: '12px', borderBottom: '2px solid #e5e7eb', marginBottom: '15px' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'var(--primary, #1d4ed8)', color: 'white', marginBottom: '8px' }}>
+                    <Receipt size={20} />
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <strong>DATE:</strong> <span>{rec.payment_date || new Date().toLocaleDateString()}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-                    <strong>STUDENT NAME:</strong> <span style={{ textAlign: 'right' }}>{rec.full_name || 'N/A'}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <strong>ADMISSION NO:</strong> <span>{rec.admission_number || 'N/A'}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <strong>CLASS ARM:</strong> <span>{rec.class_name || 'N/A'}</span>
-                  </div>
-                  
-                  <div style={{ borderBottom: '1px dashed #000', margin: '8px 0' }}></div>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <strong>FEE DESCRIPTION:</strong> <span style={{ textAlign: 'right' }}>{rec.title}</span>
-                  </div>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.8rem', fontWeight: 'bold', color: '#065f46' }}>
-                    <strong>AMOUNT PAID:</strong> <span>N{parseFloat(rec.amount_paid).toLocaleString()}</span>
+                  <h3 style={{ margin: '0 0 3px 0', fontSize: '1.1rem', fontWeight: '800', color: '#000' }}>{settings?.landing_school_name || 'Jere Model Academy'}</h3>
+                  <p style={{ margin: '0 0 6px 0', fontSize: '0.75rem', color: '#000' }}>{settings?.landing_tagline || 'KADUNA STATE, NIGERIA'}</p>
+                  <div style={{ display: 'inline-block', padding: '3px 10px', backgroundColor: '#f3f4f6', borderRadius: '12px', fontSize: '0.7rem', fontWeight: '700', letterSpacing: '0.5px', color: '#000' }}>
+                    OFFICIAL PAYMENT RECEIPT
                   </div>
                 </div>
 
-                <div style={{ textAlign: 'center', marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
-                  <div style={{ width: '120px', borderBottom: '1px solid #000', margin: '0 auto 5px auto' }}></div>
-                  <div style={{ fontSize: '0.65rem' }}>Authorized Signature</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.8rem', marginBottom: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#000' }}>Receipt No:</span>
+                    <strong style={{ fontFamily: 'monospace' }}>{rec.receipt_number || 'N/A'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#000' }}>Date:</span>
+                    <strong>{rec.payment_date || new Date().toLocaleDateString()}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#000' }}>Student Name:</span>
+                    <strong style={{ textAlign: 'right' }}>{rec.full_name || 'N/A'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#000' }}>Admission No:</span>
+                    <strong style={{ fontFamily: 'monospace' }}>{rec.admission_number || 'N/A'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#000' }}>Class:</span>
+                    <strong>{rec.class_name || 'N/A'}</strong>
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '12px', marginBottom: '15px' }}>
+                  <div style={{ fontSize: '0.75rem', color: '#000', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Fee Description</div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: '700', color: '#000', borderBottom: '1px solid #e5e7eb', paddingBottom: '10px', marginBottom: '10px' }}>
+                    {rec.title}
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '0.8rem' }}>
+                    {rec.true_amount_due && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#000' }}>Total Billed:</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: '600' }}>₦{Number(rec.true_amount_due).toLocaleString()}</span>
+                      </div>
+                    )}
+                    {rec.true_amount_paid !== undefined && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: '#000' }}>Cumulative Paid:</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: '600' }}>₦{Number(rec.true_amount_paid).toLocaleString()}</span>
+                      </div>
+                    )}
+                    {rec.true_amount_due && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
+                        <span>Current Balance:</span>
+                        <span style={{ fontFamily: 'monospace', fontWeight: '700' }}>₦{Math.max(0, Number(rec.true_amount_due) - Number(rec.true_amount_paid)).toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '12px', marginBottom: '15px' }}>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', color: '#2563eb', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>This Payment</div>
+                    <div style={{ fontSize: '0.75rem', color: '#3b82f6', marginTop: '2px' }}>via {rec.payment_method || 'Cash'}</div>
+                  </div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '800', color: '#1d4ed8', fontFamily: 'monospace' }}>
+                    ₦{Number(rec.amount_paid).toLocaleString()}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'auto', paddingBottom: '10px' }}>
+                  {rec.true_amount_paid >= rec.true_amount_due ? (
+                    <div style={{ border: '2px solid #10b981', color: '#10b981', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase', transform: 'rotate(-5deg)' }}>
+                      PAID IN FULL
+                    </div>
+                  ) : (
+                    <div style={{ border: '2px solid #f59e0b', color: '#d97706', padding: '4px 12px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                      PARTIAL PAYMENT
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ textAlign: 'center', marginTop: 'auto', borderTop: '2px solid #e5e7eb', paddingTop: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '5px' }}>
+                    {settings?.principal_signature ? (
+                      <img src={settings.principal_signature} alt="Authorized Signature" style={{ height: '35px', objectFit: 'contain', marginBottom: '2px' }} />
+                    ) : (
+                      <div style={{ width: '120px', borderBottom: '1px solid #000', margin: '15px auto 5px auto' }}></div>
+                    )}
+                    <div style={{ fontSize: '0.65rem', color: '#000' }}>Authorized Signature</div>
+                  </div>
                 </div>
               </div>
-              {isFourth && <div className="page-break no-print" style={{ display: 'none' }}></div>}
+              {isThird && <div className="page-break no-print" style={{ display: 'none' }}></div>}
             </React.Fragment>
           );
         })}

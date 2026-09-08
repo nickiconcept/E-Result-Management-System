@@ -236,6 +236,7 @@ body.dark .skeleton {
   border-radius: var(--radius-md);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  min-width: 0;
 }
 
 /* ==========================================
@@ -483,6 +484,8 @@ body.dark .skeleton {
   background-color: var(--bg-surface);
   position: relative;
   box-shadow: var(--shadow-sm);
+  width: 100%;
+  max-width: 100%;
 }
 
 .table-container-unbound {

@@ -1747,7 +1747,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
   if (isInitialLoad) return <LoadingSpinner />;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '24px' }}>
       {/* Toast Notifications are now handled by GlobalUIProvider */}
 
 
@@ -2180,7 +2180,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           TAB 3: STAFF REGISTRY
           ======================================================= */}
       {activeSubTab === 'teachers' && (
-        <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)' }}>
+        <div className="glass-panel" style={{ padding: '24px', backgroundColor: 'var(--bg-surface)', maxWidth: '100%', overflowX: 'hidden' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px', background: 'linear-gradient(135deg, var(--primary) 0%, #1e3a8a 100%)', padding: '24px', margin: '-24px -24px 24px -24px', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid rgba(255,255,255,0.4)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
@@ -2191,7 +2191,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                 <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.85rem', margin: '4px 0 0 0' }}>Full record of registered school academic staff.</p>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px' }}>
               <button className="btn btn-primary" onClick={() => { setTeacherForm({ full_name: '', username: '', phone: '', email: '', temp_password: '' }); setShowTeacherModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.4)', backgroundColor: 'rgba(255,255,255,0.2)', backdropFilter: 'blur(5px)', color: 'white', padding: '8px 16px', fontSize: '0.85rem', borderRadius: '20px' }}>
                 <Plus size={16} /> Register Teacher
               </button>
@@ -2257,7 +2257,6 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       <th>Avatar</th>
                       <th>Full Name</th>
                       <th>Username</th>
-                      <th>Email</th>
                       <th>Employment Date</th>
                       <th>Status</th>
                       <th>Actions</th>
@@ -2282,7 +2281,6 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                       </button>
                     </td>
                     <td><code>{teach.username}</code></td>
-                    <td>{teach.email || 'N/A'}</td>
                     <td>{teach.created_at ? teach.created_at.split(' ')[0] : 'N/A'}</td>
                     <td>
                       <select
@@ -4684,40 +4682,7 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
               </div>
 
               <form onSubmit={handleUpdateSettings}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px', marginBottom: '32px' }}>
-                  
-                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
-                      <Award size={18} style={{ color: 'var(--primary)' }} />
-                      Show Student Rank in Class?
-                    </label>
-                    <select
-                      className="form-control"
-                      value={String(settingsForm.result_show_position)}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, result_show_position: parseInt(e.target.value) })}
-                      style={{ backgroundColor: 'var(--bg-surface)' }}
-                    >
-                      <option value="1">Yes — Show student rank (e.g. 1st, 2nd, 3rd)</option>
-                      <option value="0">No — Hide rank on report cards</option>
-                    </select>
-                  </div>
 
-                  <div className="form-group" style={{ margin: 0, padding: '20px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '16px', fontSize: '0.95rem' }}>
-                      <BarChart2 size={18} style={{ color: 'var(--primary)' }} />
-                      Show Class Average Score?
-                    </label>
-                    <select
-                      className="form-control"
-                      value={String(settingsForm.result_show_average)}
-                      onChange={(e) => setSettingsForm({ ...settingsForm, result_show_average: parseInt(e.target.value) })}
-                      style={{ backgroundColor: 'var(--bg-surface)' }}
-                    >
-                      <option value="1">Yes — Show overall class average mark</option>
-                      <option value="0">No — Hide class average mark</option>
-                    </select>
-                  </div>
-                </div>
 
                 <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '24px', marginBottom: '32px' }}>
                   <h4 style={{ margin: '0 0 16px 0', fontSize: '1rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -6607,12 +6572,17 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
                                         className="btn btn-outline btn-sm"
                                         style={{ padding: '6px 14px', fontSize: '0.75rem', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
                                         onClick={() => {
+                                          const parentInvoice = studentHistoryData?.invoices?.find(
+                                            i => (i.id === rec.invoice_id) || (i.title === rec.title && i.amount_due === rec.amount_due)
+                                          );
                                           setSelectedReceipt({
                                             ...rec,
                                             full_name: selectedStudentForHistory.full_name,
                                             admission_number: selectedStudentForHistory.admission_number,
                                             class_name: selectedStudentForHistory.class_name,
-                                            status: rec.amount_paid >= rec.amount_due ? 'paid' : 'partial'
+                                            true_amount_due: parentInvoice ? parentInvoice.amount_due : rec.amount_due,
+                                            true_amount_paid: parentInvoice ? parentInvoice.amount_paid : rec.amount_paid,
+                                            status: parentInvoice ? (parentInvoice.amount_paid >= parentInvoice.amount_due ? 'paid' : 'partial') : (rec.amount_paid >= rec.amount_due ? 'paid' : 'partial')
                                           });
                                         }}
                                       >
@@ -6653,43 +6623,102 @@ export default function AdminDashboard({ settings, fetchSettings, activeTab, sub
           <div className="modal-content glass-panel" style={{ maxWidth: '450px', backgroundColor: '#fff', color: '#000' }}>
             <button className="modal-close no-print" onClick={() => setSelectedReceipt(null)} style={{ color: '#000' }}>✕</button>
             
-            <div className="print-area" style={{ fontFamily: 'monospace', padding: '10px' }} ref={receiptSlipRef}>
-              <div style={{ textAlign: 'center', borderBottom: '1px dashed #000', paddingBottom: '10px', marginBottom: '15px' }}>
-                <h3 style={{ margin: '0' }}>{settingsForm?.landing_school_name || 'Jere Model Academy'}</h3>
-                <p style={{ margin: '3px 0', fontSize: '0.8rem' }}>{settingsForm?.landing_tagline || 'KADUNA STATE, NIGERIA'}</p>
-                <p style={{ margin: '2px 0', fontSize: '0.75rem', fontWeight: 'bold' }}>OFFICIAL PAYMENT RECEIPT</p>
-              </div>
-
-              <div style={{ fontSize: '0.85rem', lineHeight: '1.5', marginBottom: '15px' }}>
-                {selectedReceipt.receipt_number && (
-                  <div><strong>RECEIPT NO:</strong> {selectedReceipt.receipt_number}</div>
-                )}
-                <div><strong>DATE:</strong> {selectedReceipt.payment_date || new Date().toLocaleDateString()}</div>
-                <div><strong>STUDENT NAME:</strong> {selectedReceipt.full_name || selectedStudentForHistory?.full_name || 'N/A'}</div>
-                <div><strong>ADMISSION NO:</strong> {selectedReceipt.admission_number || selectedStudentForHistory?.admission_number || 'N/A'}</div>
-                <div><strong>CLASS ARM:</strong> {selectedReceipt.class_name || selectedStudentForHistory?.class_name || 'N/A'}</div>
-                <div style={{ borderBottom: '1px dashed #000', margin: '10px 0' }}></div>
-                <div><strong>FEE DESCRIPTION:</strong> {selectedReceipt.title || 'School Fee'}</div>
-                {selectedReceipt.amount_due && (
-                  <div><strong>TOTAL BILLED:</strong> ₦{Number(selectedReceipt.amount_due).toLocaleString()}</div>
-                )}
-                <div style={{ fontSize: '1.05rem', fontWeight: 'bold', margin: '4px 0' }}>
-                  <strong>AMOUNT PAID:</strong> ₦{Number(selectedReceipt.amount_paid).toLocaleString()}
+            <div className="print-area" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', padding: '20px 10px', color: '#000' }} ref={receiptSlipRef}>
+              <div style={{ textAlign: 'center', paddingBottom: '15px', borderBottom: '2px solid #e5e7eb', marginBottom: '20px' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '50px', height: '50px', borderRadius: '50%', backgroundColor: 'var(--primary)', color: 'white', marginBottom: '10px' }}>
+                  <Receipt size={24} />
                 </div>
-                {selectedReceipt.payment_method && (
-                  <div><strong>PAYMENT METHOD:</strong> {selectedReceipt.payment_method}</div>
-                )}
-                {selectedReceipt.amount_due && (
-                  <div><strong>BALANCE OWED:</strong> ₦{Math.max(0, Number(selectedReceipt.amount_due) - Number(selectedReceipt.amount_paid)).toLocaleString()}</div>
-                )}
-                {selectedReceipt.status && (
-                  <div><strong>STATUS:</strong> <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>{selectedReceipt.status}</span></div>
+                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.2rem', fontWeight: '800', color: '#000' }}>{settingsForm?.landing_school_name || 'Jere Model Academy'}</h3>
+                <p style={{ margin: '0 0 8px 0', fontSize: '0.8rem', color: '#000' }}>{settingsForm?.landing_tagline || 'KADUNA STATE, NIGERIA'}</p>
+                <div style={{ display: 'inline-block', padding: '4px 12px', backgroundColor: '#f3f4f6', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '700', letterSpacing: '0.5px', color: '#000' }}>
+                  OFFICIAL PAYMENT RECEIPT
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.85rem', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#000' }}>Receipt No:</span>
+                  <strong style={{ fontFamily: 'monospace' }}>{selectedReceipt.receipt_number || 'N/A'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#000' }}>Date:</span>
+                  <strong>{selectedReceipt.payment_date || new Date().toLocaleDateString()}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#000' }}>Student Name:</span>
+                  <strong>{selectedReceipt.full_name || selectedStudentForHistory?.full_name || 'N/A'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#000' }}>Admission No:</span>
+                  <strong style={{ fontFamily: 'monospace' }}>{selectedReceipt.admission_number || selectedStudentForHistory?.admission_number || 'N/A'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#000' }}>Class:</span>
+                  <strong>{selectedReceipt.class_name || selectedStudentForHistory?.class_name || 'N/A'}</strong>
+                </div>
+              </div>
+
+              <div style={{ backgroundColor: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb', padding: '15px', marginBottom: '20px' }}>
+                <div style={{ fontSize: '0.8rem', color: '#000', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Fee Description</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: '700', color: '#000', borderBottom: '1px solid #e5e7eb', paddingBottom: '12px', marginBottom: '12px' }}>
+                  {selectedReceipt.title || 'School Fee'}
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem' }}>
+                  {selectedReceipt.true_amount_due && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#000' }}>Total Billed:</span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: '600' }}>₦{Number(selectedReceipt.true_amount_due).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {selectedReceipt.true_amount_paid !== undefined && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#000' }}>Cumulative Paid To Date:</span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: '600' }}>₦{Number(selectedReceipt.true_amount_paid).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {selectedReceipt.true_amount_due && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#ef4444' }}>
+                      <span>Current Balance Owed:</span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: '700' }}>₦{Math.max(0, Number(selectedReceipt.true_amount_due) - Number(selectedReceipt.true_amount_paid)).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '8px', padding: '15px', marginBottom: '20px' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', color: '#2563eb', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.5px' }}>This Payment</div>
+                  <div style={{ fontSize: '0.8rem', color: '#3b82f6', marginTop: '2px' }}>via {selectedReceipt.payment_method || 'Cash'}</div>
+                </div>
+                <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1d4ed8', fontFamily: 'monospace' }}>
+                  ₦{Number(selectedReceipt.amount_paid).toLocaleString()}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '15px' }}>
+                {selectedReceipt.status === 'paid' ? (
+                  <div style={{ border: '2px solid #10b981', color: '#10b981', padding: '6px 16px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase', transform: 'rotate(-5deg)' }}>
+                    PAID IN FULL
+                  </div>
+                ) : (
+                  <div style={{ border: '2px solid #f59e0b', color: '#d97706', padding: '6px 16px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase' }}>
+                    PARTIAL PAYMENT
+                  </div>
                 )}
               </div>
 
-              <div style={{ textAlign: 'center', borderTop: '1px dashed #000', paddingTop: '10px', fontSize: '0.75rem', marginTop: '20px' }}>
-                <p style={{ margin: '2px 0' }}>~ Thank you for your payment! ~</p>
-                <p style={{ margin: '2px 0', color: '#666' }}>Logged by: {selectedReceipt.logged_by_name || 'Accounts Office'}</p>
+              <div style={{ textAlign: 'center', paddingTop: '15px', borderTop: '2px solid #e5e7eb', fontSize: '0.75rem', color: '#000' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '10px' }}>
+                  {settingsForm?.principal_signature ? (
+                    <img src={settingsForm.principal_signature} alt="Authorized Signature" style={{ height: '40px', objectFit: 'contain', marginBottom: '2px' }} />
+                  ) : (
+                    <div style={{ width: '120px', borderBottom: '1px solid #000', margin: '20px auto 5px auto' }}></div>
+                  )}
+                  <div style={{ fontSize: '0.65rem', color: '#000' }}>Authorized Signature</div>
+                </div>
+                <p style={{ margin: '0 0 4px 0', fontWeight: '500', color: '#000' }}>~ Thank you for your payment! ~</p>
+                <p style={{ margin: '0' }}>Logged by: {selectedReceipt.logged_by_name || 'Accounts Office'}</p>
               </div>
             </div>
 
